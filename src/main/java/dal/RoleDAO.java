@@ -2,8 +2,38 @@ package dal;
 
 import model.Role;
 import java.util.List;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.ArrayList;
 
 public class RoleDAO {
+
+    /**
+     * Lấy danh sách tất cả role đang active để đổ vào Dropdown lọc.
+     */
+    public List<Role> getActiveRoles() {
+        List<Role> list = new ArrayList<>();
+        String sql = "SELECT id, name, display_name, description, is_active, is_system FROM roles WHERE is_active = TRUE ORDER BY id ASC";
+
+        try (Connection conn = DBContext.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                list.add(mapRow(rs));
+            }
+
+        } catch (SQLException e) {
+            System.err.println("RoleDAO.getActiveRoles() ERROR: " + e.getMessage());
+            e.printStackTrace();
+        }
+
+        return list;
+    }
+
+
     /**
      * Lấy danh sách các vai trò (Role), hỗ trợ tìm kiếm và phân trang cho màn hình Role List.
      * @param keyword Từ khóa tìm kiếm theo tên hoặc mô tả
@@ -41,5 +71,16 @@ public class RoleDAO {
      */
     public boolean updateStatus(Long id, boolean isActive) {
         return false;
+    }
+
+    private Role mapRow(ResultSet rs) throws SQLException {
+        Role r = new Role();
+        r.setId(rs.getLong("id"));
+        r.setName(rs.getString("name"));
+        r.setDisplayName(rs.getString("display_name"));
+        r.setDescription(rs.getString("description"));
+        r.setIsActive(rs.getBoolean("is_active"));
+        r.setIsSystem(rs.getBoolean("is_system"));
+        return r;
     }
 }

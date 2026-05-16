@@ -1,8 +1,8 @@
 USE manufacturing_hrm;
 
+-- Xóa Data cũ an toàn
 SET FOREIGN_KEY_CHECKS = 0;
 TRUNCATE TABLE password_resets;
-TRUNCATE TABLE user_roles;
 TRUNCATE TABLE users;
 TRUNCATE TABLE role_permissions;
 TRUNCATE TABLE permissions;
@@ -35,39 +35,28 @@ INSERT INTO permissions (id, code, name, url_pattern, module) VALUES
 (6, 'ROLE_UPDATE', 'Cập nhật Vai trò', '/admin/roles/update', 'ROLE'),
 (7, 'ROLE_PERMISSION', 'Phân quyền Động', '/admin/roles/permissions', 'ROLE');
 
--- Phân quyền dộng (Dynamic RBAC)
--- SYSADMIN (Role 1): Có đủ 7 quyền
+-- Phân quyền động (Dynamic RBAC)
+-- SYSADMIN: Có đủ 7 quyền
 INSERT INTO role_permissions (role_id, permission_id) VALUES 
 (1,1), (1,2), (1,3), (1,4), (1,5), (1,6), (1,7);
 
--- HR_MANAGER (Role 2): Chỉ có quyền quản lý User (1 đến 4)
+-- HR_MANAGER: Chỉ có quyền quản lý User (1 đến 4)
 INSERT INTO role_permissions (role_id, permission_id) VALUES 
 (2,1), (2,2), (2,3), (2,4);
 
--- LINE_MANAGER (Role 3): Chỉ được xem User (Quyền 1)
+-- LINE_MANAGER: Chỉ được xem User (Quyền 1)
 INSERT INTO role_permissions (role_id, permission_id) VALUES 
 (3,1);
 
 -- Nhân sự (Users)
--- Mật khẩu hiện tại: 123456
--- 1. Admin
-INSERT INTO users (id, employee_code, username, password_hash, full_name, email, phone, job_title, department_id, manager_id, employee_type, role_id, is_active) VALUES 
-(1, 'AD001', 'admin', '$2a$12$D23iZ/sZ4Q1R2c.ZlYm/b.D.A1q3g4.O/mK7v3.eE6V6qO5P7M4e.', 'Quân Nguyễn', 'quan.admin@company.com', '0901111111', 'IT System Admin', 1, NULL, 'OFFICE', 1, 1);
-
--- 2. Trưởng phòng HR
-INSERT INTO users (id, employee_code, username, password_hash, full_name, email, phone, job_title, department_id, manager_id, employee_type, role_id, is_active) VALUES 
-(2, 'HR001', 'hr_lan', '$2a$12$D23iZ/sZ4Q1R2c.ZlYm/b.D.A1q3g4.O/mK7v3.eE6V6qO5P7M4e.', 'Lê Thị Lan', 'lan.hr@company.com', '0902222222', 'Trưởng phòng Nhân sự', 2, 1, 'OFFICE', 2, 1);
-
--- 3. Quản đốc Xưởng
-INSERT INTO users (id, employee_code, username, password_hash, full_name, email, phone, job_title, department_id, manager_id, employee_type, role_id, is_active) VALUES 
-(3, 'MNG001', 'tuan_qdx', '$2a$12$D23iZ/sZ4Q1R2c.ZlYm/b.D.A1q3g4.O/mK7v3.eE6V6qO5P7M4e.', 'Trần Văn Tuấn', 'tuan.mng@company.com', '0903333333', 'Quản đốc Xưởng A', 4, 1, 'OFFICE', 3, 1);
-
-INSERT INTO users (id, employee_code, username, password_hash, full_name, email, phone, job_title, department_id, manager_id, employee_type, role_id, is_active) VALUES 
-(4, 'CN001', 'an_cn', '$2a$12$D23iZ/sZ4Q1R2c.ZlYm/b.D.A1q3g4.O/mK7v3.eE6V6qO5P7M4e.', 'Nguyễn Văn An', NULL, '0904444444', 'Thợ Hàn Bậc 3/7', 5, 3, 'WORKER', 4, 1);
-
-INSERT INTO users (id, employee_code, username, password_hash, full_name, email, phone, job_title, department_id, manager_id, employee_type, role_id, is_active) VALUES 
-(5, 'CN002', 'binh_cn', '$2a$12$D23iZ/sZ4Q1R2c.ZlYm/b.D.A1q3g4.O/mK7v3.eE6V6qO5P7M4e.', 'Phạm Thái Bình', NULL, '0905555555', 'Thợ Lắp Ráp Bậc 2/7', 4, 3, 'WORKER', 4, 1);
+-- Mật khẩu mặc định: 123456
+INSERT INTO users (id, employee_code, username, password_hash, full_name, phone, job_title, department_id, manager_id, employee_type, role_id, is_active) VALUES 
+(1, 'AD001', 'admin', '$2a$12$D23iZ/sZ4Q1R2c.ZlYm/b.D.A1q3g4.O/mK7v3.eE6V6qO5P7M4e.', 'Quân Nguyễn', '0901111111', 'IT System Admin', 1, NULL, 'OFFICE', 1, 1),
+(2, 'HR001', 'hr_lan', '$2a$12$D23iZ/sZ4Q1R2c.ZlYm/b.D.A1q3g4.O/mK7v3.eE6V6qO5P7M4e.', 'Lê Thị Lan', '0902222222', 'Trưởng phòng Nhân sự', 2, 1, 'OFFICE', 2, 1),
+(3, 'MNG001', 'tuan_qdx', '$2a$12$D23iZ/sZ4Q1R2c.ZlYm/b.D.A1q3g4.O/mK7v3.eE6V6qO5P7M4e.', 'Trần Văn Tuấn', '0903333333', 'Quản đốc Xưởng A', 4, 1, 'OFFICE', 3, 1),
+(4, 'CN001', 'an_cn', '$2a$12$D23iZ/sZ4Q1R2c.ZlYm/b.D.A1q3g4.O/mK7v3.eE6V6qO5P7M4e.', 'Nguyễn Văn An', '0904444444', 'Thợ Hàn Bậc 3/7', 5, 3, 'WORKER', 4, 1),
+(5, 'CN002', 'binh_cn', '$2a$12$D23iZ/sZ4Q1R2c.ZlYm/b.D.A1q3g4.O/mK7v3.eE6V6qO5P7M4e.', 'Phạm Thái Bình', '0905555555', 'Thợ Lắp Ráp Bậc 2/7', 4, 3, 'WORKER', 4, 1);
 
 -- Ticket quên mật khẩu
-INSERT INTO password_resets (user_id, request_type, status, created_at) VALUES 
-(5, 'MANUAL_RESET', 'PENDING', NOW());
+INSERT INTO password_resets (user_id, status, created_at) VALUES 
+(5, 'PENDING', NOW());

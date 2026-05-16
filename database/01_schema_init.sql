@@ -8,7 +8,9 @@ DROP TABLE IF EXISTS permissions;
 DROP TABLE IF EXISTS roles;
 DROP TABLE IF EXISTS departments;
 
--- Tổ chức công ty
+-- ==========================================
+-- 1. Tổ chức công ty
+-- ==========================================
 CREATE TABLE departments (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
@@ -18,7 +20,9 @@ CREATE TABLE departments (
     FOREIGN KEY (parent_id) REFERENCES departments(id) ON DELETE SET NULL
 );
 
--- Phân quyền động (Dynamic RBAC)
+-- ==========================================
+-- 2. Phân quyền động (Dynamic RBAC)
+-- ==========================================
 CREATE TABLE roles (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(50) UNIQUE NOT NULL,       
@@ -44,27 +48,30 @@ CREATE TABLE role_permissions (
     FOREIGN KEY (permission_id) REFERENCES permissions(id) ON DELETE CASCADE
 );
 
-
+-- ==========================================
+-- 3. Nhân sự (Users)
+-- ==========================================
 CREATE TABLE users (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     
-    -- 1. Định danh
+    -- Định danh
     employee_code VARCHAR(20) UNIQUE NOT NULL,
     username VARCHAR(50) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
     
-    -- 2. Thông tin cơ bản
+    -- Thông tin cơ bản
     full_name VARCHAR(100) NOT NULL,
     phone VARCHAR(20) NULL,
     dob DATE NULL,                   
     
-    -- 3. Thông tin nhân sự & tổ chức
+    -- Thông tin nhân sự & tổ chức
     job_title VARCHAR(100) NULL,
     department_id BIGINT NULL,
+    manager_id BIGINT NULL,
     employee_type ENUM('OFFICE', 'WORKER') NOT NULL DEFAULT 'OFFICE', 
     role_id BIGINT NOT NULL,
     
-    -- 4. Trạng thái
+    -- Trạng thái
     is_active BOOLEAN DEFAULT TRUE,             
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -74,14 +81,16 @@ CREATE TABLE users (
     FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE RESTRICT
 );
 
--- Quên mật khẩu
+-- ==========================================
+-- 4. Quên mật khẩu
+-- ==========================================
 CREATE TABLE password_resets (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     user_id BIGINT NOT NULL,
     
     status ENUM('PENDING', 'RESOLVED', 'REJECTED') DEFAULT 'PENDING',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    resolved_by BIGINT NULL,  -- Lưu ID của Admin đã bấm nút duyệt
+    resolved_by BIGINT NULL,  
     
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (resolved_by) REFERENCES users(id) ON DELETE SET NULL

@@ -1,16 +1,18 @@
 package filter;
+
 import java.io.*;
+
 import jakarta.servlet.*;
 import jakarta.servlet.annotation.*;
 
-@WebFilter(filterName = "AuthFilter", urlPatterns = {"/*"})
 public class AuthFilter implements Filter {
 
     private static final boolean debug = true;
 
     private FilterConfig filterConfig = null;
 
-    public AuthFilter() {}
+    public AuthFilter() {
+    }
 
     public static String getStackTrace(Throwable t) {
         String stackTrace = null;
@@ -69,7 +71,7 @@ public class AuthFilter implements Filter {
             if (debug) log("AuthFilter:Initializing filter");
         }
     }
-    
+
     public void destroy() {
     }
 
@@ -99,14 +101,16 @@ public class AuthFilter implements Filter {
                 pw.close();
                 ps.close();
                 response.getOutputStream().close();
-            } catch (Exception ex) {}
+            } catch (Exception ex) {
+            }
         } else {
             try {
                 PrintStream ps = new PrintStream(response.getOutputStream());
                 t.printStackTrace(ps);
                 ps.close();
                 response.getOutputStream().close();
-            } catch (Exception ex) {}
+            } catch (Exception ex) {
+            }
         }
     }
 

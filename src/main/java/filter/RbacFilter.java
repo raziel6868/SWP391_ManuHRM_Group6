@@ -1,16 +1,18 @@
 package filter;
+
 import java.io.*;
+
 import jakarta.servlet.*;
 import jakarta.servlet.annotation.*;
 
-@WebFilter(filterName = "RbacFilter", urlPatterns = {"/*"})
 public class RbacFilter implements Filter {
 
     private static final boolean debug = true;
 
     private FilterConfig filterConfig = null;
 
-    public RbacFilter() {}
+    public RbacFilter() {
+    }
 
     public static String getStackTrace(Throwable t) {
         String stackTrace = null;
@@ -69,7 +71,7 @@ public class RbacFilter implements Filter {
             if (debug) log("RbacFilter:Initializing filter");
         }
     }
-    
+
     public void destroy() {
     }
 
@@ -99,14 +101,16 @@ public class RbacFilter implements Filter {
                 pw.close();
                 ps.close();
                 response.getOutputStream().close();
-            } catch (Exception ex) {}
+            } catch (Exception ex) {
+            }
         } else {
             try {
                 PrintStream ps = new PrintStream(response.getOutputStream());
                 t.printStackTrace(ps);
                 ps.close();
                 response.getOutputStream().close();
-            } catch (Exception ex) {}
+            } catch (Exception ex) {
+            }
         }
     }
 

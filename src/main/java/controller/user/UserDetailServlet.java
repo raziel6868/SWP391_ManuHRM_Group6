@@ -1,4 +1,4 @@
-package controller.home;
+package controller.user;
 
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
@@ -7,10 +7,10 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 
-@WebServlet(name = "HomeServlet", urlPatterns = {"/home", "/dashboard"})
-public class HomeServlet extends HttpServlet {
+@WebServlet(name = "UserDetailServlet", urlPatterns = {"/user-detail"})
+public class UserDetailServlet extends HttpServlet {
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        request.getRequestDispatcher("/views/home/dashboard.jsp").forward(request, response);
+        request.getRequestDispatcher("/views/user/user-detail.jsp").forward(request, response);
     }
 }

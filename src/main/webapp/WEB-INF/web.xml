@@ -13,6 +13,17 @@
         <welcome-file>home</welcome-file>
     </welcome-file-list>
 
+    <!-- Định nghĩa Filter -->
+    <filter>
+        <filter-name>AuthFilter</filter-name>
+        <filter-class>filter.AuthFilter</filter-class>
+    </filter>
+
+    <filter>
+        <filter-name>RbacFilter</filter-name>
+        <filter-class>filter.RbacFilter</filter-class>
+    </filter>
+
     <!-- THỨ TỰ ƯU TIÊN CHẠY FILTERS  -->
     <!-- Bước 1: Kiểm tra xem đã đăng nhập chưa -->
     <filter-mapping>

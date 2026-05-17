@@ -17,7 +17,7 @@ public class UserStatusServlet extends HttpServlet {
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-        String idParam = request.getParameter("id");
+                        String idParam = request.getParameter("id");
         String activeParam = request.getParameter("isActive");
 
         if (idParam == null || activeParam == null) {

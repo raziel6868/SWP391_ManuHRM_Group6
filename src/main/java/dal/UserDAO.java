@@ -1,78 +1,213 @@
 package dal;
 
-import model.User;
+import java.sql.*;
+import java.util.ArrayList;
 import java.util.List;
+import model.User;
 
 public class UserDAO {
-    /**
-     * Tìm kiếm và lọc danh sách nhân viên cho màn hình User List.
-     * Chứa tất cả các tiêu chí lọc trong một hàm duy nhất để dễ maintain.
-     * @param keyword Từ khóa tìm kiếm (Mã NV, Tên, Username)
-     * @param departmentId Lọc theo phòng ban (truyền null nếu lấy tất cả)
-     * @param roleId Lọc theo vai trò (truyền null nếu lấy tất cả)
-     * @param isActive Lọc theo trạng thái (truyền null nếu lấy cả nhân viên đã nghỉ)
-     * @param offset Vị trí bắt đầu (phân trang)
-     * @param limit Số lượng bản ghi trên một trang
-     * @return Danh sách User thỏa mãn điều kiện
-     */
-    public List<User> searchAndFilter(String keyword, Long departmentId, Long roleId, Boolean isActive, int offset, int limit) {
-        return null;
+
+    public List<User> searchAndFilter(
+            String keyword,
+            Long departmentId,
+            Long roleId,
+            Boolean isActive,
+            int offset,
+            int limit) {
+
+        List<User> users = new ArrayList<>();
+
+        StringBuilder sql =
+                new StringBuilder(
+                        """
+                SELECT u.id, u.employee_code, u.username, u.full_name,
+                       u.phone, u.job_title, u.employee_type, u.is_active,
+                       u.department_id, u.role_id,
+                       d.name  AS department_name,
+                       r.name  AS role_name,
+                       r.display_name AS role_display_name
+                FROM users u
+                LEFT JOIN departments d ON u.department_id = d.id
+                LEFT JOIN roles r       ON u.role_id       = r.id
+                WHERE 1=1
+                """);
+
+        List<Object> params = new ArrayList<>();
+
+        if (keyword != null && !keyword.isBlank()) {
+            sql.append(" AND (u.employee_code LIKE ? OR u.full_name LIKE ? OR u.username LIKE ?)");
+            String like = "%" + keyword.trim() + "%";
+            params.add(like);
+            params.add(like);
+            params.add(like);
+        }
+        if (departmentId != null) {
+            sql.append(" AND u.department_id = ?");
+            params.add(departmentId);
+        }
+        if (roleId != null) {
+            sql.append(" AND u.role_id = ?");
+            params.add(roleId);
+        }
+        if (isActive != null) {
+            sql.append(" AND u.is_active = ?");
+            params.add(isActive);
+        }
+
+        sql.append(" ORDER BY u.id ASC LIMIT ? OFFSET ?");
+        params.add(limit);
+        params.add(offset);
+
+        try (Connection conn = DBContext.getConnection();
+                PreparedStatement ps = conn.prepareStatement(sql.toString())) {
+
+            for (int i = 0; i < params.size(); i++) ps.setObject(i + 1, params.get(i));
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) users.add(mapRow(rs));
+
+        } catch (SQLException e) {
+            System.err.println("UserDAO.searchAndFilter() ERROR: " + e.getMessage());
+            e.printStackTrace();
+        }
+
+        return users;
     }
 
-    /**
-     * Lấy thông tin chi tiết của một nhân viên theo ID.
-     * @param id ID của nhân viên
-     * @return Đối tượng User hoặc null
-     */
+    public int countSearchAndFilter(
+            String keyword, Long departmentId, Long roleId, Boolean isActive) {
+
+        StringBuilder sql = new StringBuilder("SELECT COUNT(*) FROM users u WHERE 1=1");
+        List<Object> params = new ArrayList<>();
+
+        if (keyword != null && !keyword.isBlank()) {
+            sql.append(" AND (u.employee_code LIKE ? OR u.full_name LIKE ? OR u.username LIKE ?)");
+            String like = "%" + keyword.trim() + "%";
+            params.add(like);
+            params.add(like);
+            params.add(like);
+        }
+        if (departmentId != null) {
+            sql.append(" AND u.department_id = ?");
+            params.add(departmentId);
+        }
+        if (roleId != null) {
+            sql.append(" AND u.role_id = ?");
+            params.add(roleId);
+        }
+        if (isActive != null) {
+            sql.append(" AND u.is_active = ?");
+            params.add(isActive);
+        }
+
+        try (Connection conn = DBContext.getConnection();
+                PreparedStatement ps = conn.prepareStatement(sql.toString())) {
+
+            for (int i = 0; i < params.size(); i++) ps.setObject(i + 1, params.get(i));
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) return rs.getInt(1);
+
+        } catch (SQLException e) {
+            System.err.println("UserDAO.countSearchAndFilter() ERROR: " + e.getMessage());
+            e.printStackTrace();
+        }
+
+        return 0;
+    }
+
     public User getById(Long id) {
+        String sql =
+                """
+                SELECT u.id, u.employee_code, u.username, u.full_name,
+                       u.phone, u.dob, u.job_title, u.employee_type, u.is_active,
+                       u.department_id, u.role_id, u.manager_id,
+                       u.created_at, u.updated_at,
+                       d.name         AS department_name,
+                       r.name         AS role_name,
+                       r.display_name AS role_display_name,
+                       m.full_name    AS manager_name
+                FROM users u
+                LEFT JOIN departments d ON u.department_id = d.id
+                LEFT JOIN roles r       ON u.role_id       = r.id
+                LEFT JOIN users m       ON u.manager_id    = m.id
+                WHERE u.id = ?
+                """;
+
+        try (Connection conn = DBContext.getConnection();
+                PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setLong(1, id);
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) {
+                User u = mapRow(rs);
+                u.setDob(rs.getDate("dob"));
+                u.setManagerId(rs.getLong("manager_id"));
+                u.setManagerName(rs.getString("manager_name"));
+                u.setCreatedAt(rs.getTimestamp("created_at"));
+                u.setUpdatedAt(rs.getTimestamp("updated_at"));
+                return u;
+            }
+
+        } catch (SQLException e) {
+            System.err.println("UserDAO.getById() ERROR: " + e.getMessage());
+            e.printStackTrace();
+        }
+
         return null;
     }
 
-    /**
-     * Lấy thông tin User theo Username (hoặc Mã NV) dùng cho chức năng Đăng nhập.
-     * @param username Tên đăng nhập hoặc Mã NV
-     * @return Đối tượng User hoặc null
-     */
     public User getByUsername(String username) {
         return null;
     }
 
-    /**
-     * Thêm mới một nhân sự vào hệ thống (Onboarding).
-     * @param user Đối tượng User chứa đầy đủ thông tin khởi tạo
-     * @return true nếu thêm thành công, false nếu thất bại
-     */
     public boolean insert(User user) {
         return false;
     }
 
-    /**
-     * Cập nhật thông tin hồ sơ nhân sự (Profile, Department, Role...).
-     * TUYỆT ĐỐI KHÔNG cập nhật Password hay Status trong hàm này (nguyên tắc Atomic).
-     * @param user Đối tượng User chứa dữ liệu cập nhật
-     * @return true nếu thành công
-     */
     public boolean updateProfile(User user) {
         return false;
     }
 
-    /**
-     * Cập nhật mật khẩu của nhân viên (Atomic operation). Dùng cho tính năng Đổi mật khẩu hoặc Quên mật khẩu.
-     * @param id ID của User
-     * @param newPasswordHash Mật khẩu mới đã được băm (BCrypt)
-     * @return true nếu đổi pass thành công
-     */
     public boolean updatePassword(Long id, String newPasswordHash) {
         return false;
     }
 
-    /**
-     * Khóa hoặc Mở khóa tài khoản nhân viên (Atomic operation).
-     * @param id ID của User
-     * @param isActive Trạng thái (false = khóa, true = mở)
-     * @return true nếu cập nhật thành công
-     */
     public boolean updateStatus(Long id, boolean isActive) {
+        String sql = "UPDATE users SET is_active = ? WHERE id = ?";
+
+        try (Connection conn = DBContext.getConnection();
+                PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setBoolean(1, isActive);
+            ps.setLong(2, id);
+            return ps.executeUpdate() > 0;
+
+        } catch (SQLException e) {
+            System.err.println("UserDAO.updateStatus() ERROR: " + e.getMessage());
+            e.printStackTrace();
+        }
+
         return false;
+    }
+
+    private User mapRow(ResultSet rs) throws SQLException {
+        User u = new User();
+        u.setId(rs.getLong("id"));
+        u.setEmployeeCode(rs.getString("employee_code"));
+        u.setUsername(rs.getString("username"));
+        u.setFullName(rs.getString("full_name"));
+        u.setPhone(rs.getString("phone"));
+        u.setJobTitle(rs.getString("job_title"));
+        u.setIsActive(rs.getBoolean("is_active"));
+        u.setDepartmentId(rs.getLong("department_id"));
+        u.setRoleId(rs.getLong("role_id"));
+
+        String empType = rs.getString("employee_type");
+        if (empType != null) u.setEmployeeType(User.EmployeeType.valueOf(empType));
+
+        u.setDepartmentName(rs.getString("department_name"));
+        u.setRoleName(rs.getString("role_name"));
+        u.setRoleDisplayName(rs.getString("role_display_name"));
+
+        return u;
     }
 }

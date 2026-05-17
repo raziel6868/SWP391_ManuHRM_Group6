@@ -92,7 +92,7 @@
                     <java>
                         <removeUnusedImports/>
                         <googleJavaFormat>
-                            <version>1.35.0</version>
+                            <version>1.28.0</version>
                             <style>AOSP</style>
                         </googleJavaFormat>
                     </java>
@@ -105,6 +105,7 @@
                 <version>1.0.5</version>
                 <executions>
                     <execution>
+                        <phase>initialize</phase>
                         <goals>
                             <goal>install</goal>
                         </goals>
@@ -121,7 +122,7 @@
                                     STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACM)
                                     if [ -n "$STAGED_FILES" ]; then
                                         for FILE in $STAGED_FILES; do
-                                            if [[ $FILE == *.java ]] || [[ $FILE == *.xml ]]; then
+                                            if [[ $FILE == *.java ]]; then
                                                 git add "$FILE"
                                             fi
                                         done

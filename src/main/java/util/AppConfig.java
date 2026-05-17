@@ -1,20 +1,45 @@
 package util;
 
 import io.github.cdimascio.dotenv.Dotenv;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 public class AppConfig {
     private static Dotenv dotenv;
 
     static {
         try {
-            dotenv = Dotenv.configure().ignoreIfMissing().load();
+            Path currentPath =
+                    Paths.get(
+                            AppConfig.class
+                                    .getProtectionDomain()
+                                    .getCodeSource()
+                                    .getLocation()
+                                    .toURI());
+
+            if (Files.isRegularFile(currentPath)) {
+                currentPath = currentPath.getParent();
+            }
+
+            String envDir = null;
+            while (currentPath != null) {
+                if (Files.exists(currentPath.resolve(".env"))) {
+                    envDir = currentPath.toString();
+                    break;
+                }
+                currentPath = currentPath.getParent();
+            }
+
+            dotenv =
+                    Dotenv.configure()
+                            .directory(envDir != null ? envDir : "./")
+                            .ignoreIfMissing()
+                            .load();
+
         } catch (Exception e) {
-            System.err.println(
-                    "==========================================================================");
             System.err.println("WARNING: COULD NOT LOAD ENVIRONMENT VARIABLES!");
-            System.err.println("Please check your '.env' file.");
-            System.err.println(
-                    "==========================================================================");
+            e.printStackTrace();
         }
     }
 

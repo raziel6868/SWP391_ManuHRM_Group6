@@ -148,6 +148,43 @@ public class UserDAO {
      * @return Đối tượng User hoặc null
      */
     public User getById(Long id) {
+        String sql = """
+                SELECT u.id, u.employee_code, u.username, u.full_name,
+                       u.phone, u.dob, u.job_title, u.employee_type, u.is_active,
+                       u.department_id, u.role_id, u.manager_id,
+                       u.created_at, u.updated_at,
+                       d.name         AS department_name,
+                       r.name         AS role_name,
+                       r.display_name AS role_display_name,
+                       m.full_name    AS manager_name
+                FROM users u
+                LEFT JOIN departments d ON u.department_id = d.id
+                LEFT JOIN roles r       ON u.role_id       = r.id
+                LEFT JOIN users m       ON u.manager_id    = m.id
+                WHERE u.id = ?
+                """;
+
+        try (Connection conn = DBContext.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setLong(1, id);
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) {
+                User u = mapRow(rs);
+                // Các field bổ sung không có trong searchAndFilter
+                u.setDob(rs.getDate("dob"));
+                u.setManagerId(rs.getLong("manager_id"));
+                u.setManagerName(rs.getString("manager_name"));
+                u.setCreatedAt(rs.getTimestamp("created_at"));
+                u.setUpdatedAt(rs.getTimestamp("updated_at"));
+                return u;
+            }
+
+        } catch (SQLException e) {
+            System.err.println("UserDAO.getById() ERROR: " + e.getMessage());
+            e.printStackTrace();
+        }
+
         return null;
     }
 
@@ -196,6 +233,20 @@ public class UserDAO {
      * @return true nếu cập nhật thành công
      */
     public boolean updateStatus(Long id, boolean isActive) {
+        String sql = "UPDATE users SET is_active = ? WHERE id = ?";
+
+        try (Connection conn = DBContext.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setBoolean(1, isActive);
+            ps.setLong(2, id);
+            return ps.executeUpdate() > 0;
+
+        } catch (SQLException e) {
+            System.err.println("UserDAO.updateStatus() ERROR: " + e.getMessage());
+            e.printStackTrace();
+        }
+
         return false;
     }
 

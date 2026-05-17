@@ -27,6 +27,7 @@ public class User {
     private String departmentName;
     private String roleName;
     private String roleDisplayName;
+    private String managerName;
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -82,4 +83,7 @@ public class User {
 
     public String getRoleDisplayName() { return roleDisplayName; }
     public void setRoleDisplayName(String roleDisplayName) { this.roleDisplayName = roleDisplayName; }
+
+    public String getManagerName() { return managerName; }
+    public void setManagerName(String managerName) { this.managerName = managerName; }
 }

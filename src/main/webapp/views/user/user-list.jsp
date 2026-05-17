@@ -8,7 +8,6 @@
 
 <h2>Danh sách nhân viên (${totalRecords} người)</h2>
 
-<%-- ── FORM TÌM KIẾM / LỌC ── --%>
 <form method="get" action="user-list">
     <input type="text" name="keyword" value="${keyword}" placeholder="Tìm mã NV, tên, username" />
 
@@ -42,7 +41,6 @@
 
 <hr/>
 
-<%-- ── BẢNG KẾT QUẢ ── --%>
 <c:choose>
     <c:when test="${empty users}">
         <p>Không tìm thấy nhân viên nào.</p>
@@ -79,7 +77,29 @@
                         <td>${u.isActive ? 'Active' : 'Inactive'}</td>
                         <td>
                             <a href="user-detail?id=${u.id}">Xem</a> |
-                            <a href="user-update?id=${u.id}">Sửa</a>
+                            <a href="user-update?id=${u.id}">Sửa</a> |
+
+                            <%-- MỚI (req #10): nút Active/Deactive --%>
+                            <form method="post" action="user-status" style="display:inline">
+                                <input type="hidden" name="id" value="${u.id}" />
+                                <input type="hidden" name="referer" value="list" />
+                                <c:choose>
+                                    <c:when test="${u.isActive}">
+                                        <input type="hidden" name="isActive" value="false" />
+                                        <button type="submit"
+                                                onclick="return confirm('Khóa tài khoản ${u.fullName}?')">
+                                            Khóa
+                                        </button>
+                                    </c:when>
+                                    <c:otherwise>
+                                        <input type="hidden" name="isActive" value="true" />
+                                        <button type="submit"
+                                                onclick="return confirm('Mở tài khoản ${u.fullName}?')">
+                                            Mở
+                                        </button>
+                                    </c:otherwise>
+                                </c:choose>
+                            </form>
                         </td>
                     </tr>
                 </c:forEach>
@@ -90,16 +110,13 @@
 
 <hr/>
 
-<%-- ── PHÂN TRANG ── --%>
 <p>Trang ${currentPage} / ${totalPages}</p>
 <c:if test="${currentPage > 1}">
     <a href="user-list?page=${currentPage - 1}&keyword=${keyword}&departmentId=${selectedDepartmentId}&roleId=${selectedRoleId}&isActive=${selectedStatus}">« Trước</a>
 </c:if>
 <c:forEach begin="1" end="${totalPages}" var="i">
     <c:choose>
-        <c:when test="${i == currentPage}">
-            [${i}]
-        </c:when>
+        <c:when test="${i == currentPage}">[${i}]</c:when>
         <c:otherwise>
             <a href="user-list?page=${i}&keyword=${keyword}&departmentId=${selectedDepartmentId}&roleId=${selectedRoleId}&isActive=${selectedStatus}">${i}</a>
         </c:otherwise>
@@ -109,16 +126,6 @@
     <a href="user-list?page=${currentPage + 1}&keyword=${keyword}&departmentId=${selectedDepartmentId}&roleId=${selectedRoleId}&isActive=${selectedStatus}">Tiếp »</a>
 </c:if>
 
-<%-- ── DEBUG INFO (xóa khi demo) ── --%>
 <hr/>
-<small>
-    DEBUG — keyword: "${keyword}" |
-    deptId: ${selectedDepartmentId} |
-    roleId: ${selectedRoleId} |
-    status: ${selectedStatus} |
-    offset: ${(currentPage-1) * 10} |
-    total: ${totalRecords}
-</small>
-
 </body>
 </html>

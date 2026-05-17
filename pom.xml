@@ -91,10 +91,8 @@
                 <configuration>
                     <java>
                         <removeUnusedImports/>
-                        <googleJavaFormat>
-                            <version>1.28.0</version>
-                            <style>AOSP</style>
-                        </googleJavaFormat>
+                        <eclipse>
+                        </eclipse>
                     </java>
                 </configuration>
             </plugin>

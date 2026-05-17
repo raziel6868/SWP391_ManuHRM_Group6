@@ -114,7 +114,7 @@
                                 <pre-commit>
                                     <![CDATA[
                                     echo "Formatting code before commit..."
-                                    if ! mvn spotless:apply; then
+                                    if ! ./mvnw spotless:apply; then
                                         echo "ERROR: Spotless apply failed (possible syntax error). Aborting commit!"
                                         exit 1
                                     fi

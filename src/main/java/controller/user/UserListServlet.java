@@ -28,6 +28,7 @@ public class UserListServlet extends HttpServlet {
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
+
         String keyword = request.getParameter("keyword");
         String deptParam = request.getParameter("departmentId");
         String roleParam = request.getParameter("roleId");

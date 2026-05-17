@@ -32,6 +32,28 @@ public class RoleDAO {
         return list;
     }
 
+    /** Lấy danh sách tất cả role đang active để đổ vào Dropdown lọc. */
+    public List<Role> getActiveRoles() {
+        List<Role> list = new ArrayList<>();
+        String sql =
+                "SELECT id, name, display_name, description, is_active, is_system FROM roles WHERE is_active = TRUE ORDER BY id ASC";
+
+        try (Connection conn = DBContext.getConnection();
+                PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                list.add(mapRow(rs));
+            }
+
+        } catch (SQLException e) {
+            System.err.println("RoleDAO.getActiveRoles() ERROR: " + e.getMessage());
+            e.printStackTrace();
+        }
+
+        return list;
+    }
+
     /**
      * Lấy danh sách các vai trò (Role), hỗ trợ tìm kiếm và phân trang cho màn hình Role List.
      *

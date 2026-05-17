@@ -7,6 +7,8 @@ import model.User;
 
 public class UserDAO {
 
+    // ── MỚI (req #7) ─────────────────────────────────────────────────────
+
     public List<User> searchAndFilter(
             String keyword,
             Long departmentId,
@@ -73,6 +75,8 @@ public class UserDAO {
         return users;
     }
 
+    // ── MỚI (req #7) ─────────────────────────────────────────────────────
+
     public int countSearchAndFilter(
             String keyword, Long departmentId, Long roleId, Boolean isActive) {
 
@@ -113,6 +117,8 @@ public class UserDAO {
 
         return 0;
     }
+
+    // ── MỚI (req #8) ─────────────────────────────────────────────────────
 
     public User getById(Long id) {
         String sql =
@@ -155,21 +161,25 @@ public class UserDAO {
         return null;
     }
 
+    // ── GỐC: chưa implement ───────────────────────────────────────────────
+
     public User getByUsername(String username) {
-        return null;
+        return null; // TODO: QuanLNM implement cho req #2
     }
 
     public boolean insert(User user) {
-        return false;
+        return false; // TODO: ThangNH implement cho req #9
     }
 
     public boolean updateProfile(User user) {
-        return false;
+        return false; // TODO: ThangNH implement cho req #11
     }
 
     public boolean updatePassword(Long id, String newPasswordHash) {
-        return false;
+        return false; // TODO: NamLV implement cho req #6
     }
+
+    // ── MỚI (req #10): implement updateStatus — bản gốc return false ─────
 
     public boolean updateStatus(Long id, boolean isActive) {
         String sql = "UPDATE users SET is_active = ? WHERE id = ?";
@@ -188,6 +198,8 @@ public class UserDAO {
 
         return false;
     }
+
+    // ── MỚI (req #7 + #8): helper dùng chung ─────────────────────────────
 
     private User mapRow(ResultSet rs) throws SQLException {
         User u = new User();

@@ -8,48 +8,54 @@ jobs:
   verify-pr:
     runs-on: ubuntu-latest
 
+    permissions:
+      contents: read
+      pull-requests: write
+
     steps:
-    - name: Checkout Source Code
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-    - name: Scan for Hardcoded Secrets
-      uses: gitleaks/gitleaks-action@v2
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        GITLEAKS_ENABLE_COMMENTS: true
+      - name: Scan for Hardcoded Secrets
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_ENABLE_COMMENTS: true
 
-    - name: Setup Java 17
-      uses: actions/setup-java@v3
-      with:
-        java-version: '17'
-        distribution: 'temurin'
-        cache: 'maven'
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'maven'
 
-    - name: Check Code Formatting
-      run: |
-        mvn spotless:check || (echo "ERROR: Code is not formatted! Please run 'mvn spotless:apply' locally and commit again." && exit 1)
+      - name: Check Code Formatting
+        run: |
+          mvn spotless:check || (echo "ERROR: Code is not formatted! Please run 'mvn spotless:apply' locally and commit again." && exit 1)
 
-    - name: Check for JSP Scriptlets
-      run: |
-        if grep -rnw 'src/main/webapp/' -e '<%[^@=]'; then
-          echo "ERROR: JSP Scriptlets detected! Please use JSTL or EL instead."
-          exit 1
-        fi
+      - name: Check for JSP Scriptlets
+        run: |
+          if grep -rnE '<%[^@=\-]' src/main/webapp/; then
+            echo "ERROR: JSP Scriptlets detected! Please use JSTL or EL instead."
+            exit 1
+          fi
 
-    - name: Check for Servlet Declarations in web.xml
-      run: |
-        if grep -q "<servlet>" src/main/webapp/WEB-INF/web.xml; then
-          echo "ERROR: <servlet> tags are not allowed in web.xml. Use @WebServlet annotation instead."
-          exit 1
-        fi
+      - name: Check for Servlet Declarations in web.xml
+        run: |
+          if [ -f "src/main/webapp/WEB-INF/web.xml" ]; then
+            if grep -q "<servlet>" src/main/webapp/WEB-INF/web.xml; then
+              echo "ERROR: <servlet> tags are not allowed in web.xml. Use @WebServlet annotation instead."
+              exit 1
+            fi
+          fi
 
-    - name: Verify Build
-      run: mvn clean compile
+      - name: Verify Build
+        run: mvn clean compile
 
-    - name: Run Tests and Coverage
-      run: |
-        if [ -d "src/test/java" ] && [ "$(ls -A src/test/java)" ]; then
-          mvn org.jacoco:jacoco-maven-plugin:0.8.12:prepare-agent test org.jacoco:jacoco-maven-plugin:0.8.12:report
-        fi
+      - name: Run Tests and Coverage
+        run: |
+          if [ -d "src/test/java" ] && [ "$(ls -A src/test/java)" ]; then
+            mvn org.jacoco:jacoco-maven-plugin:0.8.14:prepare-agent test org.jacoco:jacoco-maven-plugin:0.8.12:report
+          fi

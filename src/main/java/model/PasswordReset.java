@@ -4,9 +4,10 @@ import java.sql.Timestamp;
 
 public class PasswordReset {
 
-
     public enum Status {
-        PENDING, RESOLVED, REJECTED
+        PENDING,
+        RESOLVED,
+        REJECTED
     }
 
     private Long id;

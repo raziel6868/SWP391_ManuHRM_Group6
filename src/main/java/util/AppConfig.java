@@ -7,14 +7,14 @@ public class AppConfig {
 
     static {
         try {
-            dotenv = Dotenv.configure()
-                    .ignoreIfMissing()
-                    .load();
+            dotenv = Dotenv.configure().ignoreIfMissing().load();
         } catch (Exception e) {
-            System.err.println("==========================================================================");
+            System.err.println(
+                    "==========================================================================");
             System.err.println("WARNING: COULD NOT LOAD ENVIRONMENT VARIABLES!");
             System.err.println("Please check your '.env' file.");
-            System.err.println("==========================================================================");
+            System.err.println(
+                    "==========================================================================");
         }
     }
 

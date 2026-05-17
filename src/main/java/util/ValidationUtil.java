@@ -9,7 +9,6 @@ public final class ValidationUtil {
 
     private ValidationUtil() {}
 
-
     public static boolean isBlank(String value) {
         return value == null || value.trim().isEmpty();
     }
@@ -23,7 +22,6 @@ public final class ValidationUtil {
         if (isBlank(value) || isBlank(regexPattern)) return false;
         return Pattern.compile(regexPattern).matcher(value.trim()).matches();
     }
-
 
     public static int getIntOrDefault(String value, int defaultValue) {
         if (isBlank(value)) return defaultValue;
@@ -46,7 +44,6 @@ public final class ValidationUtil {
     public static boolean isBetween(int value, int min, int max) {
         return value >= min && value <= max;
     }
-
 
     public static Date parseDate(String value, String format) {
         if (isBlank(value)) return null;

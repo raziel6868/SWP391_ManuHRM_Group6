@@ -1,11 +1,11 @@
 package dal;
 
 import model.PasswordReset;
-import java.util.List;
 
 public class PasswordResetDAO {
     /**
      * Tạo một Ticket yêu cầu cấp lại mật khẩu (Lưu vào database).
+     *
      * @param reset Yêu cầu quên mật khẩu
      * @return true nếu tạo ticket thành công
      */
@@ -15,6 +15,7 @@ public class PasswordResetDAO {
 
     /**
      * Cập nhật trạng thái của Ticket (Từ PENDING sang RESOLVED hoặc REJECTED).
+     *
      * @param id ID của Ticket
      * @param status Trạng thái mới
      * @param resolvedBy ID của HR/Admin đã giải quyết (hoặc null nếu reset tự động qua mail)

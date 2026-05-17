@@ -1,9 +1,8 @@
 package filter;
 
-import java.io.*;
-
 import jakarta.servlet.*;
 import jakarta.servlet.annotation.*;
+import java.io.*;
 
 public class RbacFilter implements Filter {
 
@@ -11,8 +10,7 @@ public class RbacFilter implements Filter {
 
     private FilterConfig filterConfig = null;
 
-    public RbacFilter() {
-    }
+    public RbacFilter() {}
 
     public static String getStackTrace(Throwable t) {
         String stackTrace = null;
@@ -28,18 +26,23 @@ public class RbacFilter implements Filter {
         return stackTrace;
     }
 
-    private void doBeforeProcessing(ServletRequest request, ServletResponse response) throws IOException, ServletException {
+    private void doBeforeProcessing(ServletRequest request, ServletResponse response)
+            throws IOException, ServletException {
         if (debug) log("RbacFilter:DoBeforeProcessing");
-        // Write code here to process the request and/or response before the rest of the filter chain is invoked.
+        // Write code here to process the request and/or response before the rest of the filter
+        // chain is invoked.
     }
 
-    private void doAfterProcessing(ServletRequest request, ServletResponse response) throws IOException, ServletException {
+    private void doAfterProcessing(ServletRequest request, ServletResponse response)
+            throws IOException, ServletException {
         if (debug) log("RbacFilter:DoAfterProcessing");
-        // Write code here to process the request and/or response after the rest of the filter chain is invoked.
+        // Write code here to process the request and/or response after the rest of the filter chain
+        // is invoked.
     }
 
     @Override
-    public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain) throws IOException, ServletException {
+    public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
+            throws IOException, ServletException {
         if (debug) log("RbacFilter:doFilter()");
         doBeforeProcessing(request, response);
         Throwable problem = null;
@@ -72,8 +75,7 @@ public class RbacFilter implements Filter {
         }
     }
 
-    public void destroy() {
-    }
+    public void destroy() {}
 
     @Override
     public String toString() {
@@ -92,12 +94,12 @@ public class RbacFilter implements Filter {
                 response.setContentType("text/html");
                 PrintStream ps = new PrintStream(response.getOutputStream());
                 PrintWriter pw = new PrintWriter(ps);
-                pw.print("<html>\n<head>\n<title>Error</title>\n</head>\n<body>\n"); //NOI18N
+                pw.print("<html>\n<head>\n<title>Error</title>\n</head>\n<body>\n"); // NOI18N
 
                 // PENDING! Localize this for next official release
                 pw.print("<h1>The resource did not process correctly</h1>\n<pre>\n");
                 pw.print(stackTrace);
-                pw.print("</pre></body>\n</html>"); //NOI18N
+                pw.print("</pre></body>\n</html>"); // NOI18N
                 pw.close();
                 ps.close();
                 response.getOutputStream().close();

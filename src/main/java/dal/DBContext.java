@@ -6,7 +6,6 @@ import java.sql.SQLException;
 import util.AppConfig;
 
 public class DBContext {
-    /** Tạo connection tới Database MySQL bằng cách sử dụng các biến môi trường từ AppConfig. */
     public static Connection getConnection() {
         String driver = AppConfig.get("DB_DRIVER", "com.mysql.cj.jdbc.Driver");
         String url = AppConfig.get("DB_URL");

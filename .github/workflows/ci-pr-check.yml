@@ -27,7 +27,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
-          fetch-depth:
+          fetch-depth: 0
       - name: Scan for Hardcoded Secrets
         uses: gitleaks/gitleaks-action@v2
         env:

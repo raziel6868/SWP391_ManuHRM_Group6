@@ -51,11 +51,11 @@ INSERT INTO role_permissions (role_id, permission_id) VALUES
 -- Nhân sự (Users)
 -- Mật khẩu mặc định: 123456
 INSERT INTO users (id, employee_code, username, password_hash, full_name, phone, job_title, department_id, manager_id, employee_type, role_id, is_active) VALUES 
-(1, 'AD001', 'admin', '$2a$12$D23iZ/sZ4Q1R2c.ZlYm/b.D.A1q3g4.O/mK7v3.eE6V6qO5P7M4e.', 'Quân Nguyễn', '0901111111', 'IT System Admin', 1, NULL, 'OFFICE', 1, 1),
-(2, 'HR001', 'hr_lan', '$2a$12$D23iZ/sZ4Q1R2c.ZlYm/b.D.A1q3g4.O/mK7v3.eE6V6qO5P7M4e.', 'Lê Thị Lan', '0902222222', 'Trưởng phòng Nhân sự', 2, 1, 'OFFICE', 2, 1),
-(3, 'MNG001', 'tuan_qdx', '$2a$12$D23iZ/sZ4Q1R2c.ZlYm/b.D.A1q3g4.O/mK7v3.eE6V6qO5P7M4e.', 'Trần Văn Tuấn', '0903333333', 'Quản đốc Xưởng A', 4, 1, 'OFFICE', 3, 1),
-(4, 'CN001', 'an_cn', '$2a$12$D23iZ/sZ4Q1R2c.ZlYm/b.D.A1q3g4.O/mK7v3.eE6V6qO5P7M4e.', 'Nguyễn Văn An', '0904444444', 'Thợ Hàn Bậc 3/7', 5, 3, 'WORKER', 4, 1),
-(5, 'CN002', 'binh_cn', '$2a$12$D23iZ/sZ4Q1R2c.ZlYm/b.D.A1q3g4.O/mK7v3.eE6V6qO5P7M4e.', 'Phạm Thái Bình', '0905555555', 'Thợ Lắp Ráp Bậc 2/7', 4, 3, 'WORKER', 4, 1);
+(1, 'AD001', 'admin', '$2a$12$Tn1q.eN8rBFqEBGS9iqWFus7.8lAbr5dp4oI8WsKH3tpbXzJNM.Ny', 'Quân Nguyễn', '0901111111', 'IT System Admin', 1, NULL, 'OFFICE', 1, 1),
+(2, 'HR001', 'hr_lan', '$2a$12$Tn1q.eN8rBFqEBGS9iqWFus7.8lAbr5dp4oI8WsKH3tpbXzJNM.Ny', 'Lê Thị Lan', '0902222222', 'Trưởng phòng Nhân sự', 2, 1, 'OFFICE', 2, 1),
+(3, 'MNG001', 'tuan_qdx', '$2a$12$Tn1q.eN8rBFqEBGS9iqWFus7.8lAbr5dp4oI8WsKH3tpbXzJNM.Ny', 'Trần Văn Tuấn', '0903333333', 'Quản đốc Xưởng A', 4, 1, 'OFFICE', 3, 1),
+(4, 'CN001', 'an_cn', '$2a$12$Tn1q.eN8rBFqEBGS9iqWFus7.8lAbr5dp4oI8WsKH3tpbXzJNM.Ny', 'Nguyễn Văn An', '0904444444', 'Thợ Hàn Bậc 3/7', 5, 3, 'WORKER', 4, 1),
+(5, 'CN002', 'binh_cn', '$2a$12$Tn1q.eN8rBFqEBGS9iqWFus7.8lAbr5dp4oI8WsKH3tpbXzJNM.Ny', 'Phạm Thái Bình', '0905555555', 'Thợ Lắp Ráp Bậc 2/7', 4, 3, 'WORKER', 4, 1);
 
 -- Ticket quên mật khẩu
 INSERT INTO password_resets (user_id, status, created_at) VALUES 

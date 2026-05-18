@@ -1,7 +1,6 @@
 package controller.user;
 
 import dal.DepartmentDAO;
-import dal.RoleDAO;
 import dal.UserDAO;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
@@ -9,122 +8,119 @@ import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
-import java.util.Date;
 import model.User;
 
-@WebServlet(
-        name = "UserUpdateServlet",
-        urlPatterns = {"/user-update"})
+import dal.DepartmentDAO;
+import dal.UserDAO;
+import model.User;
+
+@WebServlet(name = "UserUpdateServlet", urlPatterns = {"/user-update"})
 public class UserUpdateServlet extends HttpServlet {
 
-    private final UserDAO userDAO = new UserDAO();
-    private final DepartmentDAO departmentDAO = new DepartmentDAO();
-    private final RoleDAO roleDAO = new RoleDAO();
+	private final UserDAO userDAO = new UserDAO();
+	private final DepartmentDAO departmentDAO = new DepartmentDAO();
+	private final dal.RoleDAO roleDAO = new dal.RoleDAO();
 
-    @Override
-    protected void doGet(HttpServletRequest request, HttpServletResponse response)
-            throws ServletException, IOException {
-        String idParam = request.getParameter("id");
-        if (idParam == null || idParam.isBlank()) {
-            response.sendRedirect("user-list");
-            return;
-        }
+	@Override
+	protected void doGet(HttpServletRequest request, HttpServletResponse response)
+			throws ServletException, IOException {
+		String idParam = request.getParameter("id");
+		if (idParam == null || idParam.isBlank()) {
+			response.sendRedirect(request.getContextPath() + "/user-list");
+			return;
+		}
 
-        try {
-            Long id = Long.parseLong(idParam.trim());
-            User user = userDAO.getById(id);
+		try {
+			Long id = Long.parseLong(idParam.trim());
+			User user = userDAO.getById(id);
+			if (user == null) {
+				response.sendRedirect(request.getContextPath() + "/user-list");
+				return;
+			}
 
-            if (user == null) {
-                response.sendRedirect("user-list");
-                return;
-            }
+			request.setAttribute("user", user);
+			request.setAttribute("departments", departmentDAO.getActiveDepartments());
+			request.setAttribute("roles", roleDAO.getActiveRoles());
+			// Lấy danh sách manager tiềm năng (loại trừ chính user này để tránh circular)
+			request.setAttribute("managers", userDAO.searchAndFilter("", null, null, true, null, 0, 1000));
 
-            request.setAttribute("user", user);
+			request.getRequestDispatcher("/views/user/user-form.jsp").forward(request, response);
+		} catch (NumberFormatException e) {
+			response.sendRedirect(request.getContextPath() + "/user-list");
+		}
+	}
 
-        } catch (NumberFormatException e) {
-            response.sendRedirect("user-list");
-            return;
-        }
+	@Override
+	protected void doPost(HttpServletRequest request, HttpServletResponse response)
+			throws ServletException, IOException {
+		request.setCharacterEncoding("UTF-8");
 
-        request.setAttribute("departments", departmentDAO.getActiveDepartments());
-        request.setAttribute("roles", roleDAO.getActiveRoles());
+		String idParam = request.getParameter("id");
+		if (idParam == null || idParam.isBlank()) {
+			response.sendRedirect(request.getContextPath() + "/user-list");
+			return;
+		}
 
-        request.getRequestDispatcher("/views/user/user-form.jsp").forward(request, response);
-    }
+		try {
+			Long id = Long.parseLong(idParam.trim());
+			model.User user = new model.User();
+			user.setId(id);
 
-    @Override
-    protected void doPost(HttpServletRequest request, HttpServletResponse response)
-            throws ServletException, IOException {
+			// Fields that are not editable according to readonly attributes in JSP
+			// user.setEmployeeCode(request.getParameter("employeeCode"));
+			// user.setUsername(request.getParameter("username"));
 
-        String idParam = request.getParameter("id");
-        String fullName = request.getParameter("fullName");
-        String phone = request.getParameter("phone");
-        String dobParam = request.getParameter("dob");
-        String jobTitle = request.getParameter("jobTitle");
-        String deptParam = request.getParameter("departmentId");
-        String empTypeParam = request.getParameter("employeeType");
-        String roleParam = request.getParameter("roleId");
-        String password = request.getParameter("password");
+			String rawPassword = request.getParameter("password");
 
-        try {
-            Long id = Long.parseLong(idParam.trim());
-            User user = userDAO.getById(id);
+			user.setFullName(request.getParameter("fullName"));
+			user.setPhone(request.getParameter("phone"));
 
-            if (user == null) {
-                response.sendRedirect("user-list");
-                return;
-            }
+			String dobStr = request.getParameter("dob");
+			if (dobStr != null && !dobStr.trim().isEmpty()) {
+				user.setDob(java.sql.Date.valueOf(dobStr));
+			}
 
-            user.setFullName(fullName);
-            user.setPhone(phone);
-            user.setJobTitle(jobTitle);
+			user.setJobTitle(request.getParameter("jobTitle"));
 
-            if (dobParam != null && !dobParam.isBlank()) {
-                try {
-                    Date dob = new SimpleDateFormat("yyyy-MM-dd").parse(dobParam);
-                    user.setDob(dob);
-                } catch (ParseException e) {
-                    user.setDob(null);
-                }
-            } else {
-                user.setDob(null);
-            }
+			String employeeTypeStr = request.getParameter("employeeType");
+			if (employeeTypeStr != null && !employeeTypeStr.trim().isEmpty()) {
+				user.setEmployeeType(model.User.EmployeeType.valueOf(employeeTypeStr));
+			}
 
-            if (deptParam != null && !deptParam.isBlank()) {
-                user.setDepartmentId(Long.parseLong(deptParam.trim()));
-            } else {
-                user.setDepartmentId(null);
-            }
+			String deptIdStr = request.getParameter("departmentId");
+			if (deptIdStr != null && !deptIdStr.trim().isEmpty()) {
+				user.setDepartmentId(Long.parseLong(deptIdStr));
+			}
 
-            if (empTypeParam != null) {
-                user.setEmployeeType(User.EmployeeType.valueOf(empTypeParam));
-            }
+			String roleIdStr = request.getParameter("roleId");
+			if (roleIdStr != null && !roleIdStr.trim().isEmpty()) {
+				user.setRoleId(Long.parseLong(roleIdStr));
+			}
 
-            if (roleParam != null && !roleParam.isBlank()) {
-                user.setRoleId(Long.parseLong(roleParam.trim()));
-            }
+			String managerIdStr = request.getParameter("managerId");
+			if (managerIdStr != null && !managerIdStr.trim().isEmpty()) {
+				user.setManagerId(Long.parseLong(managerIdStr));
+			}
 
-            boolean success = userDAO.updateProfile(user, password);
+			String isActiveStr = request.getParameter("isActive");
+			user.setIsActive("on".equals(isActiveStr));
 
-            if (success) {
-                response.sendRedirect("user-list");
-            } else {
-                request.setAttribute("errorMsg", "Cập nhật dữ liệu thất bại! Vui lòng thử lại.");
-                request.setAttribute("user", user);
-                request.setAttribute("departments", departmentDAO.getActiveDepartments());
-                request.setAttribute("roles", roleDAO.getActiveRoles());
-                request.getRequestDispatcher("/views/user/user-form.jsp")
-                        .forward(request, response);
-            }
+			boolean success = userDAO.updateUserByAdmin(user, rawPassword);
 
-        } catch (Exception e) {
-            e.printStackTrace();
-            request.setAttribute("errorMsg", "Hệ thống gặp lỗi: " + e.getMessage());
-            request.setAttribute("departments", departmentDAO.getActiveDepartments());
-            request.setAttribute("roles", roleDAO.getActiveRoles());
-            request.getRequestDispatcher("/views/user/user-form.jsp").forward(request, response);
-        }
-    }
+			if (success) {
+				request.getSession().setAttribute("successMsg", "Cập nhật nhân viên thành công!");
+				response.sendRedirect(request.getContextPath() + "/user-list");
+			} else {
+				request.setAttribute("errorMsg", "Lỗi: Không thể cập nhật thông tin nhân viên.");
+				// We need to fetch the full user again to keep readonly fields if returning to
+				// form
+				User existingUser = userDAO.getById(id);
+				request.setAttribute("user", existingUser);
+				doGet(request, response);
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+			response.sendRedirect(request.getContextPath() + "/user-list");
+		}
+	}
 }

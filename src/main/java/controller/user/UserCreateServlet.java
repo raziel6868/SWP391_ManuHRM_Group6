@@ -1,128 +1,96 @@
 package controller.user;
 
 import dal.DepartmentDAO;
-import dal.RoleDAO;
-import dal.UserDAO;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.List;
-import model.Department;
-import model.Role;
-import model.User;
-import org.mindrot.jbcrypt.BCrypt;
 
-@WebServlet(
-        name = "UserCreateServlet",
-        urlPatterns = {"/user-create"})
+import dal.DepartmentDAO;
+
+@WebServlet(name = "UserCreateServlet", urlPatterns = {"/user-create"})
 public class UserCreateServlet extends HttpServlet {
 
-    private final DepartmentDAO departmentDAO = new DepartmentDAO();
-    private final RoleDAO roleDAO = new RoleDAO();
-    private final UserDAO userDAO = new UserDAO();
+	private final DepartmentDAO departmentDAO = new DepartmentDAO();
+	private final dal.RoleDAO roleDAO = new dal.RoleDAO();
+	private final dal.UserDAO userDAO = new dal.UserDAO();
 
-    @Override
-    protected void doGet(HttpServletRequest request, HttpServletResponse response)
-            throws ServletException, IOException {
-        loadDropdownData(request);
-        // Lưu ý: Đổi tên file cho khớp với file jsp bạn đã tạo
-        request.getRequestDispatcher("/views/user/user-form.jsp").forward(request, response);
-    }
+	@Override
+	protected void doGet(HttpServletRequest request, HttpServletResponse response)
+			throws ServletException, IOException {
+		request.setAttribute("departments", departmentDAO.getActiveDepartments());
+		request.setAttribute("roles", roleDAO.getActiveRoles());
+		// Fetch all active users to be potential managers
+		request.setAttribute("managers", userDAO.searchAndFilter("", null, null, true, null, 0, 1000));
+		request.getRequestDispatcher("/views/user/user-form.jsp").forward(request, response);
+	}
 
-    @Override
-    protected void doPost(HttpServletRequest request, HttpServletResponse response)
-            throws ServletException, IOException {
+	@Override
+	protected void doPost(HttpServletRequest request, HttpServletResponse response)
+			throws ServletException, IOException {
+		request.setCharacterEncoding("UTF-8");
 
-        String employeeCode = request.getParameter("employeeCode");
-        String username = request.getParameter("username");
-        String password = request.getParameter("password");
-        String fullName = request.getParameter("fullName");
-        String phone = request.getParameter("phone");
-        String dobStr = request.getParameter("dob");
-        String jobTitle = request.getParameter("jobTitle");
-        String departmentIdStr = request.getParameter("departmentId");
-        String employeeType = request.getParameter("employeeType");
-        String roleIdStr = request.getParameter("roleId");
+		try {
+			model.User user = new model.User();
+			user.setEmployeeCode(request.getParameter("employeeCode"));
+			user.setUsername(request.getParameter("username"));
 
-        // 1. Basic Server-side Validation
-        if (employeeCode == null
-                || employeeCode.trim().isEmpty()
-                || username == null
-                || username.trim().isEmpty()
-                || password == null
-                || password.trim().isEmpty()
-                || fullName == null
-                || fullName.trim().isEmpty()
-                || roleIdStr == null
-                || roleIdStr.trim().isEmpty()) {
+			String rawPassword = request.getParameter("password");
+			if (rawPassword != null && !rawPassword.trim().isEmpty()) {
+				user.setPasswordHash(util.PasswordUtil.hashPassword(rawPassword));
+			} else {
+				// Default password if not provided (though form says required)
+				user.setPasswordHash(util.PasswordUtil.hashPassword("123456"));
+			}
 
-            request.setAttribute("errorMsg", "Vui lòng nhập đầy đủ các trường bắt buộc (*).");
-            loadDropdownData(request);
-            request.getRequestDispatcher("/views/user/user-form.jsp").forward(request, response);
-            return;
-        }
+			user.setFullName(request.getParameter("fullName"));
+			user.setPhone(request.getParameter("phone"));
 
-        try {
-            User user = new User();
-            user.setEmployeeCode(employeeCode.trim());
-            user.setUsername(username.trim());
+			String dobStr = request.getParameter("dob");
+			if (dobStr != null && !dobStr.trim().isEmpty()) {
+				user.setDob(java.sql.Date.valueOf(dobStr));
+			}
 
-            // Hash password
-            String hashedPwd = BCrypt.hashpw(password, BCrypt.gensalt(12));
-            user.setPasswordHash(hashedPwd);
+			user.setJobTitle(request.getParameter("jobTitle"));
 
-            user.setFullName(fullName.trim());
-            user.setPhone(phone != null ? phone.trim() : null);
-            user.setJobTitle(jobTitle != null ? jobTitle.trim() : null);
-            user.setEmployeeType(User.EmployeeType.valueOf(employeeType));
-            user.setRoleId(Long.parseLong(roleIdStr));
+			String employeeTypeStr = request.getParameter("employeeType");
+			if (employeeTypeStr != null && !employeeTypeStr.trim().isEmpty()) {
+				user.setEmployeeType(model.User.EmployeeType.valueOf(employeeTypeStr));
+			}
 
-            if (departmentIdStr != null && !departmentIdStr.trim().isEmpty()) {
-                user.setDepartmentId(Long.parseLong(departmentIdStr));
-            }
+			String deptIdStr = request.getParameter("departmentId");
+			if (deptIdStr != null && !deptIdStr.trim().isEmpty()) {
+				user.setDepartmentId(Long.parseLong(deptIdStr));
+			}
 
-            if (dobStr != null && !dobStr.trim().isEmpty()) {
-                SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
-                Date dob = sdf.parse(dobStr);
-                user.setDob(dob);
-            }
+			String roleIdStr = request.getParameter("roleId");
+			if (roleIdStr != null && !roleIdStr.trim().isEmpty()) {
+				user.setRoleId(Long.valueOf(roleIdStr));
+			}
 
-            user.setIsActive(true);
+			String managerIdStr = request.getParameter("managerId");
+			if (managerIdStr != null && !managerIdStr.trim().isEmpty()) {
+				user.setManagerId(Long.valueOf(managerIdStr));
+			}
 
-            // 2. Insert vào DB
-            boolean isInserted = userDAO.insert(user);
+			String isActiveStr = request.getParameter("isActive");
+			user.setIsActive("on".equals(isActiveStr)); // Checkbox returns "on" if checked
 
-            if (isInserted) {
-                response.sendRedirect("user-list");
-            } else {
-                request.setAttribute(
-                        "errorMsg",
-                        "Có lỗi xảy ra khi lưu vào CSDL (Mã NV hoặc Username có thể đã tồn tại).");
-                loadDropdownData(request);
-                request.getRequestDispatcher("/views/user/user-form.jsp")
-                        .forward(request, response);
-            }
+			boolean success = userDAO.insertUser(user);
 
-        } catch (ParseException | IllegalArgumentException e) {
-            request.setAttribute(
-                    "errorMsg",
-                    "Dữ liệu đầu vào không hợp lệ (Ngày sinh, phòng ban hoặc vai trò).");
-            loadDropdownData(request);
-            request.getRequestDispatcher("/views/user/user-form.jsp").forward(request, response);
-        }
-    }
-
-    private void loadDropdownData(HttpServletRequest request) {
-        List<Department> departments =
-                departmentDAO.getActiveDepartments(); // Giả sử bạn có hàm này
-        List<Role> roles = roleDAO.getActiveRoles(); // Giả sử bạn có hàm này
-        request.setAttribute("departments", departments);
-        request.setAttribute("roles", roles);
-    }
+			if (success) {
+				request.getSession().setAttribute("successMsg", "Thêm nhân viên thành công!");
+				response.sendRedirect(request.getContextPath() + "/user-list");
+			} else {
+				request.setAttribute("errorMsg",
+						"Lỗi: Không thể thêm nhân viên. Vui lòng kiểm tra trùng lặp Mã NV/Tên đăng nhập.");
+				doGet(request, response); // re-populate form
+			}
+		} catch (ServletException | IOException | NumberFormatException e) {
+			request.setAttribute("errorMsg", "Lỗi dữ liệu đầu vào: " + e.getMessage());
+			doGet(request, response);
+		}
+	}
 }

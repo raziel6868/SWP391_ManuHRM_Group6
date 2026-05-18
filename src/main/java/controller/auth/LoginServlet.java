@@ -1,25 +1,84 @@
 package controller.auth;
 
+import dal.UserDAO;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
 
-@WebServlet(
-        name = "LoginServlet",
-        urlPatterns = {"/login"})
-public class LoginServlet extends HttpServlet {
-    @Override
-    protected void doGet(HttpServletRequest request, HttpServletResponse response)
-            throws ServletException, IOException {
-        request.getRequestDispatcher("/views/auth/login.jsp").forward(request, response);
-    }
+import model.User;
+import util.ValidationUtil;
 
-    @Override
-    protected void doPost(HttpServletRequest request, HttpServletResponse response)
-            throws ServletException, IOException {
-        // TODO: Implement login logic
-    }
+/**
+ * Servlet responsible for handling user authentication. Manages login form
+ * display and credential verification.
+ */
+@WebServlet(name = "LoginServlet", urlPatterns = {"/login"})
+public class LoginServlet extends HttpServlet {
+	private final UserDAO userDAO = new UserDAO();
+
+	@Override
+	protected void doGet(HttpServletRequest request, HttpServletResponse response)
+			throws ServletException, IOException {
+		HttpSession session = request.getSession(false);
+		if (session != null && session.getAttribute("authUser") != null) {
+			response.sendRedirect(request.getContextPath() + "/home");
+			return;
+		}
+
+		request.getRequestDispatcher("/views/auth/login.jsp").forward(request, response);
+	}
+
+	@Override
+	protected void doPost(HttpServletRequest request, HttpServletResponse response)
+			throws ServletException, IOException {
+		request.setCharacterEncoding("UTF-8");
+
+		String identifier = request.getParameter("identifier");
+		String password = request.getParameter("password");
+
+		if (ValidationUtil.isBlank(identifier) || ValidationUtil.isBlank(password)) {
+			forwardWithError(request, response, "Vui lòng nhập tên đăng nhập/mã nhân viên và mật khẩu.");
+			return;
+		}
+
+		try {
+			User user = userDAO.findActiveUserByLogin(identifier.trim(), password);
+
+			if (user == null) {
+				forwardWithError(request, response, "Thông tin đăng nhập không chính xác hoặc tài khoản đã bị khóa.");
+				return;
+			}
+
+			HttpSession oldSession = request.getSession(false);
+			if (oldSession != null) {
+				oldSession.invalidate();
+			}
+
+			HttpSession session = request.getSession(true);
+			session.setAttribute("authUser", user);
+
+			// Tải danh sách quyền (permissions) dựa trên Role của User và lưu vào Session
+			dal.PermissionDAO permissionDAO = new dal.PermissionDAO();
+			session.setAttribute("permissions", permissionDAO.getPermissionsByRoleId(user.getRoleId()));
+
+			session.setMaxInactiveInterval(30 * 60);
+
+			response.sendRedirect(request.getContextPath() + "/home");
+		} catch (ServletException | IOException exception) {
+			getServletContext().log("Login failed", exception);
+			forwardWithError(request, response, "Hệ thống đang bảo trì hoặc gặp sự cố kết nối, vui lòng thử lại sau.");
+		}
+	}
+
+	private void forwardWithError(HttpServletRequest request, HttpServletResponse response, String message)
+			throws ServletException, IOException {
+		request.setAttribute("error", message);
+		request.setAttribute("identifier", request.getParameter("identifier"));
+		request.getRequestDispatcher("/views/auth/login.jsp").forward(request, response);
+	}
+
 }

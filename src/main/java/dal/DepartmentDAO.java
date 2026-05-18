@@ -46,4 +46,8 @@ public class DepartmentDAO {
 
         return list;
     }
+    
+    public static void main(String[] args) {
+        System.out.println(new DepartmentDAO().getActiveDepartments().get(0).getName());
+    }
 }

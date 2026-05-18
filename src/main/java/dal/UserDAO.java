@@ -154,6 +154,9 @@ public class UserDAO {
 
         return null;
     }
+    public static void main(String[] args) {
+        System.out.println(new UserDAO().getById(Long.parseLong("1")).getJobTitle());
+    }
 
     public User getByUsername(String username) {
         return null;
@@ -210,4 +213,35 @@ public class UserDAO {
 
         return u;
     }
+    public boolean updateProfile(Long id, String fullName, String phone, java.util.Date dob) {
+    String sql = "UPDATE users SET full_name = ?, phone = ?, dob = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?";
+    
+    // Sử dụng khối bảo vệ an toàn kết nối DB
+    Connection conn = DBContext.getConnection();
+    if (conn == null) {
+        System.err.println("UserDAO.updateProfile() CANNOT proceed because DB connection is null!");
+        return false;
+    }
+    
+    try (PreparedStatement ps = conn.prepareStatement(sql)) {
+        ps.setString(1, fullName);
+        ps.setString(2, phone);
+        
+        // Kiểm tra tránh lỗi NullPointerException nếu người dùng không chọn ngày sinh
+        if (dob != null) {
+            ps.setDate(3, new java.sql.Date(dob.getTime()));
+        } else {
+            ps.setNull(3, java.sql.Types.DATE);
+        }
+        
+        ps.setLong(4, id);
+        
+        int rowsUpdated = ps.executeUpdate();
+        return rowsUpdated > 0; // Trả về true nếu cập nhật thành công ít nhất 1 dòng
+    } catch (SQLException e) {
+        System.err.println("Error inside UserDAO.updateProfile:");
+        e.printStackTrace();
+    }
+    return false;
+}
 }

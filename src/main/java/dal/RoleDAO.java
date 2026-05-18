@@ -10,74 +10,136 @@ import model.Role;
 
 public class RoleDAO {
 
-	/** Lấy danh sách tất cả role đang active để đổ vào Dropdown lọc. */
 	public List<Role> getActiveRoles() {
 		List<Role> list = new ArrayList<>();
-		String sql = "SELECT id, name, display_name, description, is_active, is_system FROM roles WHERE is_active = TRUE ORDER BY id ASC";
+		String sql = """
+				SELECT id, name, display_name, description, is_active, is_system
+				FROM roles
+				WHERE is_active = TRUE
+				ORDER BY id ASC
+				""";
 
-		try (Connection conn = DBContext.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
-
-			ResultSet rs = ps.executeQuery();
+		try (Connection conn = DBContext.getConnection();
+				PreparedStatement ps = conn.prepareStatement(sql);
+				ResultSet rs = ps.executeQuery()) {
 			while (rs.next()) {
 				list.add(mapRow(rs));
 			}
-
 		} catch (SQLException e) {
-			System.err.println("RoleDAO.getActiveRoles() ERROR: " + e.getMessage());
 			e.printStackTrace();
 		}
-
 		return list;
 	}
 
-	/**
-	 * Lấy danh sách các vai trò (Role), hỗ trợ tìm kiếm và phân trang cho màn hình
-	 * Role List.
-	 *
-	 * @param keyword
-	 *            Từ khóa tìm kiếm theo tên hoặc mô tả
-	 * @param offset
-	 *            Vị trí bắt đầu lấy dữ liệu (dùng cho phân trang)
-	 * @param limit
-	 *            Số lượng bản ghi tối đa trên một trang
-	 * @return Danh sách các vai trò phù hợp
-	 */
 	public List<Role> searchAndFilter(String keyword, int offset, int limit) {
-		return null;
+		List<Role> list = new ArrayList<>();
+		StringBuilder sql = new StringBuilder("""
+				SELECT id, name, display_name, description, is_active, is_system
+				FROM roles
+				WHERE 1=1
+				""");
+
+		boolean hasKeyword = keyword != null && !keyword.trim().isEmpty();
+		if (hasKeyword) {
+			sql.append(" AND (name LIKE ? OR display_name LIKE ? OR description LIKE ?)");
+		}
+		sql.append(" ORDER BY id ASC LIMIT ? OFFSET ?");
+
+		try (Connection conn = DBContext.getConnection();
+				PreparedStatement ps = conn.prepareStatement(sql.toString())) {
+			int paramIndex = 1;
+			if (hasKeyword) {
+				String likeKeyword = "%" + keyword.trim() + "%";
+				ps.setString(paramIndex++, likeKeyword);
+				ps.setString(paramIndex++, likeKeyword);
+				ps.setString(paramIndex++, likeKeyword);
+			}
+			ps.setInt(paramIndex++, limit);
+			ps.setInt(paramIndex++, offset);
+
+			try (ResultSet rs = ps.executeQuery()) {
+				while (rs.next()) {
+					list.add(mapRow(rs));
+				}
+			}
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+		return list;
 	}
 
-	/**
-	 * Lấy thông tin chi tiết của một Role theo ID để hiển thị lên Form chỉnh sửa.
-	 *
-	 * @param id
-	 *            ID của Role cần lấy
-	 * @return Đối tượng Role nếu tìm thấy, ngược lại trả về null
-	 */
+	public int countTotalRoles(String keyword) {
+		int count = 0;
+		StringBuilder sql = new StringBuilder("SELECT COUNT(*) FROM roles WHERE 1=1");
+		boolean hasKeyword = keyword != null && !keyword.trim().isEmpty();
+		if (hasKeyword) {
+			sql.append(" AND (name LIKE ? OR display_name LIKE ? OR description LIKE ?)");
+		}
+
+		try (Connection conn = DBContext.getConnection();
+				PreparedStatement ps = conn.prepareStatement(sql.toString())) {
+			if (hasKeyword) {
+				String likeKeyword = "%" + keyword.trim() + "%";
+				ps.setString(1, likeKeyword);
+				ps.setString(2, likeKeyword);
+				ps.setString(3, likeKeyword);
+			}
+			try (ResultSet rs = ps.executeQuery()) {
+				if (rs.next()) {
+					count = rs.getInt(1);
+				}
+			}
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+		return count;
+	}
+
 	public Role getById(Long id) {
+		String sql = """
+				SELECT id, name, display_name, description, is_active, is_system
+				FROM roles WHERE id = ?
+				""";
+		try (Connection conn = DBContext.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+			ps.setLong(1, id);
+			try (ResultSet rs = ps.executeQuery()) {
+				if (rs.next()) {
+					return mapRow(rs);
+				}
+			}
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
 		return null;
 	}
 
-	/**
-	 * Cập nhật thông tin cơ bản của Role (tên hiển thị, mô tả).
-	 *
-	 * @param role
-	 *            Đối tượng Role chứa dữ liệu mới
-	 * @return true nếu cập nhật thành công, false nếu thất bại
-	 */
 	public boolean update(Role role) {
+		String sql = """
+				UPDATE roles
+				SET name = ?, display_name = ?, description = ?
+				WHERE id = ? AND is_system = FALSE
+				""";
+		try (Connection conn = DBContext.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+			ps.setString(1, role.getName());
+			ps.setString(2, role.getDisplayName());
+			ps.setString(3, role.getDescription());
+			ps.setLong(4, role.getId());
+			return ps.executeUpdate() > 0;
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
 		return false;
 	}
 
-	/**
-	 * Khóa hoặc mở khóa một Role (Atomic operation).
-	 *
-	 * @param id
-	 *            ID của Role cần thay đổi trạng thái
-	 * @param isActive
-	 *            Trạng thái mới (true = mở khóa, false = khóa)
-	 * @return true nếu cập nhật thành công, false nếu thất bại
-	 */
 	public boolean updateStatus(Long id, boolean isActive) {
+		String sql = "UPDATE roles SET is_active = ? WHERE id = ? AND is_system = FALSE";
+		try (Connection conn = DBContext.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+			ps.setBoolean(1, isActive);
+			ps.setLong(2, id);
+			return ps.executeUpdate() > 0;
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
 		return false;
 	}
 

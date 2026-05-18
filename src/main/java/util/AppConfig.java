@@ -31,7 +31,6 @@ public class AppConfig {
 
 		} catch (DotenvException | URISyntaxException e) {
 			System.err.println("WARNING: COULD NOT LOAD ENVIRONMENT VARIABLES!");
-			e.printStackTrace();
 		}
 	}
 

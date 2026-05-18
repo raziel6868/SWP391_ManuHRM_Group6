@@ -9,6 +9,10 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import model.User;
 
+/**
+ * Servlet responsible for rendering the detailed view of a specific user.
+ * Displays all relevant user profile information and status.
+ */
 @WebServlet(name = "UserDetailServlet", urlPatterns = {"/user-detail"})
 public class UserDetailServlet extends HttpServlet {
 

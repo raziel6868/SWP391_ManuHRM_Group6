@@ -7,13 +7,12 @@ import model.User;
 
 public class UserDAO {
 
-    // ── MỚI (req #7) ─────────────────────────────────────────────────────
-
     public List<User> searchAndFilter(
             String keyword,
             Long departmentId,
             Long roleId,
             Boolean isActive,
+            String employeeType,
             int offset,
             int limit) {
 
@@ -22,17 +21,17 @@ public class UserDAO {
         StringBuilder sql =
                 new StringBuilder(
                         """
-                SELECT u.id, u.employee_code, u.username, u.full_name,
-                       u.phone, u.job_title, u.employee_type, u.is_active,
-                       u.department_id, u.role_id,
-                       d.name  AS department_name,
-                       r.name  AS role_name,
-                       r.display_name AS role_display_name
-                FROM users u
-                LEFT JOIN departments d ON u.department_id = d.id
-                LEFT JOIN roles r       ON u.role_id       = r.id
-                WHERE 1=1
-                """);
+				SELECT u.id, u.employee_code, u.username, u.full_name,
+				       u.phone, u.job_title, u.employee_type, u.is_active,
+				       u.department_id, u.role_id,
+				       d.name  AS department_name,
+				       r.name  AS role_name,
+				       r.display_name AS role_display_name
+				FROM users u
+				LEFT JOIN departments d ON u.department_id = d.id
+				LEFT JOIN roles r       ON u.role_id       = r.id
+				WHERE 1=1
+				""");
 
         List<Object> params = new ArrayList<>();
 
@@ -55,6 +54,10 @@ public class UserDAO {
             sql.append(" AND u.is_active = ?");
             params.add(isActive);
         }
+        if (employeeType != null && !employeeType.isBlank()) {
+            sql.append(" AND u.employee_type = ?");
+            params.add(employeeType.trim().toUpperCase());
+        }
 
         sql.append(" ORDER BY u.id ASC LIMIT ? OFFSET ?");
         params.add(limit);
@@ -75,10 +78,8 @@ public class UserDAO {
         return users;
     }
 
-    // ── MỚI (req #7) ─────────────────────────────────────────────────────
-
     public int countSearchAndFilter(
-            String keyword, Long departmentId, Long roleId, Boolean isActive) {
+            String keyword, Long departmentId, Long roleId, Boolean isActive, String employeeType) {
 
         StringBuilder sql = new StringBuilder("SELECT COUNT(*) FROM users u WHERE 1=1");
         List<Object> params = new ArrayList<>();
@@ -102,6 +103,10 @@ public class UserDAO {
             sql.append(" AND u.is_active = ?");
             params.add(isActive);
         }
+        if (employeeType != null && !employeeType.isBlank()) {
+            sql.append(" AND u.employee_type = ?");
+            params.add(employeeType.trim().toUpperCase());
+        }
 
         try (Connection conn = DBContext.getConnection();
                 PreparedStatement ps = conn.prepareStatement(sql.toString())) {
@@ -118,25 +123,23 @@ public class UserDAO {
         return 0;
     }
 
-    // ── MỚI (req #8) ─────────────────────────────────────────────────────
-
     public User getById(Long id) {
         String sql =
                 """
-                SELECT u.id, u.employee_code, u.username, u.full_name,
-                       u.phone, u.dob, u.job_title, u.employee_type, u.is_active,
-                       u.department_id, u.role_id, u.manager_id,
-                       u.created_at, u.updated_at,
-                       d.name         AS department_name,
-                       r.name         AS role_name,
-                       r.display_name AS role_display_name,
-                       m.full_name    AS manager_name
-                FROM users u
-                LEFT JOIN departments d ON u.department_id = d.id
-                LEFT JOIN roles r       ON u.role_id       = r.id
-                LEFT JOIN users m       ON u.manager_id    = m.id
-                WHERE u.id = ?
-                """;
+				SELECT u.id, u.employee_code, u.username, u.full_name,
+				       u.phone, u.dob, u.job_title, u.employee_type, u.is_active,
+				       u.department_id, u.role_id, u.manager_id,
+				       u.created_at, u.updated_at,
+				       d.name         AS department_name,
+				       r.name         AS role_name,
+				       r.display_name AS role_display_name,
+				       m.full_name    AS manager_name
+				FROM users u
+				LEFT JOIN departments d ON u.department_id = d.id
+				LEFT JOIN roles r       ON u.role_id       = r.id
+				LEFT JOIN users m       ON u.manager_id    = m.id
+				WHERE u.id = ?
+				""";
 
         try (Connection conn = DBContext.getConnection();
                 PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -161,25 +164,21 @@ public class UserDAO {
         return null;
     }
 
-    // ── GỐC: chưa implement ───────────────────────────────────────────────
-
     public User getByUsername(String username) {
-        return null; // TODO: QuanLNM implement cho req #2
+        return null;
     }
 
     public boolean insert(User user) {
-        return false; // TODO: ThangNH implement cho req #9
+        return false;
     }
 
     public boolean updateProfile(User user) {
-        return false; // TODO: ThangNH implement cho req #11
+        return false;
     }
 
     public boolean updatePassword(Long id, String newPasswordHash) {
-        return false; // TODO: NamLV implement cho req #6
+        return false;
     }
-
-    // ── MỚI (req #10): implement updateStatus — bản gốc return false ─────
 
     public boolean updateStatus(Long id, boolean isActive) {
         String sql = "UPDATE users SET is_active = ? WHERE id = ?";
@@ -198,8 +197,6 @@ public class UserDAO {
 
         return false;
     }
-
-    // ── MỚI (req #7 + #8): helper dùng chung ─────────────────────────────
 
     private User mapRow(ResultSet rs) throws SQLException {
         User u = new User();

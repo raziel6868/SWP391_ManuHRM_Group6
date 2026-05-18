@@ -28,11 +28,11 @@ public class UserListServlet extends HttpServlet {
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-
         String keyword = request.getParameter("keyword");
         String deptParam = request.getParameter("departmentId");
         String roleParam = request.getParameter("roleId");
         String statusParam = request.getParameter("isActive");
+        String employeeType = request.getParameter("employeeType");
         String pageParam = request.getParameter("page");
 
         Long departmentId = parseLong(deptParam);
@@ -48,8 +48,10 @@ public class UserListServlet extends HttpServlet {
         int offset = (page - 1) * PAGE_SIZE;
 
         List<User> users =
-                userDAO.searchAndFilter(keyword, departmentId, roleId, isActive, offset, PAGE_SIZE);
-        int totalRecords = userDAO.countSearchAndFilter(keyword, departmentId, roleId, isActive);
+                userDAO.searchAndFilter(
+                        keyword, departmentId, roleId, isActive, employeeType, offset, PAGE_SIZE);
+        int totalRecords =
+                userDAO.countSearchAndFilter(keyword, departmentId, roleId, isActive, employeeType);
         int totalPages = (int) Math.ceil((double) totalRecords / PAGE_SIZE);
         List<Department> departments = departmentDAO.getActiveDepartments();
         List<Role> roles = roleDAO.getActiveRoles();
@@ -61,6 +63,7 @@ public class UserListServlet extends HttpServlet {
         request.setAttribute("selectedDepartmentId", departmentId);
         request.setAttribute("selectedRoleId", roleId);
         request.setAttribute("selectedStatus", statusParam);
+        request.setAttribute("selectedEmployeeType", employeeType);
         request.setAttribute("currentPage", page);
         request.setAttribute("totalPages", totalPages);
         request.setAttribute("totalRecords", totalRecords);

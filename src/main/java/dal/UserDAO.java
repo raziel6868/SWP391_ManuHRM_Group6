@@ -159,14 +159,6 @@ public class UserDAO {
         return null;
     }
 
-    public boolean insert(User user) {
-        return false;
-    }
-
-    public boolean updateProfile(User user) {
-        return false;
-    }
-
     public boolean updatePassword(Long id, String newPasswordHash) {
         return false;
     }
@@ -209,5 +201,105 @@ public class UserDAO {
         u.setRoleDisplayName(rs.getString("role_display_name"));
 
         return u;
+    }
+
+    public boolean insert(User user) {
+        String sql =
+                """
+            INSERT INTO users (
+                employee_code, username, password_hash, full_name,
+                phone, dob, job_title, department_id,
+                employee_type, role_id, is_active
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """;
+
+        Connection conn = DBContext.getConnection();
+        if (conn == null) return false;
+
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, user.getEmployeeCode());
+            ps.setString(2, user.getUsername());
+            ps.setString(3, user.getPasswordHash());
+            ps.setString(4, user.getFullName());
+            ps.setString(5, user.getPhone());
+
+            if (user.getDob() != null) {
+                ps.setDate(6, new java.sql.Date(user.getDob().getTime()));
+            } else {
+                ps.setNull(6, java.sql.Types.DATE);
+            }
+
+            ps.setString(7, user.getJobTitle());
+
+            if (user.getDepartmentId() != null) {
+                ps.setLong(8, user.getDepartmentId());
+            } else {
+                ps.setNull(8, java.sql.Types.BIGINT);
+            }
+
+            ps.setString(9, user.getEmployeeType().name());
+            ps.setLong(10, user.getRoleId());
+            ps.setBoolean(11, user.getIsActive() != null ? user.getIsActive() : true);
+
+            return ps.executeUpdate() > 0;
+        } catch (SQLException e) {
+            System.err.println("UserDAO.insert() ERROR: " + e.getMessage());
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    public boolean updateProfile(User user, String clearTextPassword) {
+        boolean updatePassword = (clearTextPassword != null && !clearTextPassword.trim().isEmpty());
+
+        StringBuilder sql =
+                new StringBuilder(
+                        "UPDATE users SET full_name = ?, phone = ?, dob = ?, job_title = ?, "
+                                + "department_id = ?, employee_type = ?, role_id = ?");
+        if (updatePassword) {
+            sql.append(", password_hash = ?");
+        }
+        sql.append(", updated_at = CURRENT_TIMESTAMP WHERE id = ?");
+
+        try (Connection conn = DBContext.getConnection();
+                PreparedStatement ps = conn.prepareStatement(sql.toString())) {
+
+            int index = 1;
+            ps.setString(index++, user.getFullName());
+            ps.setString(index++, user.getPhone());
+
+            if (user.getDob() != null) {
+                ps.setDate(index++, new java.sql.Date(user.getDob().getTime()));
+            } else {
+                ps.setNull(index++, java.sql.Types.DATE);
+            }
+
+            ps.setString(index++, user.getJobTitle());
+
+            if (user.getDepartmentId() != null && user.getDepartmentId() > 0) {
+                ps.setLong(index++, user.getDepartmentId());
+            } else {
+                ps.setNull(index++, java.sql.Types.BIGINT);
+            }
+
+            ps.setString(
+                    index++,
+                    user.getEmployeeType() != null ? user.getEmployeeType().name() : "OFFICE");
+            ps.setLong(index++, user.getRoleId());
+
+            if (updatePassword) {
+                String hashedPassword = BCrypt.hashpw(clearTextPassword, BCrypt.gensalt(12));
+                ps.setString(index++, hashedPassword);
+            }
+
+            ps.setLong(index++, user.getId());
+
+            return ps.executeUpdate() > 0;
+
+        } catch (SQLException e) {
+            System.err.println("UserDAO.update() ERROR: " + e.getMessage());
+            e.printStackTrace();
+        }
+        return false;
     }
 }

@@ -37,6 +37,11 @@
 
     <button type="submit">Tìm kiếm</button>
     <a href="user-list">Reset</a>
+
+        <a href="user-create">
+            <button type="button">Thêm nhân viên mới</button>
+        </a>
+
 </form>
 
 <hr/>
@@ -75,6 +80,11 @@
                         <td>${u.roleDisplayName}</td>
                         <td>${u.employeeType}</td>
                         <td>${u.isActive ? 'Active' : 'Inactive'}</td>
+                        <td>
+                            <a href="user-edit?id=${u.id}">
+                                <button type="button">Sửa</button>
+                            </a>
+                        </td>
                         <td>
                             <a href="user-detail?id=${u.id}">Xem</a> |
                             <a href="user-update?id=${u.id}">Sửa</a> |

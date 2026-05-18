@@ -6,7 +6,6 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 import model.User;
 import util.PasswordUtil;
 
@@ -162,7 +161,7 @@ public class UserDAO {
 		return null;
 	}
 
-	public Optional<User> findActiveUserByLogin(String identifier, String plainPassword) throws SQLException {
+	public User findActiveUserByLogin(String identifier, String plainPassword) throws SQLException {
 		String sql = """
 				SELECT u.id, u.employee_code, u.username, u.password_hash, u.full_name,
 				       u.phone, u.job_title, u.employee_type, u.is_active,
@@ -190,12 +189,12 @@ public class UserDAO {
 
 				ResultSet rs = ps.executeQuery();
 				if (rs.next() && isPasswordMatched(plainPassword, rs.getString("password_hash"))) {
-					return Optional.of(mapRow(rs));
+					return mapRow(rs);
 				}
 			}
 		}
 
-		return Optional.empty();
+		return null;
 	}
 
 	public boolean insert(User user) {

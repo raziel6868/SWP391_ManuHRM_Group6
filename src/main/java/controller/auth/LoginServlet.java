@@ -9,8 +9,8 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
 import java.sql.SQLException;
-import java.util.Optional;
 import model.User;
+import util.ValidationUtil;
 
 @WebServlet(name = "LoginServlet", urlPatterns = {"/login"})
 public class LoginServlet extends HttpServlet {
@@ -36,15 +36,15 @@ public class LoginServlet extends HttpServlet {
 		String identifier = request.getParameter("identifier");
 		String password = request.getParameter("password");
 
-		if (isBlank(identifier) || isBlank(password)) {
+		if (ValidationUtil.isBlank(identifier) || ValidationUtil.isBlank(password)) {
 			forwardWithError(request, response, "Vui lòng nhập tên đăng nhập/mã nhân viên và mật khẩu.");
 			return;
 		}
 
 		try {
-			Optional<User> user = userDAO.findActiveUserByLogin(identifier.trim(), password);
+			User user = userDAO.findActiveUserByLogin(identifier.trim(), password);
 
-			if (user.isEmpty()) {
+			if (user == null) {
 				forwardWithError(request, response, "Thông tin đăng nhập không chính xác hoặc tài khoản đã bị khóa.");
 				return;
 			}
@@ -55,7 +55,7 @@ public class LoginServlet extends HttpServlet {
 			}
 
 			HttpSession session = request.getSession(true);
-			session.setAttribute("authUser", user.get());
+			session.setAttribute("authUser", user);
 			session.setMaxInactiveInterval(30 * 60);
 
 			response.sendRedirect(request.getContextPath() + "/home");
@@ -72,7 +72,4 @@ public class LoginServlet extends HttpServlet {
 		request.getRequestDispatcher("/views/auth/login.jsp").forward(request, response);
 	}
 
-	private boolean isBlank(String value) {
-		return value == null || value.trim().isEmpty();
-	}
 }

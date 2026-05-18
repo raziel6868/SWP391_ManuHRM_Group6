@@ -3,65 +3,80 @@
 <%@ taglib prefix="fn" uri="jakarta.tags.functions" %>
 <!DOCTYPE html>
 <html lang="vi">
-
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Đăng nhập | ManuHRM</title>
-    <link rel="stylesheet" href="${pageContext.request.contextPath}/assets/css/app.css">
-</head>
-<body>
-<main class="login-page">
-    <section class="login-visual" aria-label="ManuHRM">
-        <div class="brand">
-            <span class="brand-mark">M</span>
-            <span>ManuHRM</span>
-        </div>
-        <div>
-            <h1>Cổng thông tin nhân sự nội bộ</h1>
-            <p>Truy cập hồ sơ, thông báo và các chức năng quản lý theo vai trò được cấp trong hệ thống.</p>
-        </div>
-        <p>Manufacturing Human Resource Management</p>
-    </section>
-
-    <section class="login-panel">
-        <form class="login-card" method="post" action="${pageContext.request.contextPath}/login" autocomplete="on">
-            <h2>Đăng nhập</h2>
-            <p class="subtext">Sử dụng username hoặc mã nhân viên.</p>
-
-            <c:if test="${not empty error}">
-                <div class="alert alert-error"><c:out value="${error}" /></div>
-            </c:if>
-
-            <c:if test="${param.loggedOut == '1'}">
-                <div class="alert alert-success">Bạn đã đăng xuất khỏi hệ thống.</div>
-            </c:if>
-
-            <div class="form-field">
-                <label for="identifier">Username hoặc mã nhân viên</label>
-                <input id="identifier"
-                       name="identifier"
-                       type="text"
-                       value="${fn:escapeXml(identifier)}"
-                       placeholder="admin hoặc AD001"
-                       autocomplete="username"
-                       required>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Đăng nhập | ManuHRM</title>
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+        <link rel="stylesheet" href="${pageContext.request.contextPath}/assets/css/main.css">
+    </head>
+    <body class="d-flex align-items-center justify-content-center min-vh-100 bg-background text-on-background">
+        <main class="w-100 px-3" style="max-width: 440px;">
+            <div class="d-flex justify-content-center mb-4">
+                <div class="d-flex align-items-center justify-content-center shadow-sm"
+                     style="width: 56px; height: 56px; border-radius: 12px; background: var(--primary-gradient);">
+                    <span class="material-symbols-outlined text-white" style="font-size: 2rem; font-variation-settings: 'FILL' 1;">factory</span>
+                </div>
             </div>
 
-            <div class="form-field">
-                <label for="password">Mật khẩu</label>
-                <input id="password"
-                       name="password"
-                       type="password"
-                       placeholder="••••••"
-                       autocomplete="current-password"
-                       required>
-            </div>
+            <section class="card-premium overflow-hidden">
+                <div style="height: 4px; background: var(--primary-gradient); width: 100%;"></div>
 
-            <button class="primary-button" type="submit">Đăng nhập</button>
-            <p class="login-meta">Tài khoản mock data dùng mật khẩu mặc định: 123456.</p>
-        </form>
-    </section>
-</main>
-</body>
+                <div class="card-body p-4 p-md-5">
+                    <div class="text-center mb-4">
+                        <h1 class="h2 text-on-surface mb-2">Đăng nhập ManuHRM</h1>
+                        <p class="body-md text-on-surface-variant mb-0">Sử dụng username hoặc mã nhân viên để truy cập hệ thống.</p>
+                    </div>
+
+                    <jsp:include page="/components/alert.jsp" />
+
+                    <form method="post" action="${pageContext.request.contextPath}/login" autocomplete="on"
+                          class="d-flex flex-column gap-3">
+                        <div>
+                            <label for="identifier" class="form-label label-md text-on-surface mb-1">
+                                Username hoặc mã nhân viên
+                            </label>
+                            <input id="identifier"
+                                   name="identifier"
+                                   type="text"
+                                   class="input-premium"
+                                   value="${fn:escapeXml(identifier)}"
+                                   placeholder="admin hoặc AD001"
+                                   autocomplete="username"
+                                   required>
+                        </div>
+
+                        <div>
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <label for="password" class="form-label label-md text-on-surface mb-0">Mật khẩu</label>
+                                <a href="${pageContext.request.contextPath}/forgot-password"
+                                   class="body-sm text-primary text-decoration-none">Quên mật khẩu?</a>
+                            </div>
+                            <input id="password"
+                                   name="password"
+                                   type="password"
+                                   class="input-premium"
+                                   autocomplete="current-password"
+                                   required>
+                        </div>
+
+                        <button class="btn-primary-gradient w-100 mt-2" type="submit">
+                            <span>Đăng nhập</span>
+                            <span class="material-symbols-outlined" style="font-size: 1.25rem;">login</span>
+                        </button>
+                    </form>
+                </div>
+
+                <div class="bg-surface-container-low border-top py-3 text-center"
+                     style="border-color: var(--outline-variant) !important;">
+                    <p class="label-md text-on-surface-variant mb-0 d-flex align-items-center justify-content-center gap-2">
+                        <span class="material-symbols-outlined" style="font-size: 1rem;">lock</span>
+                        Tài khoản mock data dùng mật khẩu mặc định: 123456
+                    </p>
+                </div>
+            </section>
+        </main>
+
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    </body>
 </html>

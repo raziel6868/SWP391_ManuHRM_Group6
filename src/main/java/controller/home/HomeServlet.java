@@ -11,6 +11,7 @@ import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.List;
 import model.User;
 
@@ -23,7 +24,10 @@ public class HomeServlet extends HttpServlet {
 	protected void doGet(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
 		HttpSession session = request.getSession(false);
-		User authUser = session == null ? null : (User) session.getAttribute("authUser");
+		User authUser = null;
+		if (session != null) {
+			authUser = (User) session.getAttribute("authUser");
+		}
 
 		if (authUser == null) {
 			response.sendRedirect(request.getContextPath() + "/login");
@@ -39,8 +43,10 @@ public class HomeServlet extends HttpServlet {
 	}
 
 	private List<String> buildAnnouncements() {
-		return List.of("Phòng Hành chính Nhân sự nhắc các bộ phận rà soát hồ sơ nhân viên trong tháng này.",
-				"Cập nhật danh sách ca làm và thông tin liên hệ quản lý trực tiếp trước ngày chốt công.",
-				"Tài khoản nội bộ sẽ tự đăng xuất sau 30 phút không hoạt động để bảo vệ dữ liệu nhân sự.");
+		List<String> announcements = new ArrayList<>();
+		announcements.add("Phòng Hành chính Nhân sự nhắc các bộ phận rà soát hồ sơ nhân viên trong tháng này.");
+		announcements.add("Cập nhật danh sách ca làm và thông tin liên hệ quản lý trực tiếp trước ngày chốt công.");
+		announcements.add("Tài khoản nội bộ sẽ tự đăng xuất sau 30 phút không hoạt động để bảo vệ dữ liệu nhân sự.");
+		return announcements;
 	}
 }

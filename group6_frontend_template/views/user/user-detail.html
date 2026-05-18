@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>User Detail - ManuHRM</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Custom CSS -->
+    <link href="../../assets/css/main.css" rel="stylesheet"/>
+</head>
+<body class="bg-background text-on-surface">
+
+    <div class="layout-wrapper">
+        <!-- INCLUDE: components/sidebar.html -->
+        <aside class="sidebar">
+          <div class="sidebar-header">
+            <div class="d-flex align-items-center justify-content-center shadow-sm" style="width: 40px; height: 40px; border-radius: 8px; background: var(--primary-gradient);">
+              <span class="material-symbols-outlined text-white" style="font-variation-settings: 'FILL' 1;">factory</span>
+            </div>
+            <div>
+              <h1 class="h3 mb-0 text-primary fw-bolder" style="font-size: 20px;">ManuHRM</h1>
+              <p class="label-sm text-muted mb-0 text-uppercase" style="font-size: 10px; letter-spacing: 0.05em;">Manufacturing Ops</p>
+            </div>
+          </div>
+          
+          <nav class="sidebar-menu">
+            <a class="sidebar-nav-item text-decoration-none" href="../home/dashboard.html">
+              <span class="material-symbols-outlined">dashboard</span>
+              <span>Dashboard</span>
+            </a>
+            <a class="sidebar-nav-item active text-decoration-none" href="user-list.html">
+              <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">groups</span>
+              <span>User List</span>
+            </a>
+            <a class="sidebar-nav-item text-decoration-none" href="../role/role-list.html">
+              <span class="material-symbols-outlined">verified_user</span>
+              <span>Role List</span>
+            </a>
+            <hr class="my-3 border-secondary opacity-25">
+            <a class="sidebar-nav-item text-decoration-none" href="profile.html">
+              <span class="material-symbols-outlined">account_circle</span>
+              <span>My Profile</span>
+            </a>
+          </nav>
+          
+          <div class="sidebar-footer">
+            <a class="sidebar-nav-item text-danger text-decoration-none mb-3" href="../auth/login.html">
+              <span class="material-symbols-outlined">logout</span>
+              <span>Logout</span>
+            </a>
+            <div class="d-flex align-items-center gap-3 px-2">
+              <img alt="ManuHRM Admin" class="rounded-circle" src="https://ui-avatars.com/api/?name=Admin&background=0D8ABC&color=fff" style="width: 40px; height: 40px; object-fit: cover; border: 2px solid var(--primary-fixed-dim);"/>
+              <div>
+                <p class="label-sm fw-bold mb-0 text-on-surface">ManuHRM Admin</p>
+                <p class="label-sm text-muted mb-0" style="font-size: 11px;">System Administrator</p>
+              </div>
+            </div>
+          </div>
+        </aside>
+        
+        <div class="main-content">
+            <!-- INCLUDE: components/header.html -->
+            <header class="top-header">
+              <div class="d-flex align-items-center flex-grow-1" style="max-width: 400px;">
+                <div class="position-relative w-100 header-search">
+                  <span class="material-symbols-outlined position-absolute top-50 translate-middle-y text-muted" style="left: 12px; font-size: 1.125rem;">search</span>
+                  <input class="input-premium w-100" placeholder="Search resources, users, or roles..." type="text" style="padding-left: 2.5rem; border-radius: var(--rounded-full); background-color: var(--surface-container-low); border-color: transparent;"/>
+                </div>
+              </div>
+              
+              <div class="d-flex align-items-center gap-2">
+                <button class="btn btn-link text-on-surface-variant position-relative p-2" title="Notifications">
+                  <span class="material-symbols-outlined">notifications</span>
+                </button>
+                <button class="btn btn-link text-on-surface-variant p-2" title="Help">
+                  <span class="material-symbols-outlined">help_outline</span>
+                </button>
+                <div class="vr mx-2 bg-outline-variant"></div>
+                <button class="btn btn-light d-flex align-items-center gap-2 rounded-pill px-2 py-1 border-0" style="background: transparent;">
+                  <img alt="User profile" class="rounded-circle border border-outline-variant shadow-sm" src="https://ui-avatars.com/api/?name=Admin&background=0D8ABC&color=fff" style="width: 32px; height: 32px; object-fit: cover;"/>
+                  <span class="material-symbols-outlined text-on-surface-variant" style="font-size: 16px;">arrow_drop_down</span>
+                </button>
+              </div>
+            </header>
+            
+            <div class="page-container d-flex flex-column align-items-center" style="max-width: 900px; margin: 0 auto; width: 100%;">
+                <!-- Page Header -->
+                <div class="w-100 mb-4 d-flex align-items-center gap-3">
+                    <a href="user-list.html" class="btn btn-light d-flex align-items-center justify-content-center rounded" style="width: 40px; height: 40px; background-color: var(--surface); border-color: var(--outline-variant) !important; color: var(--on-surface-variant);">
+                        <span class="material-symbols-outlined">arrow_back</span>
+                    </a>
+                    <h2 class="h3 text-on-surface fw-bold mb-0">User Details</h2>
+                </div>
+                
+                <!-- Profile Card -->
+                <div class="card-premium w-100 mb-4 overflow-hidden position-relative">
+                    <!-- Decorative Top Banner -->
+                    <div class="w-100" style="height: 8px; background-color: var(--surface-tint);"></div>
+                    
+                    <div class="p-4 p-md-5 d-flex flex-column flex-md-row gap-4 align-items-center align-items-md-start">
+                        <!-- Avatar Column -->
+                        <div class="d-flex flex-column align-items-center gap-3 flex-shrink-0">
+                            <div class="position-relative rounded-3 overflow-hidden border border-outline-variant shadow-sm" style="width: 128px; height: 128px; background-color: var(--surface-container);">
+                                <img alt="Employee Photo" class="w-100 h-100 object-fit-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC3hR1HSbvTGWIugTnWDIW5ArbV5DxnRt2JfPXcJeb_OImZwhZ6kIcOQrUhWGXW0Y_l9kouxxud6sDHCiRAkt_0O2DDykeSsMFB_iSHAMN7IJgFd9hyWFTVgMcyv9I4gmsTr3emXPvC9WEhMIVXomcjMGkSHQ9wKfIirhGcxpS9pNuXdKQr2l4EiSBRYygn0db3h7_YV8nMEqcH14-BdDTKSh4R2QFecfcWP0yEAB0MfPurMoJxavZHyqOFZ1qK27unpAHYu89YZ3w"/>
+                                <div class="position-absolute bottom-0 end-0 m-2 rounded-circle" style="width: 16px; height: 16px; background-color: #16a34a; border: 2px solid var(--surface-container-lowest);"></div>
+                            </div>
+                            <span class="badge border text-on-surface fw-bold font-monospace" style="background-color: var(--surface-container-high); border-color: var(--outline-variant) !important; letter-spacing: 0.1em; padding: 0.5em 0.75em;">M-1024</span>
+                        </div>
+                        
+                        <!-- Core Details Grid -->
+                        <div class="flex-grow-1 w-100">
+                            <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-start mb-4 gap-3">
+                                <div class="text-center text-md-start">
+                                    <h3 class="h4 text-on-surface fw-bold mb-1">Robert MacMillan</h3>
+                                    <div class="d-flex align-items-center justify-content-center justify-content-md-start gap-2 text-on-surface-variant">
+                                        <span class="material-symbols-outlined" style="font-size: 1.125rem;">badge</span>
+                                        <span class="body-md">Senior Production Supervisor</span>
+                                    </div>
+                                </div>
+                                <div class="text-center">
+                                    <span class="badge rounded-pill" style="background-color: var(--secondary-container); color: var(--on-secondary-container); padding: 0.4em 0.8em; letter-spacing: 0.05em;">OFFICE</span>
+                                </div>
+                            </div>
+                            
+                            <!-- Info Grid -->
+                            <div class="row g-4">
+                                <div class="col-sm-6">
+                                    <div class="d-flex flex-column gap-1">
+                                        <span class="label-md text-on-surface-variant">Department</span>
+                                        <span class="body-lg text-on-surface fw-medium border-bottom pb-1" style="border-color: var(--surface-container-high) !important;">Final Assembly (Line 4)</span>
+                                    </div>
+                                </div>
+                                <div class="col-sm-6">
+                                    <div class="d-flex flex-column gap-1">
+                                        <span class="label-md text-on-surface-variant">Direct Manager</span>
+                                        <div class="d-flex align-items-center gap-2 border-bottom pb-1" style="border-color: var(--surface-container-high) !important;">
+                                            <div class="rounded-circle overflow-hidden" style="width: 24px; height: 24px; background-color: var(--tertiary-container);">
+                                                <img alt="Manager" class="w-100 h-100 object-fit-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBmbAbm1yV5QsbaVuiTs0mjDD2l4xYGTlVKLsIY7Fm1FZmGd-7ZtltTlhY41GRjnMbCkvuMuGSMlluZ2oAaNLuYio0rH87uglGv71UQ-tT3vQ3vZUDe73gkQjJbsfIijYeV0F6Ld9Fj-KH0zY8y_qTPEfHMY26T0cC6VgKSpf07_0qpjLcc1iJBA0NBBr5j5ybhlmNCdn9LxSB6hYARIpUjerilQQ4CTuefUHzvD7OL07Puv4XVsSM20wOQYPBk9uF8mpGQPnu3A2c"/>
+                                            </div>
+                                            <span class="body-lg text-on-surface fw-medium">Sarah Jenkins</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-sm-6">
+                                    <div class="d-flex flex-column gap-1">
+                                        <span class="label-md text-on-surface-variant">Date of Birth</span>
+                                        <span class="body-lg text-on-surface border-bottom pb-1" style="border-color: var(--surface-container-high) !important;">Oct 14, 1978</span>
+                                    </div>
+                                </div>
+                                <div class="col-sm-6">
+                                    <div class="d-flex flex-column gap-1">
+                                        <span class="label-md text-on-surface-variant">Contact Number</span>
+                                        <span class="body-lg text-on-surface border-bottom pb-1 font-monospace" style="border-color: var(--surface-container-high) !important;">+1 (555) 019-8472</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Timestamps -->
+                            <div class="mt-4 p-3 rounded-3 d-flex flex-column flex-sm-row gap-4" style="background-color: var(--surface-bright); border: 1px solid var(--surface-container-highest);">
+                                <div class="d-flex align-items-center gap-2 text-on-surface-variant">
+                                    <span class="material-symbols-outlined" style="font-size: 1rem;">event_available</span>
+                                    <span class="label-md">Joined: <span class="fw-normal text-on-surface">Mar 12, 2018</span></span>
+                                </div>
+                                <div class="d-flex align-items-center gap-2 text-on-surface-variant">
+                                    <span class="material-symbols-outlined" style="font-size: 1rem;">update</span>
+                                    <span class="label-md">Last Updated: <span class="fw-normal text-on-surface">2 hours ago</span></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Action Bar Bottom -->
+                    <div class="p-3 bg-surface border-top border-outline-variant d-flex flex-column flex-sm-row justify-content-between align-items-center gap-3">
+                        <a href="user-list.html" class="btn btn-light px-4 py-2 border text-on-surface fw-bold d-flex align-items-center gap-2" style="background-color: var(--surface-container-lowest); border-color: var(--outline-variant) !important;">
+                            Back to List
+                        </a>
+                        <div class="d-flex flex-wrap align-items-center gap-2 justify-content-center">
+                            <button class="btn px-4 py-2 d-flex align-items-center gap-2 fw-bold shadow-sm" style="background-color: var(--error); color: var(--on-error);">
+                                <span class="material-symbols-outlined" style="font-size: 1.125rem;">block</span>
+                                Deactivate Account
+                            </button>
+                            <a href="user-form.html" class="btn-primary-gradient px-4 py-2 d-flex align-items-center gap-2 shadow-sm text-decoration-none">
+                                <span class="material-symbols-outlined" style="font-size: 1.125rem;">edit</span>
+                                Edit Details
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- INCLUDE: components/footer.html -->
+            <footer class="w-100 py-3 border-top border-outline-variant bg-surface d-flex justify-content-between align-items-center px-4 mt-auto">
+              <p class="label-md fw-bold text-on-surface mb-0" style="font-size: 13px;">© 2024 ManuHRM Industrial Solutions. All rights reserved.</p>
+              <div class="d-flex gap-4">
+                <a class="text-on-surface-variant text-decoration-none label-sm hover-primary" href="#">Privacy Policy</a>
+                <a class="text-on-surface-variant text-decoration-none label-sm hover-primary" href="#">Compliance</a>
+                <a class="text-on-surface-variant text-decoration-none label-sm hover-primary" href="#">System Status</a>
+              </div>
+            </footer>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="../../assets/js/main.js"></script>
+</body>
+</html>

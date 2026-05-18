@@ -10,79 +10,75 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 
+/**
+ * Servlet responsible for handling user password changes. Enforces security
+ * constraints and updates the password in the database.
+ */
 @WebServlet(name = "ChangePasswordServlet", urlPatterns = {"/auth/change-password"})
 public class ChangePasswordServlet extends HttpServlet {
 
-    private final UserDAO userDAO = new UserDAO();
+	private final UserDAO userDAO = new UserDAO();
 
-    @Override
-    protected void doGet(HttpServletRequest request, HttpServletResponse response)
-            throws ServletException, IOException {
-        HttpSession session = request.getSession();
-        
-        //fix cung admin = 1
-        /*if (session.getAttribute("user") == null) {
-            response.sendRedirect(request.getContextPath() + "/auth/login.jsp");
-            return;
-        }*/
-        // Forward sang trang giao diện đổi mật khẩu
-        request.getRequestDispatcher("/views/auth/change-password.jsp").forward(request, response);
-    }
+	@Override
+	protected void doGet(HttpServletRequest request, HttpServletResponse response)
+			throws ServletException, IOException {
+		HttpSession session = request.getSession();
+		User authUser = (User) session.getAttribute("authUser");
 
-    @Override
-    protected void doPost(HttpServletRequest request, HttpServletResponse response)
-            throws ServletException, IOException {
-        // Đảm bảo không lỗi tiếng Việt khi hiển thị thông báo alert
-        request.setCharacterEncoding("UTF-8");
-        response.setCharacterEncoding("UTF-8");
-        
-        HttpSession session = request.getSession();
-        User currentUser = (User) session.getAttribute("user");
+		if (authUser == null) {
+			response.sendRedirect(request.getContextPath() + "/login");
+			return;
+		}
 
-        //fix cung admin = 1
-        /*if (currentUser == null) {
-            response.sendRedirect(request.getContextPath() + "/auth/login.jsp");
-            return;
-        }*/
+		request.getRequestDispatcher("/views/auth/change-password.jsp").forward(request, response);
+	}
 
-        // Đọc dữ liệu thô (Plain text) từ Form gửi lên
-        String currentPassword = request.getParameter("currentPassword");
-        String newPassword = request.getParameter("newPassword");
-        String confirmPassword = request.getParameter("confirmPassword");
+	@Override
+	protected void doPost(HttpServletRequest request, HttpServletResponse response)
+			throws ServletException, IOException {
+		request.setCharacterEncoding("UTF-8");
+		response.setCharacterEncoding("UTF-8");
 
-        // RÀNG BUỘC 1: Kiểm tra độ dài mật khẩu mới (Tối thiểu 6 ký tự)
-        if (newPassword == null || newPassword.trim().length() < 6) {
-            request.setAttribute("error", "Mật khẩu mới phải có độ dài tối thiểu từ 6 ký tự trở lên!");
-            request.getRequestDispatcher("/views/auth/change-password.jsp").forward(request, response);
-            return;
-        }
+		HttpSession session = request.getSession();
+		User authUser = (User) session.getAttribute("authUser");
 
-        // RÀNG BUỘC 2: Kiểm tra mật khẩu nhập lại có trùng khớp không
-        if (!newPassword.equals(confirmPassword)) {
-            request.setAttribute("error", "Xác nhận mật khẩu mới không trùng khớp! Vui lòng nhập lại.");
-            request.getRequestDispatcher("/views/auth/change-password.jsp").forward(request, response);
-            return;
-        }
-        
-        // RÀNG BUỘC 3: Mật khẩu mới không được trùng khớp hoàn toàn với mật khẩu cũ trước khi hash
-        if (currentPassword.equals(newPassword)) {
-            request.setAttribute("error", "Mật khẩu mới không được trùng với mật khẩu hiện tại!");
-            request.getRequestDispatcher("/views/auth/change-password.jsp").forward(request, response);
-            return;
-        }
+		if (authUser == null) {
+			response.sendRedirect(request.getContextPath() + "/login");
+			return;
+		}
 
-        // Chuyển dữ liệu xuống tầng DAO để xử lý giải băm cũ và băm mật khẩu mới
-        //fix cung admin = 1
-        //boolean isUpdated = userDAO.changePassword(currentUser.getId(), currentPassword, newPassword);
-        boolean isUpdated = userDAO.changePassword(Long.parseLong("1"), currentPassword, newPassword);
+		String currentPassword = request.getParameter("currentPassword");
+		String newPassword = request.getParameter("newPassword");
+		String confirmPassword = request.getParameter("confirmPassword");
 
-        if (isUpdated) {
-            request.setAttribute("success", "Đổi mật khẩu thành công! Hãy dùng mật khẩu mới cho lần đăng nhập sau.");
-            request.getRequestDispatcher("/views/auth/change-password.jsp").forward(request, response);
-        } else {
-            // RÀNG BUỘC 4: Sai mật khẩu cũ (DAO trả về false khi checkpw thất bại)
-            request.setAttribute("error", "Mật khẩu hiện tại không chính xác. Vui lòng kiểm tra lại.");
-            request.getRequestDispatcher("/views/auth/change-password.jsp").forward(request, response);
-        }
-    }
+		if (newPassword == null || newPassword.trim().length() < 6) {
+			forwardWithError(request, response, "Mật khẩu mới phải có độ dài tối thiểu từ 6 ký tự trở lên!");
+			return;
+		}
+
+		if (!newPassword.equals(confirmPassword)) {
+			forwardWithError(request, response, "Xác nhận mật khẩu mới không trùng khớp! Vui lòng nhập lại.");
+			return;
+		}
+
+		if (currentPassword.equals(newPassword)) {
+			forwardWithError(request, response, "Mật khẩu mới không được trùng với mật khẩu hiện tại!");
+			return;
+		}
+
+		boolean isUpdated = userDAO.changePassword(authUser.getId(), currentPassword, newPassword);
+
+		if (isUpdated) {
+			request.setAttribute("success", "Đổi mật khẩu thành công! Hãy dùng mật khẩu mới cho lần đăng nhập sau.");
+			request.getRequestDispatcher("/views/auth/change-password.jsp").forward(request, response);
+		} else {
+			forwardWithError(request, response, "Mật khẩu hiện tại không chính xác. Vui lòng kiểm tra lại.");
+		}
+	}
+
+	private void forwardWithError(HttpServletRequest request, HttpServletResponse response, String message)
+			throws ServletException, IOException {
+		request.setAttribute("error", message);
+		request.getRequestDispatcher("/views/auth/change-password.jsp").forward(request, response);
+	}
 }

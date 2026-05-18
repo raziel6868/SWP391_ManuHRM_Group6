@@ -1,6 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200');
-
+/* Fonts are loaded directly via <link> tags in JSP to prevent FOUC */
 body {
   font-family: var(--font-family-base);
   background-color: var(--background);
@@ -82,10 +80,17 @@ a:hover {
 }
 
 /* Text Colors */
+.text-on-background { color: var(--on-background); }
+.text-on-surface { color: var(--on-surface); }
 .text-on-surface-variant { color: var(--on-surface-variant); }
 .text-outline { color: var(--outline); }
 .text-primary { color: var(--primary); }
 .text-secondary { color: var(--secondary); }
 .text-error { color: var(--error); }
+.bg-background { background-color: var(--background); }
+.bg-surface { background-color: var(--surface); }
+.bg-surface-container-lowest { background-color: var(--surface-container-lowest); }
 .bg-surface-container { background-color: var(--surface-container); }
 .bg-surface-container-low { background-color: var(--surface-container-low); }
+.bg-outline-variant { background-color: var(--outline-variant) !important; }
+.border-outline-variant { border-color: var(--outline-variant) !important; }

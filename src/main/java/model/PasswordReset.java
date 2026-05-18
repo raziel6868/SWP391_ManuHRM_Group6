@@ -4,80 +4,78 @@ import java.sql.Timestamp;
 
 public class PasswordReset {
 
-    public enum Status {
-        PENDING,
-        RESOLVED,
-        REJECTED
-    }
+	public enum Status {
+		PENDING, RESOLVED, REJECTED
+	}
 
-    private Long id;
-    private Long userId;
-    private Status status;
-    private Timestamp createdAt;
-    private Long resolvedBy;
+	private Long id;
+	private Long userId;
+	private Status status;
+	private Timestamp createdAt;
+	private Long resolvedBy;
 
-    // Các trường bổ trợ (Không có trong table DB nhưng cần để hiển thị lên UI)
-    private String employeeCode;
-    private String fullName;
+	// Các trường bổ trợ (Không có trong table DB nhưng cần để hiển thị lên UI)
+	private String employeeCode;
+	private String fullName;
 
-    // Constructor mặc định
-    public PasswordReset() {
-    }
+	// Constructor mặc định
+	public PasswordReset() {
+	}
 
-    // Toàn bộ Getter và Setter
-    public Long getId() {
-        return id;
-    }
+	// Toàn bộ Getter và Setter
+	public Long getId() {
+		return id;
+	}
 
-    public void setId(Long id) {
-        this.id = id;
-    }
+	public void setId(Long id) {
+		this.id = id;
+	}
 
-    public Long getUserId() {
-        return userId;
-    }
+	public Long getUserId() {
+		return userId;
+	}
 
-    public void setUserId(Long userId) {
-        this.userId = userId;
-    }
+	public void setUserId(Long userId) {
+		this.userId = userId;
+	}
 
-    public Status getStatus() {
-        return status;
-    }
+	public Status getStatus() {
+		return status;
+	}
 
-    public void setStatus(Status status) {
-        this.status = status;
-    }
+	public void setStatus(Status status) {
+		this.status = status;
+	}
 
-    public Timestamp getCreatedAt() {
-        return createdAt;
-    }
+	public Timestamp getCreatedAt() {
+		return createdAt;
+	}
 
-    public void setCreatedAt(Timestamp createdAt) {
-        this.createdAt = createdAt;
-    }
+	public void setCreatedAt(Timestamp createdAt) {
+		this.createdAt = createdAt;
+	}
 
-    public Long getResolvedBy() {
-        return resolvedBy;
-    }
+	public Long getResolvedBy() {
+		return resolvedBy;
+	}
 
-    public void setResolvedBy(Long resolvedBy) {
-        this.resolvedBy = resolvedBy;
-    }
+	public void setResolvedBy(Long resolvedBy) {
+		this.resolvedBy = resolvedBy;
+	}
 
-    public String getEmployeeCode() {
-        return employeeCode;
-    }
+	public String getEmployeeCode() {
+		return employeeCode;
+	}
 
-    public void setEmployeeCode(String employeeCode) {
-        this.employeeCode = employeeCode;
-    }
+	public void setEmployeeCode(String employeeCode) {
+		this.employeeCode = employeeCode;
+	}
 
-    public String getFullName() {
-        return fullName;
-    }
+	public String getFullName() {
+		return fullName;
+	}
 
-    public void setFullName(String fullName) {
-        this.fullName = fullName;
-    }
+	public void setFullName(String fullName) {
+		this.fullName = fullName;
+	}
 }

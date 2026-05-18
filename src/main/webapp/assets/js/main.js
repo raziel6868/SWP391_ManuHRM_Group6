@@ -2,7 +2,7 @@ document.addEventListener('DOMContentLoaded', function() {
   // Toggle Sidebar on Mobile
   const sidebarToggle = document.getElementById('sidebarToggle');
   const sidebar = document.querySelector('.sidebar');
-  
+
   if (sidebarToggle && sidebar) {
     sidebarToggle.addEventListener('click', function(e) {
       e.preventDefault();

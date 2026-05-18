@@ -1,49 +1,91 @@
+<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
+<%@ taglib prefix="c" uri="jakarta.tags.core" %>
+<%@ taglib prefix="fn" uri="jakarta.tags.functions" %>
+<c:set var="user" value="${sessionScope.authUser}" />
+
+
 <aside class="sidebar">
     <div class="sidebar-header">
-        <div class="d-flex align-items-center justify-content-center shadow-sm" style="width: 40px; height: 40px; border-radius: 8px; background: var(--primary-gradient);">
+        <div class="d-flex align-items-center justify-content-center shadow-sm"
+             style="width: 40px; height: 40px; border-radius: 8px; background: var(--primary-gradient);">
             <span class="material-symbols-outlined text-white" style="font-variation-settings: 'FILL' 1;">factory</span>
         </div>
         <div>
             <h1 class="h3 mb-0 text-primary fw-bolder" style="font-size: 20px;">ManuHRM</h1>
-            <p class="label-sm text-muted mb-0 text-uppercase" style="font-size: 10px; letter-spacing: 0.05em;">Manufacturing Ops</p>
+            <p class="label-sm text-muted mb-0 text-uppercase" style="font-size: 10px; letter-spacing: 0.05em;">
+                Manufacturing Ops
+            </p>
         </div>
     </div>
 
     <nav class="sidebar-menu">
-        <a class="sidebar-nav-item text-decoration-none" href="${pageContext.request.contextPath}/home/dashboard.html">
+        <c:url var="homeUrl" value="/home" />
+        <a class="${activeMenu == 'home' ? 'sidebar-nav-item active text-decoration-none' : 'sidebar-nav-item text-decoration-none'}"
+           href="${homeUrl}">
             <span class="material-symbols-outlined">dashboard</span>
-            <span>Dashboard</span>
+            <span>Bảng điều khiển</span>
         </a>
-        <a class="sidebar-nav-item text-decoration-none" href="${pageContext.request.contextPath}/user-list.html">
-            <span class="material-symbols-outlined">groups</span>
-            <span>User List</span>
-        </a>
-        <a class="sidebar-nav-item text-decoration-none" href="${pageContext.request.contextPath}/role/role-list.html">
-            <span class="material-symbols-outlined">verified_user</span>
-            <span>Role List</span>
-        </a>
-        <hr class="my-3 border-secondary opacity-25">
-        <a class="sidebar-nav-item active text-decoration-none" href="${pageContext.request.contextPath}/profile">
+
+        <c:url var="profileUrl" value="/profile" />
+        <a class="${activeMenu == 'profile' ? 'sidebar-nav-item active text-decoration-none' : 'sidebar-nav-item text-decoration-none'}"
+           href="${profileUrl}">
             <span class="material-symbols-outlined">account_circle</span>
-            <span>My Profile</span>
+            <span>Hồ sơ của tôi</span>
         </a>
+
         <hr class="my-3 border-secondary opacity-25">
-        <a class="sidebar-nav-item active text-decoration-none" href="${pageContext.request.contextPath}/admin/tickets">
-            <span class="material-symbols-outlined">vpn_key</span>
-            <span>Tickets List</span>
-        </a>
+
+        <c:forEach var="permission" items="${permissions}">
+            <c:set var="showInSidebar" value="true" />
+            <c:choose>
+                <c:when test="${permission.code == 'USER_VIEW'}">
+                    <c:url var="permissionUrl" value="/user-list" />
+                    <c:set var="permissionIcon" value="groups" />
+                    <c:set var="permissionDisplayName" value="Quản lý Nhân sự" />
+                </c:when>
+                <c:when test="${permission.code == 'ROLE_VIEW'}">
+                    <c:url var="permissionUrl" value="/role-list" />
+                    <c:set var="permissionIcon" value="verified_user" />
+                    <c:set var="permissionDisplayName" value="Quản lý Vai trò" />
+                </c:when>
+                <c:otherwise>
+                    <c:set var="showInSidebar" value="false" />
+                </c:otherwise>
+            </c:choose>
+
+            <c:if test="${showInSidebar}">
+                <a class="sidebar-nav-item text-decoration-none" href="${permissionUrl}">
+                    <span class="material-symbols-outlined"><c:out value="${permissionIcon}" /></span>
+                    <span><c:out value="${permissionDisplayName}" /></span>
+                </a>
+            </c:if>
+        </c:forEach>
+
+        <c:if test="${empty permissions}">
+            <div class="text-on-surface-variant body-sm px-3 py-2">
+                Role hiện tại chưa có quyền quản trị.
+            </div>
+        </c:if>
     </nav>
 
     <div class="sidebar-footer">
-        <a class="sidebar-nav-item text-danger text-decoration-none mb-3" href="${pageContext.request.contextPath}/auth/logout">
-            <span class="material-symbols-outlined">logout</span>
-            <span>Logout</span>
-        </a>
+        <form method="post" action="${pageContext.request.contextPath}/logout" class="mb-3">
+            <button type="submit" class="sidebar-nav-item text-danger text-decoration-none border-0 bg-transparent w-100">
+                <span class="material-symbols-outlined">logout</span>
+                <span>Đăng xuất</span>
+            </button>
+        </form>
+
         <div class="d-flex align-items-center gap-3 px-2">
-            <img alt="User Avatar" class="rounded-circle" src="https://ui-avatars.com/api/?name=${user.fullName}&background=0D8ABC&color=fff" style="width: 40px; height: 40px; object-fit: cover; border: 2px solid var(--primary-fixed-dim);"/>
+            <div class="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold"
+                 style="width: 40px; height: 40px; background: var(--primary-gradient); border: 2px solid var(--primary-fixed-dim);">
+                <c:out value="${fn:substring(user.fullName, 0, 1)}" />
+            </div>
             <div>
-                <p class="label-sm fw-bold mb-0 text-on-surface">${user.fullName}</p>
-                <p class="label-sm text-muted mb-0" style="font-size: 11px;">${user.roleDisplayName}</p>
+                <p class="label-sm fw-bold mb-0 text-on-surface"><c:out value="${user.fullName}" /></p>
+                <p class="label-sm text-muted mb-0" style="font-size: 11px;">
+                    <c:out value="${user.roleDisplayName}" />
+                </p>
             </div>
         </div>
     </div>

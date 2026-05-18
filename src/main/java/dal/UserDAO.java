@@ -4,6 +4,7 @@ import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 import model.User;
+import org.mindrot.jbcrypt.BCrypt;
 
 public class UserDAO {
 
@@ -17,8 +18,8 @@ public class UserDAO {
 
         List<User> users = new ArrayList<>();
 
-        StringBuilder sql =
-                new StringBuilder(
+        StringBuilder sql
+                = new StringBuilder(
                         """
                 SELECT u.id, u.employee_code, u.username, u.full_name,
                        u.phone, u.job_title, u.employee_type, u.is_active,
@@ -58,12 +59,15 @@ public class UserDAO {
         params.add(limit);
         params.add(offset);
 
-        try (Connection conn = DBContext.getConnection();
-                PreparedStatement ps = conn.prepareStatement(sql.toString())) {
+        try (Connection conn = DBContext.getConnection(); PreparedStatement ps = conn.prepareStatement(sql.toString())) {
 
-            for (int i = 0; i < params.size(); i++) ps.setObject(i + 1, params.get(i));
+            for (int i = 0; i < params.size(); i++) {
+                ps.setObject(i + 1, params.get(i));
+            }
             ResultSet rs = ps.executeQuery();
-            while (rs.next()) users.add(mapRow(rs));
+            while (rs.next()) {
+                users.add(mapRow(rs));
+            }
 
         } catch (SQLException e) {
             System.err.println("UserDAO.searchAndFilter() ERROR: " + e.getMessage());
@@ -99,12 +103,15 @@ public class UserDAO {
             params.add(isActive);
         }
 
-        try (Connection conn = DBContext.getConnection();
-                PreparedStatement ps = conn.prepareStatement(sql.toString())) {
+        try (Connection conn = DBContext.getConnection(); PreparedStatement ps = conn.prepareStatement(sql.toString())) {
 
-            for (int i = 0; i < params.size(); i++) ps.setObject(i + 1, params.get(i));
+            for (int i = 0; i < params.size(); i++) {
+                ps.setObject(i + 1, params.get(i));
+            }
             ResultSet rs = ps.executeQuery();
-            if (rs.next()) return rs.getInt(1);
+            if (rs.next()) {
+                return rs.getInt(1);
+            }
 
         } catch (SQLException e) {
             System.err.println("UserDAO.countSearchAndFilter() ERROR: " + e.getMessage());
@@ -115,8 +122,8 @@ public class UserDAO {
     }
 
     public User getById(Long id) {
-        String sql =
-                """
+        String sql
+                = """
                 SELECT u.id, u.employee_code, u.username, u.full_name,
                        u.phone, u.dob, u.job_title, u.employee_type, u.is_active,
                        u.department_id, u.role_id, u.manager_id,
@@ -132,8 +139,7 @@ public class UserDAO {
                 WHERE u.id = ?
                 """;
 
-        try (Connection conn = DBContext.getConnection();
-                PreparedStatement ps = conn.prepareStatement(sql)) {
+        try (Connection conn = DBContext.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
 
             ps.setLong(1, id);
             ResultSet rs = ps.executeQuery();
@@ -154,9 +160,8 @@ public class UserDAO {
 
         return null;
     }
-    public static void main(String[] args) {
-        System.out.println(new UserDAO().getById(Long.parseLong("1")).getJobTitle());
-    }
+
+    
 
     public User getByUsername(String username) {
         return null;
@@ -177,8 +182,7 @@ public class UserDAO {
     public boolean updateStatus(Long id, boolean isActive) {
         String sql = "UPDATE users SET is_active = ? WHERE id = ?";
 
-        try (Connection conn = DBContext.getConnection();
-                PreparedStatement ps = conn.prepareStatement(sql)) {
+        try (Connection conn = DBContext.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
 
             ps.setBoolean(1, isActive);
             ps.setLong(2, id);
@@ -205,7 +209,9 @@ public class UserDAO {
         u.setRoleId(rs.getLong("role_id"));
 
         String empType = rs.getString("employee_type");
-        if (empType != null) u.setEmployeeType(User.EmployeeType.valueOf(empType));
+        if (empType != null) {
+            u.setEmployeeType(User.EmployeeType.valueOf(empType));
+        }
 
         u.setDepartmentName(rs.getString("department_name"));
         u.setRoleName(rs.getString("role_name"));
@@ -213,35 +219,94 @@ public class UserDAO {
 
         return u;
     }
+
     public boolean updateProfile(Long id, String fullName, String phone, java.util.Date dob) {
-    String sql = "UPDATE users SET full_name = ?, phone = ?, dob = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?";
-    
-    // Sử dụng khối bảo vệ an toàn kết nối DB
-    Connection conn = DBContext.getConnection();
-    if (conn == null) {
-        System.err.println("UserDAO.updateProfile() CANNOT proceed because DB connection is null!");
+        String sql = "UPDATE users SET full_name = ?, phone = ?, dob = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?";
+
+        // Sử dụng khối bảo vệ an toàn kết nối DB
+        Connection conn = DBContext.getConnection();
+        if (conn == null) {
+            System.err.println("UserDAO.updateProfile() CANNOT proceed because DB connection is null!");
+            return false;
+        }
+
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, fullName);
+            ps.setString(2, phone);
+
+            // Kiểm tra tránh lỗi NullPointerException nếu người dùng không chọn ngày sinh
+            if (dob != null) {
+                ps.setDate(3, new java.sql.Date(dob.getTime()));
+            } else {
+                ps.setNull(3, java.sql.Types.DATE);
+            }
+
+            ps.setLong(4, id);
+
+            int rowsUpdated = ps.executeUpdate();
+            return rowsUpdated > 0; // Trả về true nếu cập nhật thành công ít nhất 1 dòng
+        } catch (SQLException e) {
+            System.err.println("Error inside UserDAO.updateProfile:");
+            e.printStackTrace();
+        }
         return false;
     }
+    // Bạn nhớ import thư viện Bcrypt mà dự án đang dùng ở đầu file nhé (ví dụ: org.mindrot.jbcrypt.BCrypt hoặc tương đương)
+// import org.mindrot.jbcrypt.BCrypt;
     
-    try (PreparedStatement ps = conn.prepareStatement(sql)) {
-        ps.setString(1, fullName);
-        ps.setString(2, phone);
-        
-        // Kiểm tra tránh lỗi NullPointerException nếu người dùng không chọn ngày sinh
-        if (dob != null) {
-            ps.setDate(3, new java.sql.Date(dob.getTime()));
-        } else {
-            ps.setNull(3, java.sql.Types.DATE);
-        }
-        
-        ps.setLong(4, id);
-        
-        int rowsUpdated = ps.executeUpdate();
-        return rowsUpdated > 0; // Trả về true nếu cập nhật thành công ít nhất 1 dòng
-    } catch (SQLException e) {
-        System.err.println("Error inside UserDAO.updateProfile:");
-        e.printStackTrace();
+    public static void main(String[] args) {
+        System.out.println(new UserDAO().changePassword(Long.parseLong("1"),"12345678","123456"));
     }
-    return false;
-}
+    
+    public boolean changePassword(Long userId, String currentPassword, String newPassword) {
+        String selectSql = "SELECT password_hash FROM users WHERE id = ?";
+        String updateSql = "UPDATE users SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?";
+
+        Connection conn = DBContext.getConnection();
+        if (conn == null) {
+            return false;
+        }
+
+        try {
+            // Bước 1: Lấy chuỗi hash mật khẩu hiện tại từ Database
+            String storedHash = null;
+            try (PreparedStatement psSelect = conn.prepareStatement(selectSql)) {
+                psSelect.setLong(1, userId);
+                try (ResultSet rs = psSelect.executeQuery()) {
+                    if (rs.next()) {
+                        storedHash = rs.getString("password_hash");
+                    }
+                }
+            }
+
+            // Nếu không tìm thấy user hoặc chuỗi hash trống
+            if (storedHash == null) {
+                return false;
+            }
+
+            // Bước 2: Phá/Kiểm tra hash (Verify) mật khẩu cũ người dùng nhập vào
+            // Hàm checkpw() sẽ tự giải mã thuật toán Bcrypt dựa trên Salt để đối chiếu
+            if (!BCrypt.checkpw(currentPassword, storedHash)) {
+                System.out.println("Mật khẩu hiện tại không trùng khớp với dữ liệu mã hóa!");
+                return false; // Mật khẩu cũ nhập vào bị sai
+            }
+
+            // Bước 3: Thêm hash (Mã hóa Bcrypt) cho mật khẩu mới trước khi lưu
+            // Số 12 ở đây tương ứng với độ phức tạp $2a$12$ giống hệt chuỗi hash bạn gửi lúc trước
+            String newPasswordHash = BCrypt.hashpw(newPassword, BCrypt.gensalt(12));
+
+            // Bước 4: Cập nhật chuỗi hash mới này vào Database
+            try (PreparedStatement psUpdate = conn.prepareStatement(updateSql)) {
+                psUpdate.setString(1, newPasswordHash);
+                psUpdate.setLong(2, userId);
+                return psUpdate.executeUpdate() > 0;
+            }
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    
 }

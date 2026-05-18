@@ -96,7 +96,7 @@
                             <span class="material-symbols-outlined" style="font-size: 1.125rem;">edit</span>
                             Edit Profile
                         </a>
-                        <a href="${pageContext.request.contextPath}/auth/change-password.html" class="btn-primary-gradient text-decoration-none px-4 py-2 d-flex align-items-center gap-2 shadow-sm text-white">
+                        <a href="${pageContext.request.contextPath}/auth/change-password" class="btn-primary-gradient text-decoration-none px-4 py-2 d-flex align-items-center gap-2 shadow-sm text-white">
                             <span class="material-symbols-outlined" style="font-size: 1.125rem;">lock_reset</span>
                             Change Password
                         </a>

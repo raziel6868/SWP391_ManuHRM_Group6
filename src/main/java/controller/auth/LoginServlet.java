@@ -1,23 +1,78 @@
 package controller.auth;
 
+import dal.UserDAO;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
+import java.sql.SQLException;
+import java.util.Optional;
+import model.User;
 
 @WebServlet(name = "LoginServlet", urlPatterns = {"/login"})
 public class LoginServlet extends HttpServlet {
+	private final UserDAO userDAO = new UserDAO();
+
 	@Override
 	protected void doGet(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
+		HttpSession session = request.getSession(false);
+		if (session != null && session.getAttribute("authUser") != null) {
+			response.sendRedirect(request.getContextPath() + "/home");
+			return;
+		}
+
 		request.getRequestDispatcher("/views/auth/login.jsp").forward(request, response);
 	}
 
 	@Override
 	protected void doPost(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
-		// TODO: Implement login logic
+		request.setCharacterEncoding("UTF-8");
+
+		String identifier = request.getParameter("identifier");
+		String password = request.getParameter("password");
+
+		if (isBlank(identifier) || isBlank(password)) {
+			forwardWithError(request, response, "Vui lòng nhập tên đăng nhập/mã nhân viên và mật khẩu.");
+			return;
+		}
+
+		try {
+			Optional<User> user = userDAO.findActiveUserByLogin(identifier.trim(), password);
+
+			if (user.isEmpty()) {
+				forwardWithError(request, response, "Thông tin đăng nhập không chính xác hoặc tài khoản đã bị khóa.");
+				return;
+			}
+
+			HttpSession oldSession = request.getSession(false);
+			if (oldSession != null) {
+				oldSession.invalidate();
+			}
+
+			HttpSession session = request.getSession(true);
+			session.setAttribute("authUser", user.get());
+			session.setMaxInactiveInterval(30 * 60);
+
+			response.sendRedirect(request.getContextPath() + "/home");
+		} catch (SQLException exception) {
+			getServletContext().log("Login failed", exception);
+			forwardWithError(request, response, "Không thể kết nối cơ sở dữ liệu. Vui lòng kiểm tra cấu hình MySQL.");
+		}
+	}
+
+	private void forwardWithError(HttpServletRequest request, HttpServletResponse response, String message)
+			throws ServletException, IOException {
+		request.setAttribute("error", message);
+		request.setAttribute("identifier", request.getParameter("identifier"));
+		request.getRequestDispatcher("/views/auth/login.jsp").forward(request, response);
+	}
+
+	private boolean isBlank(String value) {
+		return value == null || value.trim().isEmpty();
 	}
 }

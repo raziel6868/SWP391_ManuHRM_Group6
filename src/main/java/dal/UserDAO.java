@@ -1,9 +1,14 @@
 package dal;
 
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import model.User;
+import util.PasswordUtil;
 
 public class UserDAO {
 
@@ -54,11 +59,13 @@ public class UserDAO {
 		try (Connection conn = DBContext.getConnection();
 				PreparedStatement ps = conn.prepareStatement(sql.toString())) {
 
-			for (int i = 0; i < params.size(); i++)
+			for (int i = 0; i < params.size(); i++) {
 				ps.setObject(i + 1, params.get(i));
+			}
 			ResultSet rs = ps.executeQuery();
-			while (rs.next())
+			while (rs.next()) {
 				users.add(mapRow(rs));
+			}
 
 		} catch (SQLException e) {
 			System.err.println("UserDAO.searchAndFilter() ERROR: " + e.getMessage());
@@ -96,11 +103,13 @@ public class UserDAO {
 		try (Connection conn = DBContext.getConnection();
 				PreparedStatement ps = conn.prepareStatement(sql.toString())) {
 
-			for (int i = 0; i < params.size(); i++)
+			for (int i = 0; i < params.size(); i++) {
 				ps.setObject(i + 1, params.get(i));
+			}
 			ResultSet rs = ps.executeQuery();
-			if (rs.next())
+			if (rs.next()) {
 				return rs.getInt(1);
+			}
 
 		} catch (SQLException e) {
 			System.err.println("UserDAO.countSearchAndFilter() ERROR: " + e.getMessage());
@@ -132,13 +141,13 @@ public class UserDAO {
 			ps.setLong(1, id);
 			ResultSet rs = ps.executeQuery();
 			if (rs.next()) {
-				User u = mapRow(rs);
-				u.setDob(rs.getDate("dob"));
-				u.setManagerId(rs.getLong("manager_id"));
-				u.setManagerName(rs.getString("manager_name"));
-				u.setCreatedAt(rs.getTimestamp("created_at"));
-				u.setUpdatedAt(rs.getTimestamp("updated_at"));
-				return u;
+				User user = mapRow(rs);
+				user.setDob(rs.getDate("dob"));
+				user.setManagerId(rs.getLong("manager_id"));
+				user.setManagerName(rs.getString("manager_name"));
+				user.setCreatedAt(rs.getTimestamp("created_at"));
+				user.setUpdatedAt(rs.getTimestamp("updated_at"));
+				return user;
 			}
 
 		} catch (SQLException e) {
@@ -151,6 +160,42 @@ public class UserDAO {
 
 	public User getByUsername(String username) {
 		return null;
+	}
+
+	public Optional<User> findActiveUserByLogin(String identifier, String plainPassword) throws SQLException {
+		String sql = """
+				SELECT u.id, u.employee_code, u.username, u.password_hash, u.full_name,
+				       u.phone, u.job_title, u.employee_type, u.is_active,
+				       u.department_id, u.role_id,
+				       d.name AS department_name,
+				       r.name AS role_name,
+				       r.display_name AS role_display_name
+				FROM users u
+				LEFT JOIN departments d ON u.department_id = d.id
+				LEFT JOIN roles r ON u.role_id = r.id
+				WHERE (u.username = ? OR u.employee_code = ?)
+				  AND u.is_active = TRUE
+				  AND r.is_active = TRUE
+				LIMIT 1
+				""";
+
+		try (Connection conn = DBContext.getConnection()) {
+			if (conn == null) {
+				throw new SQLException("Database connection is not available");
+			}
+
+			try (PreparedStatement ps = conn.prepareStatement(sql)) {
+				ps.setString(1, identifier);
+				ps.setString(2, identifier);
+
+				ResultSet rs = ps.executeQuery();
+				if (rs.next() && isPasswordMatched(plainPassword, rs.getString("password_hash"))) {
+					return Optional.of(mapRow(rs));
+				}
+			}
+		}
+
+		return Optional.empty();
 	}
 
 	public boolean insert(User user) {
@@ -183,25 +228,38 @@ public class UserDAO {
 	}
 
 	private User mapRow(ResultSet rs) throws SQLException {
-		User u = new User();
-		u.setId(rs.getLong("id"));
-		u.setEmployeeCode(rs.getString("employee_code"));
-		u.setUsername(rs.getString("username"));
-		u.setFullName(rs.getString("full_name"));
-		u.setPhone(rs.getString("phone"));
-		u.setJobTitle(rs.getString("job_title"));
-		u.setIsActive(rs.getBoolean("is_active"));
-		u.setDepartmentId(rs.getLong("department_id"));
-		u.setRoleId(rs.getLong("role_id"));
+		User user = new User();
+		user.setId(rs.getLong("id"));
+		user.setEmployeeCode(rs.getString("employee_code"));
+		user.setUsername(rs.getString("username"));
+		user.setFullName(rs.getString("full_name"));
+		user.setPhone(rs.getString("phone"));
+		user.setJobTitle(rs.getString("job_title"));
+		user.setIsActive(rs.getBoolean("is_active"));
+		user.setDepartmentId(rs.getLong("department_id"));
+		user.setRoleId(rs.getLong("role_id"));
 
 		String empType = rs.getString("employee_type");
-		if (empType != null)
-			u.setEmployeeType(User.EmployeeType.valueOf(empType));
+		if (empType != null) {
+			user.setEmployeeType(User.EmployeeType.valueOf(empType));
+		}
 
-		u.setDepartmentName(rs.getString("department_name"));
-		u.setRoleName(rs.getString("role_name"));
-		u.setRoleDisplayName(rs.getString("role_display_name"));
+		user.setDepartmentName(rs.getString("department_name"));
+		user.setRoleName(rs.getString("role_name"));
+		user.setRoleDisplayName(rs.getString("role_display_name"));
 
-		return u;
+		return user;
+	}
+
+	private boolean isPasswordMatched(String plainPassword, String passwordHash) {
+		if (plainPassword == null || passwordHash == null || passwordHash.isBlank()) {
+			return false;
+		}
+
+		try {
+			return PasswordUtil.checkPassword(plainPassword, passwordHash);
+		} catch (IllegalArgumentException e) {
+			return false;
+		}
 	}
 }

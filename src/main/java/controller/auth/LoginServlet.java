@@ -1,5 +1,6 @@
 package controller.auth;
 
+import dal.PermissionDAO;
 import dal.UserDAO;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
@@ -12,9 +13,13 @@ import java.sql.SQLException;
 import model.User;
 import util.ValidationUtil;
 
+/**
+ * Handles login form display and credential verification.
+ */
 @WebServlet(name = "LoginServlet", urlPatterns = {"/login"})
 public class LoginServlet extends HttpServlet {
 	private final UserDAO userDAO = new UserDAO();
+	private final PermissionDAO permissionDAO = new PermissionDAO();
 
 	@Override
 	protected void doGet(HttpServletRequest request, HttpServletResponse response)
@@ -56,6 +61,7 @@ public class LoginServlet extends HttpServlet {
 
 			HttpSession session = request.getSession(true);
 			session.setAttribute("authUser", user);
+			session.setAttribute("permissions", permissionDAO.getPermissionsByRoleId(user.getRoleId()));
 			session.setMaxInactiveInterval(30 * 60);
 
 			response.sendRedirect(request.getContextPath() + "/home");
@@ -71,5 +77,4 @@ public class LoginServlet extends HttpServlet {
 		request.setAttribute("identifier", request.getParameter("identifier"));
 		request.getRequestDispatcher("/views/auth/login.jsp").forward(request, response);
 	}
-
 }

@@ -8,6 +8,10 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
 
+/**
+ * Servlet responsible for handling user logout. Invalidates the current session
+ * and redirects to the login page.
+ */
 @WebServlet(name = "LogoutServlet", urlPatterns = {"/logout"})
 public class LogoutServlet extends HttpServlet {
 	@Override

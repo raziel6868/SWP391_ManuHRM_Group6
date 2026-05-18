@@ -10,20 +10,7 @@ public class AppConfig {
 
 	static {
 		try {
-			Path envDirectory = null;
-			Path current = Paths.get(AppConfig.class.getProtectionDomain().getCodeSource().getLocation().toURI());
-
-			if (Files.isRegularFile(current)) {
-				current = current.getParent();
-			}
-
-			for (int i = 0; current != null && i < 10; i++) {
-				if (Files.exists(current.resolve(".env"))) {
-					envDirectory = current;
-					break;
-				}
-				current = current.getParent();
-			}
+			Path envDirectory = findEnvDirectory();
 
 			if (envDirectory != null) {
 				dotenv = Dotenv.configure().directory(envDirectory.toString()).ignoreIfMissing().load();
@@ -31,10 +18,7 @@ public class AppConfig {
 				dotenv = Dotenv.configure().ignoreIfMissing().load();
 			}
 		} catch (Exception e) {
-			System.err.println("==========================================================================");
 			System.err.println("WARNING: COULD NOT LOAD ENVIRONMENT VARIABLES!");
-			System.err.println("Please check your '.env' file.");
-			System.err.println("==========================================================================");
 			e.printStackTrace();
 		}
 	}
@@ -45,5 +29,22 @@ public class AppConfig {
 
 	public static String get(String key, String defaultValue) {
 		return dotenv != null ? dotenv.get(key, defaultValue) : defaultValue;
+	}
+
+	private static Path findEnvDirectory() throws Exception {
+		Path current = Paths.get(AppConfig.class.getProtectionDomain().getCodeSource().getLocation().toURI());
+
+		if (Files.isRegularFile(current)) {
+			current = current.getParent();
+		}
+
+		for (int i = 0; current != null && i < 10; i++) {
+			if (Files.exists(current.resolve(".env"))) {
+				return current;
+			}
+			current = current.getParent();
+		}
+
+		return null;
 	}
 }

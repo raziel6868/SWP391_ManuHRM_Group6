@@ -8,6 +8,10 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 
+/**
+ * Servlet responsible for updating user account status (Activate/Deactivate).
+ * Designed to be called via POST to prevent CSRF via link prefetching.
+ */
 @WebServlet(name = "UserStatusServlet", urlPatterns = {"/user-status"})
 public class UserStatusServlet extends HttpServlet {
 	private final UserDAO userDAO = new UserDAO();

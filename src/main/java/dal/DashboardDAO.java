@@ -1,10 +1,10 @@
 package dal;
 
+import dto.DashboardStats;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import model.DashboardStats;
 
 public class DashboardDAO {
 	public DashboardStats getDashboardStats() {
@@ -36,7 +36,6 @@ public class DashboardDAO {
 
 		} catch (SQLException e) {
 			System.err.println("DashboardDAO.getDashboardStats() ERROR: " + e.getMessage());
-			e.printStackTrace();
 		}
 
 		return stats;

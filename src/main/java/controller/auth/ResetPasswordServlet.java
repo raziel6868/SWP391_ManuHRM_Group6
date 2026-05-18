@@ -7,6 +7,10 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 
+/**
+ * Servlet intended to handle the password reset process via token/link. Pending
+ * implementation by the development team.
+ */
 @WebServlet(name = "ResetPasswordServlet", urlPatterns = {"/reset-password"})
 public class ResetPasswordServlet extends HttpServlet {
 	@Override

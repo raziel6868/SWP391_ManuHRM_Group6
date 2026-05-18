@@ -1,6 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200');
-
+/* Fonts are loaded directly via <link> tags in JSP to prevent FOUC */
 body {
   font-family: var(--font-family-base);
   background-color: var(--background);
@@ -68,6 +66,7 @@ a {
   text-decoration: none;
   transition: all 0.2s ease-in-out;
 }
+
 a:hover {
   color: var(--primary-container);
 }

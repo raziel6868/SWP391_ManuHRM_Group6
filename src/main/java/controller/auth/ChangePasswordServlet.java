@@ -19,6 +19,8 @@ public class ChangePasswordServlet extends HttpServlet {
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
         HttpSession session = request.getSession();
+        
+        //fix cung admin = 1
         /*if (session.getAttribute("user") == null) {
             response.sendRedirect(request.getContextPath() + "/auth/login.jsp");
             return;
@@ -37,6 +39,7 @@ public class ChangePasswordServlet extends HttpServlet {
         HttpSession session = request.getSession();
         User currentUser = (User) session.getAttribute("user");
 
+        //fix cung admin = 1
         /*if (currentUser == null) {
             response.sendRedirect(request.getContextPath() + "/auth/login.jsp");
             return;
@@ -69,6 +72,7 @@ public class ChangePasswordServlet extends HttpServlet {
         }
 
         // Chuyển dữ liệu xuống tầng DAO để xử lý giải băm cũ và băm mật khẩu mới
+        //fix cung admin = 1
         //boolean isUpdated = userDAO.changePassword(currentUser.getId(), currentPassword, newPassword);
         boolean isUpdated = userDAO.changePassword(Long.parseLong("1"), currentPassword, newPassword);
 

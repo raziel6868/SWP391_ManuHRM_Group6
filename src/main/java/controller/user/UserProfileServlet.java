@@ -28,6 +28,7 @@ public class UserProfileServlet extends HttpServlet {
         User currentUser = (User) session.getAttribute("currentUser");
         
         // Kiểm tra nếu chưa đăng nhập thì chuyển hướng về trang login
+        //fix cung admin = 1
         /*if (currentUser == null) {
             response.sendRedirect(request.getContextPath() + "/login");
             return;

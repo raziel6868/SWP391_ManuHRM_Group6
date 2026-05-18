@@ -3,7 +3,6 @@ package dal;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
-import model.PasswordTicket;
 import model.User;
 import org.mindrot.jbcrypt.BCrypt;
 
@@ -253,9 +252,6 @@ public class UserDAO {
     // Bạn nhớ import thư viện Bcrypt mà dự án đang dùng ở đầu file nhé (ví dụ: org.mindrot.jbcrypt.BCrypt hoặc tương đương)
 // import org.mindrot.jbcrypt.BCrypt;
 
-    public static void main(String[] args) {
-        System.out.println(new UserDAO().getAllPendingTickets().size());
-    }
 
     public boolean changePassword(Long userId, String currentPassword, String newPassword) {
         String selectSql = "SELECT password_hash FROM users WHERE id = ?";
@@ -307,124 +303,5 @@ public class UserDAO {
         return false;
     }
 
-    public String sendPasswordResetTicket(String employeeCode) {
-        String checkUserSql = "SELECT id FROM users WHERE employee_code = ?";
-        String checkTicketSql = "SELECT id FROM password_tickets WHERE employee_code = ? AND status = 'PENDING'";
-        String insertTicketSql = "INSERT INTO password_tickets (employee_code, status) VALUES (?, 'PENDING')";
 
-        Connection conn = DBContext.getConnection();
-        if (conn == null) {
-            return "Lỗi kết nối cơ sở dữ liệu!";
-        }
-
-        try {
-            // 1. Kiểm tra xem Employee Code có tồn tại trong hệ thống không
-            try (PreparedStatement psCheckUser = conn.prepareStatement(checkUserSql)) {
-                psCheckUser.setString(1, employeeCode);
-                try (ResultSet rs = psCheckUser.executeQuery()) {
-                    if (!rs.next()) {
-                        return "Mã nhân viên (Employee Code) không tồn tại trên hệ thống!";
-                    }
-                }
-            }
-
-            // 2. Kiểm tra xem nhân viên này đã có ticket nào đang chờ duyệt sẵn chưa (tránh spam gửi liên tục)
-            try (PreparedStatement psCheckTicket = conn.prepareStatement(checkTicketSql)) {
-                psCheckTicket.setString(1, employeeCode);
-                try (ResultSet rs = psCheckTicket.executeQuery()) {
-                    if (rs.next()) {
-                        return "Yêu cầu của bạn đang ở trạng thái chờ duyệt. Vui lòng không gửi lại liên tục!";
-                    }
-                }
-            }
-
-            // 3. Tiến hành tạo ticket yêu cầu reset mật khẩu
-            try (PreparedStatement psInsert = conn.prepareStatement(insertTicketSql)) {
-                psInsert.setString(1, employeeCode);
-                int rows = psInsert.executeUpdate();
-                if (rows > 0) {
-                    return "SUCCESS"; // Thành công
-                }
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return "Đã xảy ra lỗi hệ thống trong quá trình tạo ticket!";
-    }
-// Thêm hàm này vào Class UserDAO.java của bạn
-
-    public boolean resolvePasswordTicket(int ticketId, String employeeCode) {
-        String updateTicketSql = "UPDATE password_tickets SET status = 'RESOLVED', updated_at = CURRENT_TIMESTAMP WHERE id = ?";
-        String updateUserPassSql = "UPDATE users SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE employee_code = ?";
-
-        Connection conn = DBContext.getConnection();
-        if (conn == null) {
-            return false;
-        }
-
-        try {
-            // Bật chế độ Transaction để đảm bảo cả 2 lệnh cùng thành công hoặc cùng thất bại
-            conn.setAutoCommit(false);
-
-            // 1. Reset mật khẩu user về mặc định "123456" (Chuỗi hash Bcrypt round 12)
-            String defaultHash = "$2a$12$0wwAa21is/sQAN8BtCCkQuDqbYwfRLTxYJFPWjTiIW4EpSXCOdjTS";
-            try (PreparedStatement psUser = conn.prepareStatement(updateUserPassSql)) {
-                psUser.setString(1, defaultHash);
-                psUser.setString(2, employeeCode);
-                psUser.executeUpdate();
-            }
-
-            // 2. Cập nhật trạng thái Ticket thành RESOLVED
-            try (PreparedStatement psTicket = conn.prepareStatement(updateTicketSql)) {
-                psTicket.setInt(1, ticketId);
-                int affectedRows = psTicket.executeUpdate();
-
-                if (affectedRows > 0) {
-                    conn.commit(); // Lưu thay đổi vào DB
-                    return true;
-                }
-            }
-
-            conn.rollback();
-        } catch (SQLException e) {
-            try {
-                conn.rollback();
-            } catch (SQLException ex) {
-                ex.printStackTrace();
-            }
-            e.printStackTrace();
-        } finally {
-            try {
-                conn.setAutoCommit(true);
-            } catch (SQLException e) {
-                e.printStackTrace();
-            }
-        }
-        return false;
-    }
-
-// Hàm bổ trợ để lấy danh sách ticket hiển thị lên trang Admin
-    public java.util.List<PasswordTicket> getAllPendingTickets() {
-        java.util.List<model.PasswordTicket> list = new java.util.ArrayList<>();
-        String sql = "SELECT t.id, t.employee_code, t.status, t.created_at, u.full_name "
-                + "FROM password_tickets t JOIN users u ON t.employee_code = u.employee_code "
-                + "WHERE t.status = 'PENDING' ORDER BY t.created_at DESC";
-        try (Connection conn = DBContext.getConnection(); PreparedStatement ps = conn.prepareStatement(sql); ResultSet rs = ps.executeQuery()) {
-            while (rs.next()) {
-                // Khởi tạo đối tượng và gán data (Bạn có thể tạo nhanh Class model tương ứng)
-                model.PasswordTicket ticket = new model.PasswordTicket();
-                ticket.setId(rs.getInt("id"));
-                ticket.setEmployeeCode(rs.getString("employee_code"));
-                ticket.setFullName(rs.getString("full_name")); // Thêm field này vào model nếu cần hiển thị tên
-                ticket.setStatus(rs.getString("status"));
-                ticket.setCreatedAt(rs.getTimestamp("created_at"));
-                list.add(ticket);
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return list;
-    }
-    
-   
 }

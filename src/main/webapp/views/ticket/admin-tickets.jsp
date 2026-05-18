@@ -19,14 +19,17 @@
             <div class="main-content">
                 <jsp:include page="/components/header.html" />
 
-                <div class="page-container p-4" style="max-width: 1000px; margin: 0 auto; width: 100%;">
+                <div class="page-container p-4" style="max-width: 1100px; margin: 0 auto; width: 100%;">
                     <div class="mb-4">
                         <h1 class="h2 text-on-surface fw-bold">Password Reset Tickets</h1>
-                        <p class="body-md text-muted">Review and approve password recovery requests from staff members.</p>
+                        <p class="body-md text-muted">Review, approve, or reject password recovery requests from staff members.</p>
                     </div>
 
                     <c:if test="${not empty success}">
                         <div class="alert alert-success border-0 shadow-sm mb-4">${success}</div>
+                    </c:if>
+                    <c:if test="${not empty error}">
+                        <div class="alert alert-danger border-0 shadow-sm mb-4">${error}</div>
                     </c:if>
 
                     <div class="card-premium p-4">
@@ -39,14 +42,14 @@
                                         <th>Employee Name</th>
                                         <th>Requested Time</th>
                                         <th>Status</th>
-                                        <th class="text-end">Actions</th>
+                                        <th class="text-center" style="width: 220px;">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     <c:choose>
                                         <c:when test="${empty ticketList}">
                                             <tr>
-                                                <td colspan="6" class="text-center py-4 text-muted">No pending password reset requests found.</td>
+                                                <td colspan="6" class="text-center py-4 text-muted">No manageable password reset requests found.</td>
                                             </tr>
                                         </c:when>
                                         <c:otherwise>
@@ -56,15 +59,49 @@
                                                     <td><span class="badge bg-secondary font-monospace">${ticket.employeeCode}</span></td>
                                                     <td class="fw-medium">${ticket.fullName}</td>
                                                     <td><fmt:formatDate value="${ticket.createdAt}" pattern="yyyy-MM-dd HH:mm:ss"/></td>
-                                                    <td><span class="badge bg-warning text-dark">${ticket.status}</span></td>
-                                                    <td class="text-end">
-                                                        <form action="${pageContext.request.contextPath}/admin/tickets" method="POST" style="display:inline;">
-                                                            <input type="hidden" name="ticketId" value="${ticket.id}">
-                                                            <input type="hidden" name="employeeCode" value="${ticket.employeeCode}">
-                                                            <button type="submit" class="btn btn-success btn-sm px-3 fw-bold border-0" style="background-color: #10b981;">
-                                                                Approve & Reset
-                                                            </button>
-                                                        </form>
+                                                    <td>
+                                                        <c:choose>
+                                                            <c:when test="${ticket.status == 'PENDING'}">
+                                                                <span class="badge bg-warning text-dark">PENDING</span>
+                                                            </c:when>
+                                                            <c:when test="${ticket.status == 'REJECTED'}">
+                                                                <span class="badge bg-danger">REJECTED</span>
+                                                            </c:when>
+                                                        </c:choose>
+                                                    </td>
+                                                    <td class="text-center">
+                                                        <div class="d-flex justify-content-center gap-2">
+                                                            <c:choose>
+                                                                <%-- NẾU LÀ PENDING: HIỂN THỊ CẢ NÚT APPROVE VÀ REJECT --%>
+                                                                <c:when test="${ticket.status == 'PENDING'}">
+                                                                    <form action="${pageContext.request.contextPath}/admin/tickets" method="POST" style="margin:0;">
+                                                                        <input type="hidden" name="ticketId" value="${ticket.id}">
+                                                                        <input type="hidden" name="action" value="APPROVE">
+                                                                        <button type="submit" class="btn btn-success btn-sm px-2 fw-bold border-0" style="background-color: #10b981;">
+                                                                            Approve
+                                                                        </button>
+                                                                    </form>
+                                                                    <form action="${pageContext.request.contextPath}/admin/tickets" method="POST" style="margin:0;">
+                                                                        <input type="hidden" name="ticketId" value="${ticket.id}">
+                                                                        <input type="hidden" name="action" value="REJECT">
+                                                                        <button type="submit" class="btn btn-outline-danger btn-sm px-2 fw-bold">
+                                                                            Reject
+                                                                        </button>
+                                                                    </form>
+                                                                </c:when>
+
+                                                                <%-- NẾU LÀ REJECTED: CHỈ HIỂN THỊ NÚT RE-APPROVE --%>
+                                                                <c:when test="${ticket.status == 'REJECTED'}">
+                                                                    <form action="${pageContext.request.contextPath}/admin/tickets" method="POST" style="margin:0; width: 100%;">
+                                                                        <input type="hidden" name="ticketId" value="${ticket.id}">
+                                                                        <input type="hidden" name="action" value="APPROVE">
+                                                                        <button type="submit" class="btn btn-primary btn-sm w-100 fw-bold border-0" style="background-color: #3b82f6;">
+                                                                            <span class="material-symbols-outlined align-middle fs-6">refresh</span> Re-approve
+                                                                        </button>
+                                                                    </form>
+                                                                </c:when>
+                                                            </c:choose>
+                                                        </div>
                                                     </td>
                                                 </tr>
                                             </c:forEach>

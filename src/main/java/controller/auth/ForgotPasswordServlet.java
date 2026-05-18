@@ -1,5 +1,6 @@
 package controller.auth;
 
+import dal.TicketDAO;
 import dal.UserDAO;
 import java.io.IOException;
 import jakarta.servlet.ServletException;
@@ -11,7 +12,7 @@ import jakarta.servlet.http.HttpServletResponse;
 @WebServlet(name = "ForgotPasswordServlet", urlPatterns = {"/auth/forgot-password"})
 public class ForgotPasswordServlet extends HttpServlet {
 
-    private final UserDAO userDAO = new UserDAO();
+    private final TicketDAO ticketDAO = new TicketDAO();
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
@@ -35,7 +36,7 @@ public class ForgotPasswordServlet extends HttpServlet {
         }
 
         // Gọi xuống DAO xử lý tạo Ticket kiểm tra ràng buộc nghiệp vụ
-        String result = userDAO.sendPasswordResetTicket(employeeCode.trim());
+        String result = ticketDAO.sendPasswordResetTicket(employeeCode.trim());
 
         if ("SUCCESS".equals(result)) {
             request.setAttribute("success", "Gửi yêu cầu thành công! Vui lòng liên hệ Tổ trưởng/Quản đốc hoặc Admin để nhận lại mật khẩu mới mặc định (123456).");

@@ -61,7 +61,20 @@ public class RoleDAO {
      * @return true nếu cập nhật thành công, false nếu thất bại
      */
     public boolean update(Role role) {
-        return false;
+        String sql = "UPDATE roles SET display_name = ?, description = ? WHERE id = ?";
+        try (Connection conn = DBContext.getConnection();
+                PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setString(1, role.getDisplayName());
+            ps.setString(2, role.getDescription());
+            ps.setLong(3, role.getId());
+
+            return ps.executeUpdate() > 0;
+        } catch (SQLException e) {
+            System.err.println("RoleDAO.update() ERROR: " + e.getMessage());
+            e.printStackTrace();
+            return false;
+        }
     }
 
     /**

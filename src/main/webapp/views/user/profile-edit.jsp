@@ -14,39 +14,10 @@
 <body class="bg-background text-on-surface">
 
     <div class="layout-wrapper">
-        <aside class="sidebar">
-          <div class="sidebar-header">
-            <div class="d-flex align-items-center justify-content-center shadow-sm" style="width: 40px; height: 40px; border-radius: 8px; background: var(--primary-gradient);">
-              <span class="material-symbols-outlined text-white" style="font-variation-settings: 'FILL' 1;">factory</span>
-            </div>
-            <div>
-              <h1 class="h3 mb-0 text-primary fw-bolder" style="font-size: 20px;">ManuHRM</h1>
-              <p class="label-sm text-muted mb-0 text-uppercase" style="font-size: 10px; letter-spacing: 0.05em;">Manufacturing Ops</p>
-            </div>
-          </div>
-          
-          <nav class="sidebar-menu">
-            <a class="sidebar-nav-item text-decoration-none" href="${pageContext.request.contextPath}/home/dashboard.html">
-              <span class="material-symbols-outlined">dashboard</span>
-              <span>Dashboard</span>
-            </a>
-            <a class="sidebar-nav-item text-decoration-none" href="${pageContext.request.contextPath}/user-list.html">
-              <span class="material-symbols-outlined">groups</span>
-              <span>User List</span>
-            </a>
-            <a class="sidebar-nav-item text-decoration-none" href="${pageContext.request.contextPath}/role/role-list.html">
-              <span class="material-symbols-outlined">verified_user</span>
-              <span>Role List</span>
-            </a>
-            <hr class="my-3 border-secondary opacity-25">
-            <a class="sidebar-nav-item active text-decoration-none" href="${pageContext.request.contextPath}/profile">
-              <span class="material-symbols-outlined">account_circle</span>
-              <span>My Profile</span>
-            </a>
-          </nav>
-        </aside>
+        <jsp:include page="/components/sidebar.jsp" />
         
         <div class="main-content">
+            <jsp:include page="/components/header.html" />
             <div class="page-container d-flex flex-column" style="max-width: 700px; margin: 40px auto; width: 100%;">
                 
                 <div class="mb-4">

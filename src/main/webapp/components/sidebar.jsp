@@ -1,0 +1,50 @@
+<aside class="sidebar">
+    <div class="sidebar-header">
+        <div class="d-flex align-items-center justify-content-center shadow-sm" style="width: 40px; height: 40px; border-radius: 8px; background: var(--primary-gradient);">
+            <span class="material-symbols-outlined text-white" style="font-variation-settings: 'FILL' 1;">factory</span>
+        </div>
+        <div>
+            <h1 class="h3 mb-0 text-primary fw-bolder" style="font-size: 20px;">ManuHRM</h1>
+            <p class="label-sm text-muted mb-0 text-uppercase" style="font-size: 10px; letter-spacing: 0.05em;">Manufacturing Ops</p>
+        </div>
+    </div>
+
+    <nav class="sidebar-menu">
+        <a class="sidebar-nav-item text-decoration-none" href="${pageContext.request.contextPath}/home/dashboard.html">
+            <span class="material-symbols-outlined">dashboard</span>
+            <span>Dashboard</span>
+        </a>
+        <a class="sidebar-nav-item text-decoration-none" href="${pageContext.request.contextPath}/user-list.html">
+            <span class="material-symbols-outlined">groups</span>
+            <span>User List</span>
+        </a>
+        <a class="sidebar-nav-item text-decoration-none" href="${pageContext.request.contextPath}/role/role-list.html">
+            <span class="material-symbols-outlined">verified_user</span>
+            <span>Role List</span>
+        </a>
+        <hr class="my-3 border-secondary opacity-25">
+        <a class="sidebar-nav-item active text-decoration-none" href="${pageContext.request.contextPath}/profile">
+            <span class="material-symbols-outlined">account_circle</span>
+            <span>My Profile</span>
+        </a>
+        <hr class="my-3 border-secondary opacity-25">
+        <a class="sidebar-nav-item active text-decoration-none" href="${pageContext.request.contextPath}/admin/tickets">
+            <span class="material-symbols-outlined">vpn_key</span>
+            <span>Tickets List</span>
+        </a>
+    </nav>
+
+    <div class="sidebar-footer">
+        <a class="sidebar-nav-item text-danger text-decoration-none mb-3" href="${pageContext.request.contextPath}/auth/logout">
+            <span class="material-symbols-outlined">logout</span>
+            <span>Logout</span>
+        </a>
+        <div class="d-flex align-items-center gap-3 px-2">
+            <img alt="User Avatar" class="rounded-circle" src="https://ui-avatars.com/api/?name=${user.fullName}&background=0D8ABC&color=fff" style="width: 40px; height: 40px; object-fit: cover; border: 2px solid var(--primary-fixed-dim);"/>
+            <div>
+                <p class="label-sm fw-bold mb-0 text-on-surface">${user.fullName}</p>
+                <p class="label-sm text-muted mb-0" style="font-size: 11px;">${user.roleDisplayName}</p>
+            </div>
+        </div>
+    </div>
+</aside>

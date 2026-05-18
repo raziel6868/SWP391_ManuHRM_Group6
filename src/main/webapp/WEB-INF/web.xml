@@ -4,9 +4,17 @@
         <servlet-name>UserProfileEditServlet</servlet-name>
         <servlet-class>controller.user.UserProfileEditServlet</servlet-class>
     </servlet>
+    <servlet>
+        <servlet-name>AdminTicketServlet</servlet-name>
+        <servlet-class>controller.ticket.AdminTicketServlet</servlet-class>
+    </servlet>
     <servlet-mapping>
         <servlet-name>UserProfileEditServlet</servlet-name>
         <url-pattern>/profile/edit</url-pattern>
+    </servlet-mapping>
+    <servlet-mapping>
+        <servlet-name>AdminTicketServlet</servlet-name>
+        <url-pattern>/admin/tickets</url-pattern>
     </servlet-mapping>
     <session-config>
         <session-timeout>30</session-timeout>

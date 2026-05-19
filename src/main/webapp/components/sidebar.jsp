@@ -3,6 +3,7 @@
 <%@ taglib prefix="fn" uri="jakarta.tags.functions" %>
 <c:set var="user" value="${sessionScope.authUser}" />
 
+
 <aside class="sidebar">
     <div class="sidebar-header">
         <div class="d-flex align-items-center justify-content-center shadow-sm"
@@ -22,58 +23,42 @@
         <a class="${activeMenu == 'home' ? 'sidebar-nav-item active text-decoration-none' : 'sidebar-nav-item text-decoration-none'}"
            href="${homeUrl}">
             <span class="material-symbols-outlined">dashboard</span>
-            <span>Tổng quan</span>
+            <span>Bảng điều khiển</span>
         </a>
 
         <c:url var="profileUrl" value="/profile" />
         <a class="${activeMenu == 'profile' ? 'sidebar-nav-item active text-decoration-none' : 'sidebar-nav-item text-decoration-none'}"
            href="${profileUrl}">
             <span class="material-symbols-outlined">account_circle</span>
-            <span>Hồ sơ cá nhân</span>
+            <span>Hồ sơ của tôi</span>
         </a>
 
         <hr class="my-3 border-secondary opacity-25">
 
         <c:forEach var="permission" items="${permissions}">
+            <c:set var="showInSidebar" value="true" />
             <c:choose>
                 <c:when test="${permission.code == 'USER_VIEW'}">
                     <c:url var="permissionUrl" value="/user-list" />
                     <c:set var="permissionIcon" value="groups" />
-                </c:when>
-                <c:when test="${permission.code == 'USER_CREATE'}">
-                    <c:url var="permissionUrl" value="/user-create" />
-                    <c:set var="permissionIcon" value="person_add" />
-                </c:when>
-                <c:when test="${permission.code == 'USER_UPDATE'}">
-                    <c:url var="permissionUrl" value="/user-list" />
-                    <c:set var="permissionIcon" value="manage_accounts" />
-                </c:when>
-                <c:when test="${permission.code == 'USER_STATUS'}">
-                    <c:url var="permissionUrl" value="/user-list" />
-                    <c:set var="permissionIcon" value="lock_open" />
+                    <c:set var="permissionDisplayName" value="Quản lý Nhân sự" />
                 </c:when>
                 <c:when test="${permission.code == 'ROLE_VIEW'}">
                     <c:url var="permissionUrl" value="/role-list" />
                     <c:set var="permissionIcon" value="verified_user" />
-                </c:when>
-                <c:when test="${permission.code == 'ROLE_UPDATE'}">
-                    <c:url var="permissionUrl" value="/role-list" />
-                    <c:set var="permissionIcon" value="admin_panel_settings" />
-                </c:when>
-                <c:when test="${permission.code == 'ROLE_PERMISSION'}">
-                    <c:url var="permissionUrl" value="/role-permission" />
-                    <c:set var="permissionIcon" value="rule_settings" />
+                    <c:set var="permissionDisplayName" value="Quản lý Vai trò" />
                 </c:when>
                 <c:otherwise>
-                    <c:url var="permissionUrl" value="${permission.urlPattern}" />
-                    <c:set var="permissionIcon" value="link" />
+                    <c:set var="showInSidebar" value="false" />
                 </c:otherwise>
             </c:choose>
 
-            <a class="sidebar-nav-item text-decoration-none" href="${permissionUrl}">
-                <span class="material-symbols-outlined"><c:out value="${permissionIcon}" /></span>
-                <span><c:out value="${permission.name}" /></span>
-            </a>
+            <c:if test="${showInSidebar}">
+                <a class="sidebar-nav-item text-decoration-none" href="${permissionUrl}">
+                    <span class="material-symbols-outlined"><c:out value="${permissionIcon}" /></span>
+                    <span><c:out value="${permissionDisplayName}" /></span>
+                </a>
+            </c:if>
         </c:forEach>
 
         <c:if test="${empty permissions}">

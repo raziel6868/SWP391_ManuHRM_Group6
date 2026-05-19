@@ -8,10 +8,14 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
-import java.sql.SQLException;
+
 import model.User;
 import util.ValidationUtil;
 
+/**
+ * Servlet responsible for handling user authentication. Manages login form
+ * display and credential verification.
+ */
 @WebServlet(name = "LoginServlet", urlPatterns = {"/login"})
 public class LoginServlet extends HttpServlet {
 	private final UserDAO userDAO = new UserDAO();
@@ -56,12 +60,17 @@ public class LoginServlet extends HttpServlet {
 
 			HttpSession session = request.getSession(true);
 			session.setAttribute("authUser", user);
+
+			// Tải danh sách quyền (permissions) dựa trên Role của User và lưu vào Session
+			dal.PermissionDAO permissionDAO = new dal.PermissionDAO();
+			session.setAttribute("permissions", permissionDAO.getPermissionsByRoleId(user.getRoleId()));
+
 			session.setMaxInactiveInterval(30 * 60);
 
 			response.sendRedirect(request.getContextPath() + "/home");
-		} catch (SQLException exception) {
+		} catch (ServletException | IOException exception) {
 			getServletContext().log("Login failed", exception);
-			forwardWithError(request, response, "Không thể kết nối cơ sở dữ liệu. Vui lòng kiểm tra cấu hình MySQL.");
+			forwardWithError(request, response, "Hệ thống đang bảo trì hoặc gặp sự cố kết nối, vui lòng thử lại sau.");
 		}
 	}
 

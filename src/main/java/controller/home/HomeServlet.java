@@ -15,6 +15,10 @@ import java.util.ArrayList;
 import java.util.List;
 import model.User;
 
+/**
+ * Servlet responsible for rendering the Home/Dashboard view. Retrieves and
+ * displays dashboard statistics and active announcements.
+ */
 @WebServlet(name = "HomeServlet", urlPatterns = {"/home", "/dashboard"})
 public class HomeServlet extends HttpServlet {
 	private final DashboardDAO dashboardDAO = new DashboardDAO();

@@ -1,6 +1,8 @@
 package util;
 
 import io.github.cdimascio.dotenv.Dotenv;
+import io.github.cdimascio.dotenv.DotenvException;
+import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -10,16 +12,25 @@ public class AppConfig {
 
 	static {
 		try {
-			Path envDirectory = findEnvDirectory();
+			Path currentPath = Paths.get(AppConfig.class.getProtectionDomain().getCodeSource().getLocation().toURI());
 
-			if (envDirectory != null) {
-				dotenv = Dotenv.configure().directory(envDirectory.toString()).ignoreIfMissing().load();
-			} else {
-				dotenv = Dotenv.configure().ignoreIfMissing().load();
+			if (Files.isRegularFile(currentPath)) {
+				currentPath = currentPath.getParent();
 			}
-		} catch (Exception e) {
+
+			String envDir = null;
+			while (currentPath != null) {
+				if (Files.exists(currentPath.resolve(".env"))) {
+					envDir = currentPath.toString();
+					break;
+				}
+				currentPath = currentPath.getParent();
+			}
+
+			dotenv = Dotenv.configure().directory(envDir != null ? envDir : "./").ignoreIfMissing().load();
+
+		} catch (DotenvException | URISyntaxException e) {
 			System.err.println("WARNING: COULD NOT LOAD ENVIRONMENT VARIABLES!");
-			e.printStackTrace();
 		}
 	}
 
@@ -29,22 +40,5 @@ public class AppConfig {
 
 	public static String get(String key, String defaultValue) {
 		return dotenv != null ? dotenv.get(key, defaultValue) : defaultValue;
-	}
-
-	private static Path findEnvDirectory() throws Exception {
-		Path current = Paths.get(AppConfig.class.getProtectionDomain().getCodeSource().getLocation().toURI());
-
-		if (Files.isRegularFile(current)) {
-			current = current.getParent();
-		}
-
-		for (int i = 0; current != null && i < 10; i++) {
-			if (Files.exists(current.resolve(".env"))) {
-				return current;
-			}
-			current = current.getParent();
-		}
-
-		return null;
 	}
 }

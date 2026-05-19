@@ -25,7 +25,7 @@ public class PermissionDAO {
 				list.add(mapRow(rs));
 			}
 		} catch (SQLException e) {
-			System.err.println("PermissionDAO.getAllPermissions() ERROR: " + e.getMessage());
+			e.printStackTrace();
 		}
 		return list;
 	}
@@ -33,7 +33,6 @@ public class PermissionDAO {
 	public List<Long> getPermissionIdsByRoleId(Long roleId) {
 		List<Long> list = new ArrayList<>();
 		String sql = "SELECT permission_id FROM role_permissions WHERE role_id = ?";
-
 		try (Connection conn = DBContext.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
 			ps.setLong(1, roleId);
 			try (ResultSet rs = ps.executeQuery()) {
@@ -42,7 +41,7 @@ public class PermissionDAO {
 				}
 			}
 		} catch (SQLException e) {
-			System.err.println("PermissionDAO.getPermissionIdsByRoleId() ERROR: " + e.getMessage());
+			e.printStackTrace();
 		}
 		return list;
 	}
@@ -65,7 +64,7 @@ public class PermissionDAO {
 				}
 			}
 		} catch (SQLException e) {
-			System.err.println("PermissionDAO.getPermissionsByRoleId() ERROR: " + e.getMessage());
+			e.printStackTrace();
 		}
 		return permissions;
 	}
@@ -80,52 +79,56 @@ public class PermissionDAO {
 		}
 
 		try {
-			conn.setAutoCommit(false);
+			conn.setAutoCommit(false); // Begin transaction
 
+			// 1. Delete old permissions
 			try (PreparedStatement psDelete = conn.prepareStatement(deleteSql)) {
 				psDelete.setLong(1, roleId);
 				psDelete.executeUpdate();
 			}
 
+			// 2. Insert new permissions using Batch Insert
 			if (permissionIds != null && !permissionIds.isEmpty()) {
 				try (PreparedStatement psInsert = conn.prepareStatement(insertSql)) {
-					for (Long permissionId : permissionIds) {
+					for (Long permId : permissionIds) {
 						psInsert.setLong(1, roleId);
-						psInsert.setLong(2, permissionId);
+						psInsert.setLong(2, permId);
 						psInsert.addBatch();
 					}
 					psInsert.executeBatch();
 				}
 			}
 
-			conn.commit();
+			conn.commit(); // Commit transaction
 			return true;
 		} catch (SQLException e) {
-			System.err.println("PermissionDAO.updateRolePermissions() ERROR: " + e.getMessage());
+			e.printStackTrace();
 			try {
-				conn.rollback();
-			} catch (SQLException rollbackException) {
-				System.err.println(
-						"PermissionDAO.updateRolePermissions() ROLLBACK ERROR: " + rollbackException.getMessage());
+				if (conn != null)
+					conn.rollback(); // Rollback on error
+			} catch (SQLException ex) {
+				ex.printStackTrace();
 			}
 		} finally {
 			try {
-				conn.setAutoCommit(true);
-				conn.close();
+				if (conn != null) {
+					conn.setAutoCommit(true);
+					conn.close();
+				}
 			} catch (SQLException e) {
-				System.err.println("PermissionDAO.updateRolePermissions() CLOSE ERROR: " + e.getMessage());
+				e.printStackTrace();
 			}
 		}
 		return false;
 	}
 
 	private Permission mapRow(ResultSet rs) throws SQLException {
-		Permission permission = new Permission();
-		permission.setId(rs.getLong("id"));
-		permission.setCode(rs.getString("code"));
-		permission.setName(rs.getString("name"));
-		permission.setUrlPattern(rs.getString("url_pattern"));
-		permission.setModule(rs.getString("module"));
-		return permission;
+		Permission p = new Permission();
+		p.setId(rs.getLong("id"));
+		p.setCode(rs.getString("code"));
+		p.setName(rs.getString("name"));
+		p.setUrlPattern(rs.getString("url_pattern"));
+		p.setModule(rs.getString("module"));
+		return p;
 	}
 }

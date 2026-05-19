@@ -7,11 +7,13 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import model.User;
+import org.mindrot.jbcrypt.BCrypt;
 import util.PasswordUtil;
 
 public class UserDAO {
 
-	public User findActiveUserByLogin(String identifier, String plainPassword) throws SQLException {
+	// 1. Nhóm Xác thực (QuanLNM)
+	public User findActiveUserByLogin(String identifier, String plainPassword) {
 		String sql = """
 				SELECT u.id, u.employee_code, u.username, u.password_hash, u.full_name,
 				       u.phone, u.job_title, u.employee_type, u.is_active,
@@ -28,26 +30,26 @@ public class UserDAO {
 				LIMIT 1
 				""";
 
-		try (Connection conn = DBContext.getConnection()) {
-			if (conn == null) {
-				throw new SQLException("Database connection is not available");
-			}
+		try (Connection conn = DBContext.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
 
-			try (PreparedStatement ps = conn.prepareStatement(sql)) {
-				ps.setString(1, identifier);
-				ps.setString(2, identifier);
+			ps.setString(1, identifier);
+			ps.setString(2, identifier);
 
-				try (ResultSet rs = ps.executeQuery()) {
-					if (rs.next() && isPasswordMatched(plainPassword, rs.getString("password_hash"))) {
+			try (ResultSet rs = ps.executeQuery()) {
+				if (rs.next()) {
+					String storedHash = rs.getString("password_hash");
+					if (storedHash != null && !storedHash.isBlank()
+							&& PasswordUtil.checkPassword(plainPassword, storedHash)) {
 						return mapRow(rs);
 					}
 				}
 			}
+		} catch (SQLException e) {
 		}
-
 		return null;
 	}
 
+	// 2. Nhóm Lấy dữ liệu & Tìm kiếm (DucNM & NamLV)
 	public User getById(Long id) {
 		String sql = """
 				SELECT u.id, u.employee_code, u.username, u.full_name,
@@ -78,7 +80,6 @@ public class UserDAO {
 				}
 			}
 		} catch (SQLException e) {
-			System.err.println("UserDAO.getById() ERROR: " + e.getMessage());
 		}
 		return null;
 	}
@@ -140,7 +141,6 @@ public class UserDAO {
 				}
 			}
 		} catch (SQLException e) {
-			System.err.println("UserDAO.searchAndFilter() ERROR: " + e.getMessage());
 		}
 		return users;
 	}
@@ -185,11 +185,11 @@ public class UserDAO {
 				}
 			}
 		} catch (SQLException e) {
-			System.err.println("UserDAO.countSearchAndFilter() ERROR: " + e.getMessage());
 		}
 		return 0;
 	}
 
+	// 3. Nhóm Thêm mới & Cập nhật bởi HR (ThangNH)
 	public boolean insertUser(User user) {
 		String sql = """
 				INSERT INTO users (
@@ -244,7 +244,7 @@ public class UserDAO {
 	}
 
 	public boolean updateUserByAdmin(User user, String optionalNewPassword) {
-		boolean updatePassword = optionalNewPassword != null && !optionalNewPassword.trim().isEmpty();
+		boolean updatePassword = (optionalNewPassword != null && !optionalNewPassword.trim().isEmpty());
 
 		StringBuilder sql = new StringBuilder("""
 				UPDATE users SET full_name = ?, phone = ?, dob = ?, job_title = ?,
@@ -291,10 +291,11 @@ public class UserDAO {
 			}
 
 			if (updatePassword) {
-				ps.setString(index++, PasswordUtil.hashPassword(optionalNewPassword));
+				String hashedPassword = BCrypt.hashpw(optionalNewPassword, BCrypt.gensalt(12));
+				ps.setString(index++, hashedPassword);
 			}
 
-			ps.setLong(index, user.getId());
+			ps.setLong(index++, user.getId());
 
 			return ps.executeUpdate() > 0;
 		} catch (SQLException e) {
@@ -303,6 +304,7 @@ public class UserDAO {
 		return false;
 	}
 
+	// 4. Nhóm Tương tác Cá nhân & Trạng thái (NamLV & DucNM)
 	public boolean updateProfile(Long id, String fullName, String phone, java.util.Date dob) {
 		String sql = "UPDATE users SET full_name = ?, phone = ?, dob = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?";
 		try (Connection conn = DBContext.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -338,17 +340,17 @@ public class UserDAO {
 				}
 			}
 
-			if (!isPasswordMatched(currentPassword, storedHash)) {
+			if (storedHash == null || !BCrypt.checkpw(currentPassword, storedHash)) {
 				return false;
 			}
 
+			String newPasswordHash = BCrypt.hashpw(newPassword, BCrypt.gensalt(12));
 			try (PreparedStatement psUpdate = conn.prepareStatement(updateSql)) {
-				psUpdate.setString(1, PasswordUtil.hashPassword(newPassword));
+				psUpdate.setString(1, newPasswordHash);
 				psUpdate.setLong(2, userId);
 				return psUpdate.executeUpdate() > 0;
 			}
 		} catch (SQLException e) {
-			System.err.println("UserDAO.changePassword() ERROR: " + e.getMessage());
 		}
 		return false;
 	}
@@ -365,6 +367,7 @@ public class UserDAO {
 		return false;
 	}
 
+	// 5. Hàm tiện ích (Utility)
 	private User mapRow(ResultSet rs) throws SQLException {
 		User user = new User();
 		user.setId(rs.getLong("id"));
@@ -376,21 +379,19 @@ public class UserDAO {
 		user.setIsActive(rs.getBoolean("is_active"));
 
 		long deptId = rs.getLong("department_id");
-		if (!rs.wasNull()) {
+		if (!rs.wasNull())
 			user.setDepartmentId(deptId);
-		}
 
 		long roleId = rs.getLong("role_id");
-		if (!rs.wasNull()) {
+		if (!rs.wasNull())
 			user.setRoleId(roleId);
-		}
 
 		try {
 			long managerId = rs.getLong("manager_id");
-			if (!rs.wasNull()) {
+			if (!rs.wasNull())
 				user.setManagerId(managerId);
-			}
-		} catch (SQLException ignored) {
+		} catch (SQLException ignore) {
+			// manager_id có thể không tồn tại trong ResultSet tùy thuộc query
 		}
 
 		try {
@@ -398,34 +399,22 @@ public class UserDAO {
 			if (empType != null) {
 				user.setEmployeeType(User.EmployeeType.valueOf(empType));
 			}
-		} catch (SQLException ignored) {
+		} catch (SQLException ignore) {
 		}
 
 		try {
 			user.setDepartmentName(rs.getString("department_name"));
-		} catch (SQLException ignored) {
+		} catch (SQLException ignore) {
 		}
 		try {
 			user.setRoleName(rs.getString("role_name"));
-		} catch (SQLException ignored) {
+		} catch (SQLException ignore) {
 		}
 		try {
 			user.setRoleDisplayName(rs.getString("role_display_name"));
-		} catch (SQLException ignored) {
+		} catch (SQLException ignore) {
 		}
 
 		return user;
-	}
-
-	private boolean isPasswordMatched(String plainPassword, String passwordHash) {
-		if (plainPassword == null || passwordHash == null || passwordHash.isBlank()) {
-			return false;
-		}
-
-		try {
-			return PasswordUtil.checkPassword(plainPassword, passwordHash);
-		} catch (IllegalArgumentException e) {
-			return false;
-		}
 	}
 }

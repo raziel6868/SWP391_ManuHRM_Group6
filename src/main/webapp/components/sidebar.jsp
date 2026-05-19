@@ -3,6 +3,7 @@
 <%@ taglib prefix="fn" uri="jakarta.tags.functions" %>
 <c:set var="user" value="${sessionScope.authUser}" />
 
+
 <aside class="sidebar">
     <div class="sidebar-header">
         <div class="d-flex align-items-center justify-content-center shadow-sm"

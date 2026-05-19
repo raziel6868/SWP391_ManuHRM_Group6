@@ -1,11 +1,14 @@
 package controller.user;
 
+import dal.DepartmentDAO;
+import dal.UserDAO;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import model.User;
 
 import dal.DepartmentDAO;
 import dal.UserDAO;

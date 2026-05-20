@@ -41,12 +41,12 @@
                 <div class="card-premium overflow-hidden d-flex flex-column mb-4 w-100">
                     <!-- Table Controls -->
                     <div class="p-3 bg-surface border-bottom border-outline-variant">
-                        <form action="${pageContext.request.contextPath}/user-list" method="GET" class="row g-3 align-items-center">
-                            <div class="col-md-3 position-relative">
+                        <form action="${pageContext.request.contextPath}/user-list" method="GET" class="row g-2 align-items-center">
+                            <div class="col-md-2 position-relative">
                                 <span class="material-symbols-outlined position-absolute top-50 translate-middle-y text-on-surface-variant" style="left: 12px; font-size: 1.25rem;">search</span>
                                 <input type="text" name="keyword" value="${keyword}" class="input-premium w-100 py-1" placeholder="Tìm mã NV, tên..." style="padding-left: 2.5rem;"/>
                             </div>
-                            
+
                             <div class="col-md-2">
                                 <select name="departmentId" class="form-select input-premium">
                                     <option value="">-- Phòng ban --</option>
@@ -57,7 +57,7 @@
                                     </c:forEach>
                                 </select>
                             </div>
-                            
+
                             <div class="col-md-2">
                                 <select name="roleId" class="form-select input-premium">
                                     <option value="">-- Vai trò --</option>
@@ -68,7 +68,7 @@
                                     </c:forEach>
                                 </select>
                             </div>
-                            
+
                             <div class="col-md-2">
                                 <select name="isActive" class="form-select input-premium">
                                     <option value="">-- Trạng thái --</option>
@@ -77,13 +77,21 @@
                                 </select>
                             </div>
 
-                            <div class="col-md-3 d-flex gap-2">
+                            <div class="col-md-2">
+                                <select name="employeeType" class="form-select input-premium">
+                                    <option value="">-- Loại --</option>
+                                    <option value="OFFICE" ${selectedEmployeeType == 'OFFICE' ? 'selected' : ''}>Office</option>
+                                    <option value="WORKER" ${selectedEmployeeType == 'WORKER' ? 'selected' : ''}>Worker</option>
+                                </select>
+                            </div>
+
+                            <div class="col-md-2 d-flex gap-2">
                                 <button type="submit" class="btn btn-primary px-3 flex-grow-1">Tìm kiếm</button>
                                 <a href="${pageContext.request.contextPath}/user-list" class="btn btn-light border">Reset</a>
                             </div>
                         </form>
                     </div>
-                    
+
                     <!-- Table -->
                     <div class="table-responsive">
                         <table class="table table-premium mb-0 w-100">
@@ -137,14 +145,17 @@
                                                         <a href="${pageContext.request.contextPath}/user-update?id=${u.id}" class="btn btn-sm btn-icon text-on-surface-variant hover-primary" title="Chỉnh sửa">
                                                             <span class="material-symbols-outlined" style="font-size: 1.25rem;">edit</span>
                                                         </a>
-                                                        <form method="post" action="${pageContext.request.contextPath}/user-status" class="d-inline m-0">
-                                                            <input type="hidden" name="id" value="${u.id}" />
-                                                            <input type="hidden" name="referer" value="list" />
-                                                            <input type="hidden" name="isActive" value="${!u.isActive}" />
-                                                            <button type="submit" class="btn btn-sm btn-icon text-on-surface-variant hover-primary" title="${u.isActive ? 'Khóa tài khoản' : 'Mở tài khoản'}" onclick="return confirm('${u.isActive ? 'Khóa' : 'Mở'} tài khoản ${u.fullName}?')">
-                                                                <span class="material-symbols-outlined" style="font-size: 1.25rem;">${u.isActive ? 'lock' : 'lock_open'}</span>
-                                                            </button>
-                                                        </form>
+                                                        <%-- FIX: Ẩn nút khóa/mở nếu đây là tài khoản của chính admin đang đăng nhập --%>
+                                                        <c:if test="${u.id != sessionScope.authUser.id}">
+                                                            <form method="post" action="${pageContext.request.contextPath}/user-status" class="d-inline m-0">
+                                                                <input type="hidden" name="id" value="${u.id}" />
+                                                                <input type="hidden" name="referer" value="list" />
+                                                                <input type="hidden" name="isActive" value="${!u.isActive}" />
+                                                                <button type="submit" class="btn btn-sm btn-icon text-on-surface-variant hover-primary" title="${u.isActive ? 'Khóa tài khoản' : 'Mở tài khoản'}" onclick="return confirm('${u.isActive ? 'Khóa' : 'Mở'} tài khoản ${u.fullName}?')">
+                                                                    <span class="material-symbols-outlined" style="font-size: 1.25rem;">${u.isActive ? 'lock' : 'lock_open'}</span>
+                                                                </button>
+                                                            </form>
+                                                        </c:if>
                                                     </div>
                                                 </td>
                                             </tr>

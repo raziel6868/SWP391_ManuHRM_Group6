@@ -6,6 +6,9 @@ import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
+import model.User;
+
 import java.io.IOException;
 
 /**
@@ -33,6 +36,22 @@ public class UserStatusServlet extends HttpServlet {
 		} catch (NumberFormatException e) {
 			response.sendRedirect("user-list");
 			return;
+		}
+
+		HttpSession session = request.getSession(false);
+		if (session != null) {
+			User authUser = (User) session.getAttribute("authUser");
+			if (authUser != null && authUser.getId() == id) {
+				request.getSession().setAttribute("errorMessage",
+						"Bạn không thể thay đổi trạng thái tài khoản của chính mình.");
+				String referer = request.getParameter("referer");
+				if ("detail".equals(referer)) {
+					response.sendRedirect("user-detail?id=" + id);
+				} else {
+					response.sendRedirect("user-list");
+				}
+				return;
+			}
 		}
 
 		boolean isActive = "true".equals(activeParam);

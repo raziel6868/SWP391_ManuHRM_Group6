@@ -38,15 +38,25 @@
                             <span class="material-symbols-outlined" style="font-size: 1.125rem;">edit</span>
                             Chỉnh sửa
                         </a>
-                        <form method="post" action="${pageContext.request.contextPath}/user-status" class="m-0">
-                            <input type="hidden" name="id" value="${user.id}" />
-                            <input type="hidden" name="referer" value="detail" />
-                            <input type="hidden" name="isActive" value="${!user.isActive}" />
-                            <button type="submit" class="btn ${user.isActive ? 'btn-danger' : 'btn-success'} px-3 py-2 d-flex align-items-center gap-2" onclick="return confirm('${user.isActive ? 'Khóa' : 'Mở'} tài khoản ${user.fullName}?')">
-                                <span class="material-symbols-outlined" style="font-size: 1.125rem;">${user.isActive ? 'lock' : 'lock_open'}</span>
-                                ${user.isActive ? 'Khóa tài khoản' : 'Mở tài khoản'}
-                            </button>
-                        </form>
+                        <c:choose>
+                            <c:when test="${user.id == sessionScope.authUser.id}">
+                                <button class="btn btn-secondary px-3 py-2 d-flex align-items-center gap-2" disabled title="Bạn không thể thay đổi trạng thái tài khoản của chính mình">
+                                    <span class="material-symbols-outlined" style="font-size: 1.125rem;">lock</span>
+                                    Khóa tài khoản
+                                </button>
+                            </c:when>
+                            <c:otherwise>
+                                <form method="post" action="${pageContext.request.contextPath}/user-status" class="m-0">
+                                    <input type="hidden" name="id" value="${user.id}" />
+                                    <input type="hidden" name="referer" value="detail" />
+                                    <input type="hidden" name="isActive" value="${!user.isActive}" />
+                                    <button type="submit" class="btn ${user.isActive ? 'btn-danger' : 'btn-success'} px-3 py-2 d-flex align-items-center gap-2" onclick="return confirm('${user.isActive ? 'Khóa' : 'Mở'} tài khoản ${user.fullName}?')">
+                                        <span class="material-symbols-outlined" style="font-size: 1.125rem;">${user.isActive ? 'lock' : 'lock_open'}</span>
+                                        ${user.isActive ? 'Khóa tài khoản' : 'Mở tài khoản'}
+                                    </button>
+                                </form>
+                            </c:otherwise>
+                        </c:choose>
                     </div>
                 </div>
 

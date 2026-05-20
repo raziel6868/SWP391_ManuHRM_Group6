@@ -3,11 +3,13 @@ package filter;
 import jakarta.servlet.*;
 import jakarta.servlet.annotation.*;
 import java.io.*;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 
 public class AuthFilter implements Filter {
 
 	private static final boolean debug = true;
-
 	private FilterConfig filterConfig = null;
 
 	public AuthFilter() {
@@ -29,27 +31,63 @@ public class AuthFilter implements Filter {
 
 	private void doBeforeProcessing(ServletRequest request, ServletResponse response)
 			throws IOException, ServletException {
-		if (debug)
+		if (debug) {
 			log("AuthFilter:DoBeforeProcessing");
-		// Write code here to process the request and/or response before the rest of the
-		// filter
-		// chain is invoked.
+		}
+
+		HttpServletRequest httpRequest = (HttpServletRequest) request;
+		HttpServletResponse httpResponse = (HttpServletResponse) response;
+		String contextPath = httpRequest.getContextPath();
+		String path = httpRequest.getRequestURI().substring(contextPath.length()).toLowerCase();
+
+		if (isPublic(path)) {
+			return;
+		}
+
+		HttpSession session = httpRequest.getSession(false);
+		if (session == null || session.getAttribute("authUser") == null) {
+			httpResponse.sendRedirect(contextPath + "/login");
+		}
 	}
 
 	private void doAfterProcessing(ServletRequest request, ServletResponse response)
 			throws IOException, ServletException {
-		if (debug)
+		if (debug) {
 			log("AuthFilter:DoAfterProcessing");
-		// Write code here to process the request and/or response after the rest of the
-		// filter chain
-		// is invoked.
+		}
 	}
 
 	@Override
 	public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
 			throws IOException, ServletException {
-		if (debug)
+		if (debug) {
 			log("AuthFilter:doFilter()");
+		}
+
+		HttpServletRequest httpRequest = (HttpServletRequest) request;
+		HttpServletResponse httpResponse = (HttpServletResponse) response;
+
+		// Xu ly auth, lay response ngay de kiem tra co redirect khong
+		boolean isPublic = false;
+		String contextPath = httpRequest.getContextPath();
+		String path = httpRequest.getRequestURI().substring(contextPath.length()).toLowerCase();
+
+		if (isPublic(path)) {
+			isPublic = true;
+		} else {
+			HttpSession session = httpRequest.getSession(false);
+			if (session != null && session.getAttribute("authUser") != null) {
+				isPublic = true;
+			}
+		}
+
+		if (!isPublic) {
+			// Chua dang nhap -> redirect den /login
+			httpResponse.sendRedirect(contextPath + "/login");
+			return;
+		}
+
+		// Da dang nhap hoac la trang public -> cho di qua
 		doBeforeProcessing(request, response);
 		Throwable problem = null;
 		try {
@@ -60,10 +98,12 @@ public class AuthFilter implements Filter {
 		}
 		doAfterProcessing(request, response);
 		if (problem != null) {
-			if (problem instanceof ServletException)
+			if (problem instanceof ServletException) {
 				throw (ServletException) problem;
-			if (problem instanceof IOException)
+			}
+			if (problem instanceof IOException) {
 				throw (IOException) problem;
+			}
 			sendProcessingError(problem, response);
 		}
 	}
@@ -79,8 +119,9 @@ public class AuthFilter implements Filter {
 	public void init(FilterConfig config) {
 		this.filterConfig = config;
 		if (filterConfig != null) {
-			if (debug)
+			if (debug) {
 				log("AuthFilter:Initializing filter");
+			}
 		}
 	}
 
@@ -89,8 +130,9 @@ public class AuthFilter implements Filter {
 
 	@Override
 	public String toString() {
-		if (filterConfig == null)
+		if (filterConfig == null) {
 			return "AuthFilter()";
+		}
 		StringBuilder sb = new StringBuilder("AuthFilter(");
 		sb.append(filterConfig);
 		sb.append(")");
@@ -107,7 +149,6 @@ public class AuthFilter implements Filter {
 				PrintWriter pw = new PrintWriter(ps);
 				pw.print("<html>\n<head>\n<title>Error</title>\n</head>\n<body>\n"); // NOI18N
 
-				// PENDING! Localize this for next official release
 				pw.print("<h1>The resource did not process correctly</h1>\n<pre>\n");
 				pw.print(stackTrace);
 				pw.print("</pre></body>\n</html>"); // NOI18N
@@ -128,6 +169,28 @@ public class AuthFilter implements Filter {
 	}
 
 	public void log(String msg) {
-		filterConfig.getServletContext().log(msg);
+		if (filterConfig != null) {
+			filterConfig.getServletContext().log(msg);
+		}
+	}
+
+	private boolean isPublic(String path) {
+		if (path.equals("/") || path.equals(""))
+			return true;
+		if (path.endsWith(".css") || path.endsWith(".js") || path.endsWith(".png") || path.endsWith(".jpg")
+				|| path.endsWith(".jpeg") || path.endsWith(".gif") || path.endsWith(".svg") || path.endsWith(".ico")
+				|| path.endsWith(".woff") || path.endsWith(".woff2") || path.endsWith(".ttf"))
+			return true;
+		if (path.startsWith("/assets/"))
+			return true;
+		if (path.startsWith("/views/error/"))
+			return true;
+		if (path.startsWith("/login"))
+			return true;
+		if (path.startsWith("/auth/forgot-password"))
+			return true;
+		if (path.startsWith("/reset-password"))
+			return true;
+		return false;
 	}
 }

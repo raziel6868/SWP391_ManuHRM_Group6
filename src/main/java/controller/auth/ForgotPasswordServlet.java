@@ -34,7 +34,8 @@ public class ForgotPasswordServlet extends HttpServlet {
 		String employeeCode = request.getParameter("employeeCode");
 
 		if (employeeCode == null || employeeCode.trim().isEmpty()) {
-			forwardWithMessage(request, response, "error", "Vui lòng nhập Mã nhân viên!");
+			request.setAttribute("errorMsg", "Vui lòng nhập Mã nhân viên!");
+			request.getRequestDispatcher("/views/auth/forgot-password.jsp").forward(request, response);
 			return;
 		}
 
@@ -42,16 +43,11 @@ public class ForgotPasswordServlet extends HttpServlet {
 		String result = ticketDAO.createResetTicket(employeeCode.trim());
 
 		if ("SUCCESS".equals(result)) {
-			forwardWithMessage(request, response, "success",
+			request.setAttribute("successMsg",
 					"Gửi yêu cầu thành công! Vui lòng liên hệ Admin để nhận lại mật khẩu mới mặc định");
 		} else {
-			forwardWithMessage(request, response, "error", result);
+			request.setAttribute("errorMsg", result);
 		}
-	}
-
-	private void forwardWithMessage(HttpServletRequest request, HttpServletResponse response, String type,
-			String message) throws ServletException, IOException {
-		request.setAttribute(type, message);
 		request.getRequestDispatcher("/views/auth/forgot-password.jsp").forward(request, response);
 	}
 }

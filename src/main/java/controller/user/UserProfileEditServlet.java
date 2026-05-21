@@ -92,12 +92,12 @@ public class UserProfileEditServlet extends HttpServlet {
 				// Thành công thì quay về trang hiển thị Profile chính
 				response.sendRedirect(request.getContextPath() + "/profile");
 			} else {
-				request.setAttribute("error", "Failed to update profile changes into database. Please try again.");
+				request.setAttribute("errorMsg", "Lỗi: Không thể cập nhật hồ sơ. Vui lòng thử lại.");
 				request.setAttribute("user", authUser);
 				request.getRequestDispatcher("/views/user/profile-edit.jsp").forward(request, response);
 			}
 		} catch (NumberFormatException e) {
-			request.setAttribute("error", "Invalid user identity session data!");
+			request.setAttribute("errorMsg", "Dữ liệu không hợp lệ!");
 			request.getRequestDispatcher("/views/user/profile-edit.jsp").forward(request, response);
 		}
 	}

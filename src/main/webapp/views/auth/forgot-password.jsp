@@ -18,11 +18,11 @@
             <p class="body-md text-muted mt-2">Nhập mã nhân viên hoặc tên tài khoản để gửi yêu cầu đặt lại mật khẩu đến Ban Quản trị HR.</p>
         </div>
 
-        <c:if test="${not empty error}">
-            <div class="alert alert-danger border-0 small shadow-sm mb-3">${error}</div>
+        <c:if test="${not empty errorMsg}">
+            <div class="alert alert-danger border-0 small shadow-sm mb-3">${errorMsg}</div>
         </c:if>
-        <c:if test="${not empty success}">
-            <div class="alert alert-success border-0 small shadow-sm mb-3">${success}</div>
+        <c:if test="${not empty successMsg}">
+            <div class="alert alert-success border-0 small shadow-sm mb-3">${successMsg}</div>
         </c:if>
 
         <form action="${pageContext.request.contextPath}/forgot-password" method="POST">

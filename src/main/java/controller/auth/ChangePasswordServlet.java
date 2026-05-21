@@ -101,7 +101,7 @@ public class ChangePasswordServlet extends HttpServlet {
 
 	private void forwardWithError(HttpServletRequest request, HttpServletResponse response, String message,
 			boolean isRequired) throws ServletException, IOException {
-		request.setAttribute("error", message);
+		request.setAttribute("errorMsg", message);
 		request.setAttribute("isRequired", isRequired);
 		request.getRequestDispatcher("/views/auth/change-password.jsp").forward(request, response);
 	}

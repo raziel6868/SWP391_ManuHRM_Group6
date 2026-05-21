@@ -10,11 +10,6 @@ import jakarta.servlet.http.HttpServletResponse;
 
 import java.io.IOException;
 
-/**
- * Servlet responsible for toggling the active status of a role. Only allows
- * deactivating a role if there are no active users assigned to it. Only allows
- * activating a role if there are no users with this role.
- */
 @WebServlet(name = "RoleStatusServlet", urlPatterns = {"/role-status"})
 public class RoleStatusServlet extends HttpServlet {
 
@@ -36,10 +31,24 @@ public class RoleStatusServlet extends HttpServlet {
 			Long roleId = Long.parseLong(idStr);
 			boolean newStatus = Boolean.parseBoolean(isActiveStr);
 
+			model.Role role = roleDAO.getById(roleId);
+			if (role == null) {
+				response.sendRedirect(request.getContextPath() + "/role-list");
+				return;
+			}
+
 			if (!newStatus) { // Đang cố gắng VÔ HIỆU HÓA role
+				// Chỉ cho phép deactive LINE_MANAGER và EMPLOYEE roles
+				String roleName = role.getName();
+				if (!"LINE_MANAGER".equals(roleName) && !"EMPLOYEE".equals(roleName)) {
+					request.getSession().setAttribute("errorMsg",
+							"Chỉ có thể vô hiệu hóa vai trò Line Manager và Employee.");
+					response.sendRedirect(request.getContextPath() + "/role-list");
+					return;
+				}
+
 				int activeUserCount = userDAO.countActiveUsersByRoleId(roleId);
 				if (activeUserCount > 0) {
-					// Có user đang active dùng role này -> không cho khóa
 					request.getSession().setAttribute("errorMsg", "Không thể vô hiệu hóa vai trò này. Hiện có "
 							+ activeUserCount + " nhân viên đang hoạt động đang sử dụng vai trò này.");
 					response.sendRedirect(request.getContextPath() + "/role-list");
@@ -47,11 +56,9 @@ public class RoleStatusServlet extends HttpServlet {
 				}
 			}
 
-			// Tiến hành cập nhật trạng thái
 			boolean success = roleDAO.updateStatus(roleId, newStatus);
 			if (success) {
-				String message = newStatus ? "successMsg" : "successMsg";
-				request.getSession().setAttribute(message,
+				request.getSession().setAttribute("successMsg",
 						newStatus ? "Kích hoạt vai trò thành công!" : "Vô hiệu hóa vai trò thành công!");
 			}
 

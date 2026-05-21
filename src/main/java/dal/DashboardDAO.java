@@ -8,10 +8,6 @@ import dto.DashboardStats;
 
 public class DashboardDAO {
 
-	public DashboardStats getStats() {
-		return getDashboardStats();
-	}
-
 	public DashboardStats getDashboardStats() {
 		String sql = """
 				SELECT

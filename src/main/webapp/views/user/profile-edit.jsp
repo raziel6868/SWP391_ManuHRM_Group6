@@ -7,7 +7,7 @@
     <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title>Chỉnh sửa hồ sơ - ManuHRM</title>
-    <jsp:include page="/components/head.jsp" />
+    <link href="${pageContext.request.contextPath}/assets/css/main.css" rel="stylesheet">
 </head>
 <body class="bg-background text-on-surface">
 
@@ -53,7 +53,6 @@
                         <hr class="my-4 border-outline-variant opacity-25">
 
                         <div class="bg-surface-container-low p-3 rounded mb-4">
-                            <p class="small fw-bold text-danger text-uppercase mb-2"><span class="material-symbols-outlined align-middle" style="font-size: 16px;">lock</span> Thông tin bị giới hạn bởi HR</p>
                             <div class="row g-3">
                                 <div class="col-6">
                                     <span class="text-muted small">Mã nhân viên:</span> <strong class="font-monospace text-on-surface">${user.employeeCode}</strong>

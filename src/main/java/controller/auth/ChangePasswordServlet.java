@@ -8,7 +8,11 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import model.User;
-import org.mindrot.jbcrypt.BCrypt;
+import util.PasswordUtil;
+import dal.DBContext;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 
 import java.io.IOException;
 
@@ -49,22 +53,41 @@ public class ChangePasswordServlet extends HttpServlet {
 		String newPassword = request.getParameter("newPassword");
 		String confirmPassword = request.getParameter("confirmPassword");
 
-		if (currentPassword == null || currentPassword.isBlank()) {
-			forwardWithError(request, response, "Vui lòng nhập mật khẩu hiện tại.", isRequired, user);
-			return;
+		// Chỉ kiểm tra mật khẩu cũ nếu KHÔNG bắt buộc đổi mật khẩu (tức user tự đổi)
+		if (!isRequired) {
+			if (currentPassword == null || currentPassword.isBlank()) {
+				forwardWithError(request, response, "Vui lòng nhập mật khẩu hiện tại.", isRequired);
+				return;
+			}
+
+			String selectSql = "SELECT password_hash FROM users WHERE id = ?";
+			try (Connection conn = DBContext.getConnection(); PreparedStatement ps = conn.prepareStatement(selectSql)) {
+				ps.setLong(1, user.getId());
+				try (ResultSet rs = ps.executeQuery()) {
+					if (rs.next()) {
+						String storedHash = rs.getString("password_hash");
+						if (!util.PasswordUtil.checkPassword(currentPassword, storedHash)) {
+							forwardWithError(request, response, "Mật khẩu hiện tại không chính xác.", isRequired);
+							return;
+						}
+					}
+				}
+			} catch (Exception e) {
+				System.err.println("ChangePassword: " + e.getMessage());
+			}
 		}
 
 		if (newPassword == null || newPassword.length() < 6) {
-			forwardWithError(request, response, "Mật khẩu mới phải có ít nhất 6 ký tự.", isRequired, user);
+			forwardWithError(request, response, "Mật khẩu mới phải có ít nhất 6 ký tự.", isRequired);
 			return;
 		}
 
 		if (!newPassword.equals(confirmPassword)) {
-			forwardWithError(request, response, "Mật khẩu xác nhận không khớp.", isRequired, user);
+			forwardWithError(request, response, "Mật khẩu xác nhận không khớp.", isRequired);
 			return;
 		}
 
-		String newHash = BCrypt.hashpw(newPassword, BCrypt.gensalt(12));
+		String newHash = PasswordUtil.hashPassword(newPassword);
 		if (userDAO.resetPassword(user.getId(), newHash, false)) {
 			user.setMustChangePassword(false);
 			user.setPasswordHash(newHash);
@@ -72,12 +95,12 @@ public class ChangePasswordServlet extends HttpServlet {
 			session.setAttribute("successMsg", "Đổi mật khẩu thành công!");
 			response.sendRedirect(request.getContextPath() + "/home");
 		} else {
-			forwardWithError(request, response, "Không thể đổi mật khẩu. Vui lòng thử lại.", isRequired, user);
+			forwardWithError(request, response, "Không thể đổi mật khẩu. Vui lòng thử lại.", isRequired);
 		}
 	}
 
 	private void forwardWithError(HttpServletRequest request, HttpServletResponse response, String message,
-			boolean isRequired, User user) throws ServletException, IOException {
+			boolean isRequired) throws ServletException, IOException {
 		request.setAttribute("error", message);
 		request.setAttribute("isRequired", isRequired);
 		request.getRequestDispatcher("/views/auth/change-password.jsp").forward(request, response);

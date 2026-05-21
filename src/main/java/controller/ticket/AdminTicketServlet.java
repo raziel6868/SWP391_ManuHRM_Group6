@@ -37,12 +37,6 @@ public class AdminTicketServlet extends HttpServlet {
 		List<PasswordReset> tickets = ticketDAO.getPendingTickets();
 		request.setAttribute("tickets", tickets);
 
-		String randomPassword = (String) session.getAttribute("randomPassword");
-		if (randomPassword != null) {
-			request.setAttribute("randomPassword", randomPassword);
-			session.removeAttribute("randomPassword");
-		}
-
 		request.getRequestDispatcher("/views/ticket/admin-ticket.jsp").forward(request, response);
 	}
 
@@ -91,25 +85,16 @@ public class AdminTicketServlet extends HttpServlet {
 			} else {
 				session.setAttribute("errorMsg", result.getMessage());
 			}
-		} else if ("randomize".equals(action)) {
-			String randomPw = ticketDAO.generateRandomPassword();
-			session.setAttribute("randomPassword", randomPw);
-			session.setAttribute("pendingTicketId", ticketId);
 			response.sendRedirect(request.getContextPath() + "/admin/tickets");
-			return;
-		} else if ("edit".equals(action)) {
-			session.setAttribute("pendingTicketId", ticketId);
-			session.setAttribute("randomPassword", ticketDAO.generateRandomPassword());
-			response.sendRedirect(request.getContextPath() + "/admin/tickets");
-			return;
 		} else if ("reject".equals(action)) {
 			if (ticketDAO.rejectTicket(ticketId, admin.getId())) {
 				session.setAttribute("successMsg", "Đã từ chối yêu cầu!");
 			} else {
 				session.setAttribute("errorMsg", "Không thể từ chối yêu cầu!");
 			}
+			response.sendRedirect(request.getContextPath() + "/admin/tickets");
+		} else {
+			response.sendRedirect(request.getContextPath() + "/admin/tickets");
 		}
-
-		response.sendRedirect(request.getContextPath() + "/admin/tickets");
 	}
 }

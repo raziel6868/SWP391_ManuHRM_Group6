@@ -26,7 +26,7 @@ public class NotificationFilter implements Filter {
 
 		if (session != null) {
 			User user = (User) session.getAttribute("authUser");
-			if (user != null && ("ADMIN".equals(user.getRoleName()) || "HR".equals(user.getRoleName()))) {
+			if (user != null && ("SYSADMIN".equals(user.getRoleName()) || "HR_MANAGER".equals(user.getRoleName()))) {
 				int count = ticketDAO.countPendingTickets();
 				session.setAttribute("pendingTicketCount", count);
 			}

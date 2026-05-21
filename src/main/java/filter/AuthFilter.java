@@ -67,45 +67,49 @@ public class AuthFilter implements Filter {
 		HttpServletRequest httpRequest = (HttpServletRequest) request;
 		HttpServletResponse httpResponse = (HttpServletResponse) response;
 
-		// Xu ly auth, lay response ngay de kiem tra co redirect khong
-		boolean isPublic = false;
 		String contextPath = httpRequest.getContextPath();
 		String path = httpRequest.getRequestURI().substring(contextPath.length()).toLowerCase();
 
+		// Public paths - cho qua
 		if (isPublic(path)) {
-			isPublic = true;
-		} else {
-			HttpSession session = httpRequest.getSession(false);
-			if (session != null && session.getAttribute("authUser") != null) {
-				isPublic = true;
-			}
+			chain.doFilter(request, response);
+			return;
 		}
 
-		if (!isPublic) {
-			// Chua dang nhap -> redirect den /login
+		HttpSession session = httpRequest.getSession(false);
+		if (session == null || session.getAttribute("authUser") == null) {
 			httpResponse.sendRedirect(contextPath + "/login");
 			return;
 		}
 
-		// Da dang nhap hoac la trang public -> cho di qua
-		doBeforeProcessing(request, response);
-		Throwable problem = null;
-		try {
-			chain.doFilter(request, response);
-		} catch (Throwable t) {
-			problem = t;
-			t.printStackTrace();
-		}
-		doAfterProcessing(request, response);
-		if (problem != null) {
-			if (problem instanceof ServletException) {
-				throw (ServletException) problem;
+		model.User authUser = (model.User) session.getAttribute("authUser");
+		String roleName = authUser.getRoleName();
+
+		// Employee: chỉ được xem profile, redirect các trang khác
+		if ("EMPLOYEE".equals(roleName)) {
+			if (isManagerOnly(path)) {
+				session.setAttribute("errorMsg", "Bạn không có quyền truy cập trang này.");
+				httpResponse.sendRedirect(contextPath + "/profile");
+				return;
 			}
-			if (problem instanceof IOException) {
-				throw (IOException) problem;
+			if (isAdminOnly(path)) {
+				session.setAttribute("errorMsg", "Bạn không có quyền truy cập trang này.");
+				httpResponse.sendRedirect(contextPath + "/profile");
+				return;
 			}
-			sendProcessingError(problem, response);
 		}
+
+		// Line Manager: không được vào role management
+		if ("LINE_MANAGER".equals(roleName)) {
+			if (isAdminOnly(path)) {
+				session.setAttribute("errorMsg", "Bạn không có quyền truy cập trang này.");
+				httpResponse.sendRedirect(contextPath + "/user-list");
+				return;
+			}
+		}
+
+		// HR Manager và Sysadmin: được vào tất cả
+		chain.doFilter(request, response);
 	}
 
 	public FilterConfig getFilterConfig() {
@@ -192,5 +196,15 @@ public class AuthFilter implements Filter {
 		if (path.startsWith("/reset-password"))
 			return true;
 		return false;
+	}
+
+	private boolean isAdminOnly(String path) {
+		// Chỉ Admin (Sysadmin/HR_Manager) được vào trang quản lý vai trò
+		return path.startsWith("/role-list") || path.startsWith("/role-permission") || path.startsWith("/role-status");
+	}
+
+	private boolean isManagerOnly(String path) {
+		// Chỉ Line Manager trở lên được vào trang quản lý nhân viên
+		return path.startsWith("/user-list") || path.startsWith("/user-detail") || path.startsWith("/user-status");
 	}
 }

@@ -6,13 +6,10 @@ import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
 import model.User;
 
-/**
- * Servlet responsible for rendering the detailed view of a specific user.
- * Displays all relevant user profile information and status.
- */
 @WebServlet(name = "UserDetailServlet", urlPatterns = {"/user-detail"})
 public class UserDetailServlet extends HttpServlet {
 
@@ -37,14 +34,26 @@ public class UserDetailServlet extends HttpServlet {
 			return;
 		}
 
-		User user = userDAO.getById(id);
+		HttpSession session = request.getSession(false);
+		User authUser = (User) session.getAttribute("authUser");
+		User targetUser = userDAO.getById(id);
 
-		if (user == null) {
+		if (targetUser == null) {
 			response.sendRedirect("user-list");
 			return;
 		}
 
-		request.setAttribute("user", user);
+		// Mọi người đều có thể xem user detail
+		// Nhưng Line Manager chỉ xem được user dưới quyền
+		if ("LINE_MANAGER".equals(authUser.getRoleName())) {
+			if (targetUser.getManagerId() == null || !targetUser.getManagerId().equals(authUser.getId())) {
+				session.setAttribute("errorMsg", "Bạn không có quyền xem thông tin nhân viên này.");
+				response.sendRedirect("user-list");
+				return;
+			}
+		}
+
+		request.setAttribute("user", targetUser);
 		request.getRequestDispatcher("/views/user/user-detail.jsp").forward(request, response);
 	}
 }

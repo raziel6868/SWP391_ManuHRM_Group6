@@ -8,17 +8,14 @@ import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
 import java.util.List;
 import model.Department;
 import model.Role;
 import model.User;
+import util.PermissionUtil;
 
-/**
- * Servlet responsible for handling the User Management list view. Supports
- * pagination, and complex filtering by department, role, status, and employee
- * type.
- */
 @WebServlet(name = "UserListServlet", urlPatterns = {"/user-list"})
 public class UserListServlet extends HttpServlet {
 
@@ -31,6 +28,9 @@ public class UserListServlet extends HttpServlet {
 	@Override
 	protected void doGet(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
+		HttpSession session = request.getSession(false);
+		User authUser = (User) session.getAttribute("authUser");
+
 		String keyword = request.getParameter("keyword");
 		String deptParam = request.getParameter("departmentId");
 		String roleParam = request.getParameter("roleId");
@@ -52,12 +52,23 @@ public class UserListServlet extends HttpServlet {
 			page = 1;
 		int offset = (page - 1) * PAGE_SIZE;
 
-		List<User> users = userDAO.searchUsers(keyword, departmentId, roleId, isActive, employeeType, offset,
-				PAGE_SIZE);
-		int totalRecords = userDAO.countUsers(keyword, departmentId, roleId, isActive, employeeType);
+		// Line Manager chỉ thấy user dưới quyền mình
+		Long managerId = null;
+		if ("LINE_MANAGER".equals(authUser.getRoleName())) {
+			managerId = authUser.getId();
+		}
+
+		List<User> users = userDAO.searchUsers(keyword, departmentId, roleId, isActive, employeeType, offset, PAGE_SIZE,
+				managerId);
+		int totalRecords = userDAO.countUsers(keyword, departmentId, roleId, isActive, employeeType, managerId);
 		int totalPages = (int) Math.ceil((double) totalRecords / PAGE_SIZE);
 		List<Department> departments = departmentDAO.getActiveDepartments();
 		List<Role> roles = roleDAO.getActiveRoles();
+
+		// Truyền thông tin RBAC xuống JSP
+		int authUserRank = PermissionUtil.getRoleRank(authUser.getRoleName());
+		request.setAttribute("authUserRank", authUserRank);
+		request.setAttribute("authUserId", authUser.getId());
 
 		request.setAttribute("users", users);
 		request.setAttribute("departments", departments);

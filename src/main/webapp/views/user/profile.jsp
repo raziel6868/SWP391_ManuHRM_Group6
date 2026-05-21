@@ -7,7 +7,7 @@
     <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title>Hồ sơ của tôi - ManuHRM</title>
-    <jsp:include page="/components/head.jsp" />
+    <link href="${pageContext.request.contextPath}/assets/css/main.css" rel="stylesheet">
 </head>
 <body class="bg-background text-on-surface">
 
@@ -145,7 +145,6 @@
             </div>
 
             <footer class="w-100 py-3 border-top border-outline-variant bg-surface d-flex justify-content-between align-items-center px-4 mt-auto">
-                <p class="label-md fw-bold text-on-surface mb-0" style="font-size: 13px;">&copy; 2026 ManuHRM Industrial Solutions. Bảo lưu mọi quyền.</p>
                 <div class="d-flex gap-4">
                     <a class="text-on-surface-variant text-decoration-none label-sm hover-primary" href="#">Chính sách bảo mật</a>
                     <a class="text-on-surface-variant text-decoration-none label-sm hover-primary" href="#">Tuân thủ</a>

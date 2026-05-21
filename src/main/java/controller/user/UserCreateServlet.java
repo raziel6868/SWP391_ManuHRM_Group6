@@ -8,8 +8,10 @@ import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
 import model.User;
+import java.sql.Date;
 import util.PasswordUtil;
 import util.ValidationUtil;
 
@@ -23,6 +25,16 @@ public class UserCreateServlet extends HttpServlet {
 	@Override
 	protected void doGet(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
+		HttpSession session = request.getSession(false);
+		model.User authUser = (model.User) session.getAttribute("authUser");
+
+		// Chỉ HR_Manager và Sysadmin mới được tạo user
+		if ("EMPLOYEE".equals(authUser.getRoleName()) || "LINE_MANAGER".equals(authUser.getRoleName())) {
+			session.setAttribute("errorMsg", "Bạn không có quyền thêm nhân viên mới.");
+			response.sendRedirect(request.getContextPath() + "/user-list");
+			return;
+		}
+
 		request.setAttribute("departments", departmentDAO.getActiveDepartments());
 		request.setAttribute("roles", roleDAO.getActiveRoles());
 		request.setAttribute("managers", userDAO.searchUsers("", null, null, true, null, 0, 1000));
@@ -32,6 +44,16 @@ public class UserCreateServlet extends HttpServlet {
 	@Override
 	protected void doPost(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
+		HttpSession session = request.getSession(false);
+		model.User authUser = (model.User) session.getAttribute("authUser");
+
+		// Chỉ HR_Manager và Sysadmin mới được tạo user
+		if ("EMPLOYEE".equals(authUser.getRoleName()) || "LINE_MANAGER".equals(authUser.getRoleName())) {
+			session.setAttribute("errorMsg", "Bạn không có quyền thêm nhân viên mới.");
+			response.sendRedirect(request.getContextPath() + "/user-list");
+			return;
+		}
+
 		request.setCharacterEncoding("UTF-8");
 
 		String employeeCode = request.getParameter("employeeCode");
@@ -125,7 +147,7 @@ public class UserCreateServlet extends HttpServlet {
 
 			String dobStr = request.getParameter("dob");
 			if (dobStr != null && !dobStr.trim().isEmpty()) {
-				user.setDob(java.sql.Date.valueOf(dobStr));
+				user.setDob(Date.valueOf(dobStr));
 			}
 
 			user.setJobTitle(request.getParameter("jobTitle"));

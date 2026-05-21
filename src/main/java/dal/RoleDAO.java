@@ -12,11 +12,6 @@ public class RoleDAO {
 
 	// === QUERY: Lấy danh sách Role ===
 
-	public List<Role> getAllRoles() {
-		return getRoles("SELECT id, name, display_name, description, is_active, is_system FROM roles ORDER BY id ASC",
-				null);
-	}
-
 	public List<Role> getActiveRoles() {
 		return getRoles("""
 				SELECT id, name, display_name, description, is_active, is_system

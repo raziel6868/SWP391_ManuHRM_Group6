@@ -26,22 +26,6 @@ public class DepartmentDAO {
 		return list;
 	}
 
-	public Department getById(Long id) {
-		if (id == null)
-			return null;
-		String sql = "SELECT id, name, department_type, parent_id, is_active FROM departments WHERE id = ?";
-		try (Connection conn = DBContext.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
-			ps.setLong(1, id);
-			try (ResultSet rs = ps.executeQuery()) {
-				if (rs.next())
-					return mapRow(rs);
-			}
-		} catch (SQLException e) {
-			System.err.println("DepartmentDAO.getById() ERROR: " + e.getMessage());
-		}
-		return null;
-	}
-
 	private Department mapRow(ResultSet rs) throws SQLException {
 		Department d = new Department();
 		d.setId(rs.getLong("id"));

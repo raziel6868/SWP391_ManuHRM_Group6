@@ -1,12 +1,13 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 <%@ taglib prefix="c" uri="jakarta.tags.core" %>
+<%@ taglib prefix="fn" uri="jakarta.tags.functions" %>
 <!DOCTYPE html>
 <html lang="vi">
 <head>
     <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title>Quản lý nhân sự - ManuHRM</title>
-    <jsp:include page="/components/head.jsp" />
+    <link href="${pageContext.request.contextPath}/assets/css/main.css" rel="stylesheet">
 </head>
 <body class="bg-background text-on-surface">
     <div class="layout-wrapper">
@@ -20,10 +21,12 @@
                         <h2 class="h3 text-on-surface fw-bold mb-1">Quản lý nhân sự</h2>
                         <p class="body-md text-on-surface-variant mb-0">Danh sách nhân viên (${totalRecords} người)</p>
                     </div>
+                    <c:if test="${sessionScope.authUser.roleName != 'LINE_MANAGER' && sessionScope.authUser.roleName != 'EMPLOYEE'}">
                     <a href="${pageContext.request.contextPath}/user-create" class="btn-primary-gradient text-decoration-none px-3 py-2 d-flex align-items-center gap-2 shadow-sm">
                         <span class="material-symbols-outlined" style="font-size: 1.125rem;">person_add</span>
                         Thêm nhân viên
                     </a>
+                    </c:if>
                 </div>
 
                 <div class="card-premium overflow-hidden d-flex flex-column mb-4 w-100">
@@ -124,10 +127,12 @@
                                                         <a href="${pageContext.request.contextPath}/user-detail?id=${u.id}" class="btn btn-sm btn-icon text-on-surface-variant hover-primary" title="Xem chi tiết">
                                                             <span class="material-symbols-outlined" style="font-size: 1.25rem;">visibility</span>
                                                         </a>
+                                                        <c:if test="${authUserRank >= u.roleRank && authUserId != u.id}">
                                                         <a href="${pageContext.request.contextPath}/user-update?id=${u.id}" class="btn btn-sm btn-icon text-on-surface-variant hover-primary" title="Chỉnh sửa">
                                                             <span class="material-symbols-outlined" style="font-size: 1.25rem;">edit</span>
                                                         </a>
-                                                        <c:if test="${u.id != sessionScope.authUser.id}">
+                                                        </c:if>
+                                                        <c:if test="${authUserRank >= u.roleRank && authUserId != u.id}">
                                                             <form method="post" action="${pageContext.request.contextPath}/user-status" class="d-inline m-0">
                                                                 <input type="hidden" name="id" value="${u.id}" />
                                                                 <input type="hidden" name="referer" value="list" />

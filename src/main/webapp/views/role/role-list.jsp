@@ -6,7 +6,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Quản lý vai trò - ManuHRM</title>
-    <jsp:include page="/components/head.jsp" />
+    <link href="${pageContext.request.contextPath}/assets/css/main.css" rel="stylesheet">
 </head>
 <body class="bg-background text-on-surface">
     <div class="layout-wrapper">
@@ -105,7 +105,7 @@
                                                     class="btn btn-sm btn-icon text-on-surface-variant hover-primary" title="Phân quyền">
                                                     <span class="material-symbols-outlined" style="font-size: 1.25rem;">key</span>
                                                 </a>
-                                                <c:if test="${!r.isSystem}">
+                                                <c:if test="${r.name == 'LINE_MANAGER' || r.name == 'EMPLOYEE'}">
                                                     <form action="${pageContext.request.contextPath}/role-status" method="POST" class="d-inline m-0">
                                                         <input type="hidden" name="id" value="${r.id}" />
                                                         <input type="hidden" name="isActive" value="${!r.isActive}" />

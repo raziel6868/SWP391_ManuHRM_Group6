@@ -13,11 +13,13 @@ public class NotificationFilter implements Filter {
 	private FilterConfig filterConfig = null;
 	private final TicketDAO ticketDAO = new TicketDAO();
 
-	public NotificationFilter() {}
+	public NotificationFilter() {
+	}
 
 	private void doBeforeProcessing(ServletRequest request, ServletResponse response)
 			throws IOException, ServletException {
-		if (debug) log("NotificationFilter:DoBeforeProcessing");
+		if (debug)
+			log("NotificationFilter:DoBeforeProcessing");
 
 		HttpServletRequest httpRequest = (HttpServletRequest) request;
 		HttpSession session = httpRequest.getSession(false);
@@ -33,13 +35,15 @@ public class NotificationFilter implements Filter {
 
 	private void doAfterProcessing(ServletRequest request, ServletResponse response)
 			throws IOException, ServletException {
-		if (debug) log("NotificationFilter:DoAfterProcessing");
+		if (debug)
+			log("NotificationFilter:DoAfterProcessing");
 	}
 
 	@Override
 	public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
 			throws IOException, ServletException {
-		if (debug) log("NotificationFilter:doFilter()");
+		if (debug)
+			log("NotificationFilter:doFilter()");
 
 		doBeforeProcessing(request, response);
 		Throwable problem = null;
@@ -51,18 +55,22 @@ public class NotificationFilter implements Filter {
 		}
 		doAfterProcessing(request, response);
 		if (problem != null) {
-			if (problem instanceof ServletException) throw (ServletException) problem;
-			if (problem instanceof IOException) throw (IOException) problem;
+			if (problem instanceof ServletException)
+				throw (ServletException) problem;
+			if (problem instanceof IOException)
+				throw (IOException) problem;
 			sendProcessingError(problem, response);
 		}
 	}
 
 	public void init(FilterConfig config) {
 		this.filterConfig = config;
-		if (filterConfig != null && debug) log("NotificationFilter:Initializing filter");
+		if (filterConfig != null && debug)
+			log("NotificationFilter:Initializing filter");
 	}
 
-	public void destroy() {}
+	public void destroy() {
+	}
 
 	public FilterConfig getFilterConfig() {
 		return this.filterConfig;

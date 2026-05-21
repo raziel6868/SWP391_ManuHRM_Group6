@@ -1,55 +1,50 @@
 package filter;
 
+import dal.TicketDAO;
 import jakarta.servlet.*;
-import jakarta.servlet.annotation.*;
+import jakarta.servlet.http.*;
+import model.User;
+
 import java.io.*;
 
-public class RbacFilter implements Filter {
+public class NotificationFilter implements Filter {
 
 	private static final boolean debug = true;
-
 	private FilterConfig filterConfig = null;
+	private final TicketDAO ticketDAO = new TicketDAO();
 
-	public RbacFilter() {
-	}
-
-	public static String getStackTrace(Throwable t) {
-		String stackTrace = null;
-		try {
-			StringWriter sw = new StringWriter();
-			PrintWriter pw = new PrintWriter(sw);
-			t.printStackTrace(pw);
-			pw.close();
-			sw.close();
-			stackTrace = sw.getBuffer().toString();
-		} catch (Exception ex) {
-		}
-		return stackTrace;
+	public NotificationFilter() {
 	}
 
 	private void doBeforeProcessing(ServletRequest request, ServletResponse response)
 			throws IOException, ServletException {
 		if (debug)
-			log("RbacFilter:DoBeforeProcessing");
-		// Write code here to process the request and/or response before the rest of the
-		// filter
-		// chain is invoked.
+			log("NotificationFilter:DoBeforeProcessing");
+
+		HttpServletRequest httpRequest = (HttpServletRequest) request;
+		HttpSession session = httpRequest.getSession(false);
+
+		if (session != null) {
+			User user = (User) session.getAttribute("authUser");
+			if (user != null && ("ADMIN".equals(user.getRoleName()) || "HR".equals(user.getRoleName()))) {
+				int count = ticketDAO.countPendingTickets();
+				session.setAttribute("pendingTicketCount", count);
+			}
+		}
 	}
 
 	private void doAfterProcessing(ServletRequest request, ServletResponse response)
 			throws IOException, ServletException {
 		if (debug)
-			log("RbacFilter:DoAfterProcessing");
-		// Write code here to process the request and/or response after the rest of the
-		// filter chain
-		// is invoked.
+			log("NotificationFilter:DoAfterProcessing");
 	}
 
 	@Override
 	public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
 			throws IOException, ServletException {
 		if (debug)
-			log("RbacFilter:doFilter()");
+			log("NotificationFilter:doFilter()");
+
 		doBeforeProcessing(request, response);
 		Throwable problem = null;
 		try {
@@ -68,33 +63,27 @@ public class RbacFilter implements Filter {
 		}
 	}
 
+	public void init(FilterConfig config) {
+		this.filterConfig = config;
+		if (filterConfig != null && debug)
+			log("NotificationFilter:Initializing filter");
+	}
+
+	public void destroy() {
+	}
+
 	public FilterConfig getFilterConfig() {
-		return (this.filterConfig);
+		return this.filterConfig;
 	}
 
 	public void setFilterConfig(FilterConfig filterConfig) {
 		this.filterConfig = filterConfig;
 	}
 
-	public void init(FilterConfig config) {
-		this.filterConfig = config;
+	public void log(String msg) {
 		if (filterConfig != null) {
-			if (debug)
-				log("RbacFilter:Initializing filter");
+			filterConfig.getServletContext().log(msg);
 		}
-	}
-
-	public void destroy() {
-	}
-
-	@Override
-	public String toString() {
-		if (filterConfig == null)
-			return "RbacFilter()";
-		StringBuilder sb = new StringBuilder("RbacFilter(");
-		sb.append(filterConfig);
-		sb.append(")");
-		return sb.toString();
 	}
 
 	private void sendProcessingError(Throwable t, ServletResponse response) {
@@ -105,12 +94,10 @@ public class RbacFilter implements Filter {
 				response.setContentType("text/html");
 				PrintStream ps = new PrintStream(response.getOutputStream());
 				PrintWriter pw = new PrintWriter(ps);
-				pw.print("<html>\n<head>\n<title>Error</title>\n</head>\n<body>\n"); // NOI18N
-
-				// PENDING! Localize this for next official release
+				pw.print("<html>\n<head>\n<title>Error</title>\n</head>\n<body>\n");
 				pw.print("<h1>The resource did not process correctly</h1>\n<pre>\n");
 				pw.print(stackTrace);
-				pw.print("</pre></body>\n</html>"); // NOI18N
+				pw.print("</pre></body>\n</html>");
 				pw.close();
 				ps.close();
 				response.getOutputStream().close();
@@ -127,7 +114,17 @@ public class RbacFilter implements Filter {
 		}
 	}
 
-	public void log(String msg) {
-		filterConfig.getServletContext().log(msg);
+	private String getStackTrace(Throwable t) {
+		String stackTrace = null;
+		try {
+			StringWriter sw = new StringWriter();
+			PrintWriter pw = new PrintWriter(sw);
+			t.printStackTrace(pw);
+			pw.close();
+			sw.close();
+			stackTrace = sw.getBuffer().toString();
+		} catch (Exception ex) {
+		}
+		return stackTrace;
 	}
 }

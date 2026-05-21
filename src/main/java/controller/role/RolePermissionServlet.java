@@ -46,6 +46,7 @@ public class RolePermissionServlet extends HttpServlet {
 			request.setAttribute("role", role);
 			request.setAttribute("allPermissions", allPermissions);
 			request.setAttribute("assignedPermissionIds", assignedPermissionIds);
+			request.setAttribute("isSystemRole", role.getIsSystem() != null && role.getIsSystem());
 
 			request.getRequestDispatcher("/views/role/role-permission.jsp").forward(request, response);
 		} catch (NumberFormatException e) {
@@ -64,6 +65,14 @@ public class RolePermissionServlet extends HttpServlet {
 
 		try {
 			Long roleId = Long.parseLong(roleIdStr);
+			RoleDAO roleDAO = new RoleDAO();
+			Role role = roleDAO.getById(roleId);
+
+			if (role == null || (role.getIsSystem() != null && role.getIsSystem())) {
+				response.sendRedirect(request.getContextPath() + "/role-list");
+				return;
+			}
+
 			String[] permissionIdStrs = request.getParameterValues("permissionIds");
 
 			java.util.List<Long> permissionIds = new java.util.ArrayList<>();

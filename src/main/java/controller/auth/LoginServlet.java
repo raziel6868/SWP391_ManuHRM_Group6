@@ -1,6 +1,7 @@
 package controller.auth;
 
 import dal.UserDAO;
+import dal.PermissionDAO;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
@@ -19,6 +20,7 @@ import util.ValidationUtil;
 @WebServlet(name = "LoginServlet", urlPatterns = {"/login"})
 public class LoginServlet extends HttpServlet {
 	private final UserDAO userDAO = new UserDAO();
+	private final PermissionDAO permissionDAO = new PermissionDAO();
 
 	@Override
 	protected void doGet(HttpServletRequest request, HttpServletResponse response)
@@ -60,12 +62,14 @@ public class LoginServlet extends HttpServlet {
 
 			HttpSession session = request.getSession(true);
 			session.setAttribute("authUser", user);
-
-			// Tải danh sách quyền (permissions) dựa trên Role của User và lưu vào Session
-			dal.PermissionDAO permissionDAO = new dal.PermissionDAO();
 			session.setAttribute("permissions", permissionDAO.getPermissionsByRoleId(user.getRoleId()));
-
 			session.setMaxInactiveInterval(30 * 60);
+
+			// Check if user must change password
+			if (user.getMustChangePassword() != null && user.getMustChangePassword()) {
+				response.sendRedirect(request.getContextPath() + "/change-password");
+				return;
+			}
 
 			response.sendRedirect(request.getContextPath() + "/home");
 		} catch (ServletException | IOException exception) {

@@ -1,30 +1,32 @@
 package controller.user;
 
 import dal.DepartmentDAO;
+import dal.UserDAO;
+import dal.RoleDAO;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
-
-import dal.DepartmentDAO;
+import model.User;
+import util.PasswordUtil;
+import util.ValidationUtil;
 
 @WebServlet(name = "UserCreateServlet", urlPatterns = {"/user-create"})
 public class UserCreateServlet extends HttpServlet {
 
 	private final DepartmentDAO departmentDAO = new DepartmentDAO();
-	private final dal.RoleDAO roleDAO = new dal.RoleDAO();
-	private final dal.UserDAO userDAO = new dal.UserDAO();
+	private final RoleDAO roleDAO = new RoleDAO();
+	private final UserDAO userDAO = new UserDAO();
 
 	@Override
 	protected void doGet(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
 		request.setAttribute("departments", departmentDAO.getActiveDepartments());
 		request.setAttribute("roles", roleDAO.getActiveRoles());
-		// Fetch all active users to be potential managers
-		request.setAttribute("managers", userDAO.searchAndFilter("", null, null, true, null, 0, 1000));
-		request.getRequestDispatcher("/views/user/user-form.jsp").forward(request, response);
+		request.setAttribute("managers", userDAO.searchUsers("", null, null, true, null, 0, 1000));
+		request.getRequestDispatcher("/views/user/user-create.jsp").forward(request, response);
 	}
 
 	@Override
@@ -32,20 +34,93 @@ public class UserCreateServlet extends HttpServlet {
 			throws ServletException, IOException {
 		request.setCharacterEncoding("UTF-8");
 
+		String employeeCode = request.getParameter("employeeCode");
+		String username = request.getParameter("username");
+		String password = request.getParameter("password");
+		String fullName = request.getParameter("fullName");
+
+		// Bước 1: Ép kiểu theo yêu cầu
+		if (employeeCode != null) {
+			employeeCode = employeeCode.trim().toUpperCase();
+		}
+		if (username != null) {
+			username = username.trim().toLowerCase();
+		}
+
+		// Bước 2: Validate rỗng
+		if (ValidationUtil.isBlank(employeeCode)) {
+			setFormAttributes(request);
+			request.setAttribute("errorMsg", "Mã nhân viên không được để trống.");
+			request.getRequestDispatcher("/views/user/user-create.jsp").forward(request, response);
+			return;
+		}
+		if (ValidationUtil.isBlank(username)) {
+			setFormAttributes(request);
+			request.setAttribute("errorMsg", "Tên đăng nhập không được để trống.");
+			request.getRequestDispatcher("/views/user/user-create.jsp").forward(request, response);
+			return;
+		}
+		if (ValidationUtil.isBlank(password)) {
+			setFormAttributes(request);
+			request.setAttribute("errorMsg", "Mật khẩu không được để trống.");
+			request.getRequestDispatcher("/views/user/user-create.jsp").forward(request, response);
+			return;
+		}
+		if (ValidationUtil.isBlank(fullName)) {
+			setFormAttributes(request);
+			request.setAttribute("errorMsg", "Họ và tên không được để trống.");
+			request.getRequestDispatcher("/views/user/user-create.jsp").forward(request, response);
+			return;
+		}
+
+		// Validate độ dài
+		if (employeeCode.length() > 20) {
+			setFormAttributes(request);
+			request.setAttribute("errorMsg", "Mã nhân viên không được vượt quá 20 ký tự.");
+			request.getRequestDispatcher("/views/user/user-create.jsp").forward(request, response);
+			return;
+		}
+		if (username.length() > 50) {
+			setFormAttributes(request);
+			request.setAttribute("errorMsg", "Tên đăng nhập không được vượt quá 50 ký tự.");
+			request.getRequestDispatcher("/views/user/user-create.jsp").forward(request, response);
+			return;
+		}
+		if (!ValidationUtil.hasMinLength(password, 6)) {
+			setFormAttributes(request);
+			request.setAttribute("errorMsg", "Mật khẩu phải có ít nhất 6 ký tự.");
+			request.getRequestDispatcher("/views/user/user-create.jsp").forward(request, response);
+			return;
+		}
+
+		// Bước 3: Kiểm tra trùng lặp trong Database
+		if (userDAO.existsByEmployeeCode(employeeCode)) {
+			setFormAttributes(request);
+			request.setAttribute("errorMsg", "Mã nhân viên '" + employeeCode + "' đã tồn tại trong hệ thống.");
+			request.getRequestDispatcher("/views/user/user-create.jsp").forward(request, response);
+			return;
+		}
+		if (userDAO.existsByUsername(username)) {
+			setFormAttributes(request);
+			request.setAttribute("errorMsg", "Tên đăng nhập '" + username + "' đã tồn tại trong hệ thống.");
+			request.getRequestDispatcher("/views/user/user-create.jsp").forward(request, response);
+			return;
+		}
+
+		// Bước 4: Validate username format (chỉ chấp nhận alphanumeric và underscore)
+		if (!ValidationUtil.matchRegex(username, "^[a-zA-Z0-9_]+$")) {
+			setFormAttributes(request);
+			request.setAttribute("errorMsg", "Tên đăng nhập chỉ được chứa chữ cái, số và dấu gạch dưới.");
+			request.getRequestDispatcher("/views/user/user-create.jsp").forward(request, response);
+			return;
+		}
+
 		try {
-			model.User user = new model.User();
-			user.setEmployeeCode(request.getParameter("employeeCode"));
-			user.setUsername(request.getParameter("username"));
-
-			String rawPassword = request.getParameter("password");
-			if (rawPassword != null && !rawPassword.trim().isEmpty()) {
-				user.setPasswordHash(util.PasswordUtil.hashPassword(rawPassword));
-			} else {
-				// Default password if not provided (though form says required)
-				user.setPasswordHash(util.PasswordUtil.hashPassword("123456"));
-			}
-
-			user.setFullName(request.getParameter("fullName"));
+			User user = new User();
+			user.setEmployeeCode(employeeCode);
+			user.setUsername(username);
+			user.setPasswordHash(PasswordUtil.hashPassword(password));
+			user.setFullName(fullName.trim());
 			user.setPhone(request.getParameter("phone"));
 
 			String dobStr = request.getParameter("dob");
@@ -57,7 +132,7 @@ public class UserCreateServlet extends HttpServlet {
 
 			String employeeTypeStr = request.getParameter("employeeType");
 			if (employeeTypeStr != null && !employeeTypeStr.trim().isEmpty()) {
-				user.setEmployeeType(model.User.EmployeeType.valueOf(employeeTypeStr));
+				user.setEmployeeType(User.EmployeeType.valueOf(employeeTypeStr));
 			}
 
 			String deptIdStr = request.getParameter("departmentId");
@@ -75,22 +150,28 @@ public class UserCreateServlet extends HttpServlet {
 				user.setManagerId(Long.valueOf(managerIdStr));
 			}
 
-			String isActiveStr = request.getParameter("isActive");
-			user.setIsActive("on".equals(isActiveStr)); // Checkbox returns "on" if checked
+			user.setIsActive(true);
 
-			boolean success = userDAO.insertUser(user);
+			boolean success = userDAO.insert(user);
 
 			if (success) {
-				request.getSession().setAttribute("successMsg", "Thêm nhân viên thành công!");
+				request.getSession().setAttribute("successMsg", "Thêm nhân viên '" + fullName + "' thành công!");
 				response.sendRedirect(request.getContextPath() + "/user-list");
 			} else {
-				request.setAttribute("errorMsg",
-						"Lỗi: Không thể thêm nhân viên. Vui lòng kiểm tra trùng lặp Mã NV/Tên đăng nhập.");
-				doGet(request, response); // re-populate form
+				setFormAttributes(request);
+				request.setAttribute("errorMsg", "Lỗi: Không thể thêm nhân viên. Vui lòng thử lại.");
+				request.getRequestDispatcher("/views/user/user-create.jsp").forward(request, response);
 			}
-		} catch (ServletException | IOException | NumberFormatException e) {
+		} catch (Exception e) {
+			setFormAttributes(request);
 			request.setAttribute("errorMsg", "Lỗi dữ liệu đầu vào: " + e.getMessage());
-			doGet(request, response);
+			request.getRequestDispatcher("/views/user/user-create.jsp").forward(request, response);
 		}
+	}
+
+	private void setFormAttributes(HttpServletRequest request) {
+		request.setAttribute("departments", departmentDAO.getActiveDepartments());
+		request.setAttribute("roles", roleDAO.getActiveRoles());
+		request.setAttribute("managers", userDAO.searchUsers("", null, null, true, null, 0, 1000));
 	}
 }

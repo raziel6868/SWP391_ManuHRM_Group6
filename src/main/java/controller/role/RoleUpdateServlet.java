@@ -29,7 +29,7 @@ public class RoleUpdateServlet extends HttpServlet {
 				e.printStackTrace();
 			}
 		}
-		request.getRequestDispatcher("/views/role/role-form.jsp").forward(request, response);
+		request.getRequestDispatcher("/views/role/role-update.jsp").forward(request, response);
 	}
 
 	@Override

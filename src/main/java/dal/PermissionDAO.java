@@ -12,26 +12,24 @@ public class PermissionDAO {
 
 	public List<Permission> getAllPermissions() {
 		List<Permission> list = new ArrayList<>();
-		String sql = """
-				SELECT id, code, name, url_pattern, module
-				FROM permissions
-				ORDER BY module, name
-				""";
-
-		try (Connection conn = DBContext.getConnection();
-				PreparedStatement ps = conn.prepareStatement(sql);
-				ResultSet rs = ps.executeQuery()) {
-			while (rs.next()) {
-				list.add(mapRow(rs));
+		String sql = "SELECT id, code, name, url_pattern, module FROM permissions ORDER BY module, name";
+		try (Connection conn = DBContext.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+			try (ResultSet rs = ps.executeQuery()) {
+				while (rs.next()) {
+					list.add(mapRow(rs));
+				}
 			}
 		} catch (SQLException e) {
-			e.printStackTrace();
+			System.err.println("PermissionDAO.getAllPermissions() ERROR: " + e.getMessage());
 		}
 		return list;
 	}
 
 	public List<Long> getPermissionIdsByRoleId(Long roleId) {
 		List<Long> list = new ArrayList<>();
+		if (roleId == null)
+			return list;
+
 		String sql = "SELECT permission_id FROM role_permissions WHERE role_id = ?";
 		try (Connection conn = DBContext.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
 			ps.setLong(1, roleId);
@@ -41,20 +39,22 @@ public class PermissionDAO {
 				}
 			}
 		} catch (SQLException e) {
-			e.printStackTrace();
+			System.err.println("PermissionDAO.getPermissionIdsByRoleId() ERROR: " + e.getMessage());
 		}
 		return list;
 	}
 
 	public List<Permission> getPermissionsByRoleId(Long roleId) {
 		List<Permission> permissions = new ArrayList<>();
+		if (roleId == null)
+			return permissions;
+
 		String sql = """
 				SELECT p.id, p.code, p.name, p.url_pattern, p.module
 				FROM permissions p
 				INNER JOIN role_permissions rp ON rp.permission_id = p.id
 				WHERE rp.role_id = ?
-				ORDER BY p.module, p.name
-				""";
+				ORDER BY p.module, p.name""";
 
 		try (Connection conn = DBContext.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
 			ps.setLong(1, roleId);
@@ -64,60 +64,47 @@ public class PermissionDAO {
 				}
 			}
 		} catch (SQLException e) {
-			e.printStackTrace();
+			System.err.println("PermissionDAO.getPermissionsByRoleId() ERROR: " + e.getMessage());
 		}
 		return permissions;
 	}
 
 	public boolean updateRolePermissions(Long roleId, List<Long> permissionIds) {
+		if (roleId == null)
+			return false;
+
 		String deleteSql = "DELETE FROM role_permissions WHERE role_id = ?";
 		String insertSql = "INSERT INTO role_permissions (role_id, permission_id) VALUES (?, ?)";
 
-		Connection conn = DBContext.getConnection();
-		if (conn == null) {
-			return false;
-		}
+		try (Connection conn = DBContext.getConnection()) {
+			conn.setAutoCommit(false);
+			try {
+				try (PreparedStatement ps = conn.prepareStatement(deleteSql)) {
+					ps.setLong(1, roleId);
+					ps.executeUpdate();
+				}
 
-		try {
-			conn.setAutoCommit(false); // Begin transaction
-
-			// 1. Delete old permissions
-			try (PreparedStatement psDelete = conn.prepareStatement(deleteSql)) {
-				psDelete.setLong(1, roleId);
-				psDelete.executeUpdate();
-			}
-
-			// 2. Insert new permissions using Batch Insert
-			if (permissionIds != null && !permissionIds.isEmpty()) {
-				try (PreparedStatement psInsert = conn.prepareStatement(insertSql)) {
-					for (Long permId : permissionIds) {
-						psInsert.setLong(1, roleId);
-						psInsert.setLong(2, permId);
-						psInsert.addBatch();
+				if (permissionIds != null && !permissionIds.isEmpty()) {
+					try (PreparedStatement ps = conn.prepareStatement(insertSql)) {
+						for (Long permId : permissionIds) {
+							ps.setLong(1, roleId);
+							ps.setLong(2, permId);
+							ps.addBatch();
+						}
+						ps.executeBatch();
 					}
-					psInsert.executeBatch();
 				}
-			}
 
-			conn.commit(); // Commit transaction
-			return true;
-		} catch (SQLException e) {
-			e.printStackTrace();
-			try {
-				if (conn != null)
-					conn.rollback(); // Rollback on error
-			} catch (SQLException ex) {
-				ex.printStackTrace();
-			}
-		} finally {
-			try {
-				if (conn != null) {
-					conn.setAutoCommit(true);
-					conn.close();
-				}
+				conn.commit();
+				return true;
 			} catch (SQLException e) {
-				e.printStackTrace();
+				conn.rollback();
+				System.err.println("PermissionDAO.updateRolePermissions() ERROR: " + e.getMessage());
+			} finally {
+				conn.setAutoCommit(true);
 			}
+		} catch (SQLException e) {
+			System.err.println("PermissionDAO.updateRolePermissions() ERROR: " + e.getMessage());
 		}
 		return false;
 	}

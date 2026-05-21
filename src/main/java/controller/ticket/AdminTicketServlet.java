@@ -1,16 +1,17 @@
 package controller.ticket;
 
 import dal.TicketDAO;
-import model.PasswordReset;
-import model.User;
-import java.io.IOException;
-import java.util.List;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
+import model.PasswordReset;
+import model.User;
+
+import java.io.IOException;
+import java.util.List;
 
 @WebServlet(name = "AdminTicketServlet", urlPatterns = {"/admin/tickets"})
 public class AdminTicketServlet extends HttpServlet {
@@ -20,46 +21,95 @@ public class AdminTicketServlet extends HttpServlet {
 	@Override
 	protected void doGet(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
-		// Tải danh sách bao gồm cả PENDING và REJECTED
-		List<PasswordReset> ticketList = ticketDAO.getAllManageableTickets();
-		request.setAttribute("ticketList", ticketList);
-		request.getRequestDispatcher("/views/ticket/admin-tickets.jsp").forward(request, response);
+		HttpSession session = request.getSession();
+
+		String successMsg = (String) session.getAttribute("successMsg");
+		String errorMsg = (String) session.getAttribute("errorMsg");
+		if (successMsg != null) {
+			request.setAttribute("successMsg", successMsg);
+			session.removeAttribute("successMsg");
+		}
+		if (errorMsg != null) {
+			request.setAttribute("errorMsg", errorMsg);
+			session.removeAttribute("errorMsg");
+		}
+
+		List<PasswordReset> tickets = ticketDAO.getPendingTickets();
+		request.setAttribute("tickets", tickets);
+
+		String randomPassword = (String) session.getAttribute("randomPassword");
+		if (randomPassword != null) {
+			request.setAttribute("randomPassword", randomPassword);
+			session.removeAttribute("randomPassword");
+		}
+
+		request.getRequestDispatcher("/views/ticket/admin-ticket.jsp").forward(request, response);
 	}
 
 	@Override
 	protected void doPost(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
 		request.setCharacterEncoding("UTF-8");
-
-		long ticketId = Long.parseLong(request.getParameter("ticketId"));
-		String action = request.getParameter("action"); // "APPROVE" hoặc "REJECT"
-
+		response.setCharacterEncoding("UTF-8");
 		HttpSession session = request.getSession();
-		User currentAdmin = (User) session.getAttribute("authUser");
 
-		if (currentAdmin == null) {
+		User admin = (User) session.getAttribute("authUser");
+		if (admin == null) {
 			response.sendRedirect(request.getContextPath() + "/login");
 			return;
 		}
 
-		long adminId = currentAdmin.getId();
+		String action = request.getParameter("action");
+		String ticketIdStr = request.getParameter("ticketId");
+		String newPassword = request.getParameter("newPassword");
 
-		// Thực thi cập nhật theo hành động tương ứng
-		boolean success = ticketDAO.updateTicketStatus(ticketId, adminId, action);
-
-		if (success) {
-			if ("APPROVE".equals(action)) {
-				request.setAttribute("success", "Đã phê duyệt và đặt lại mật khẩu thành viên về mặc định: 123456.");
-			} else {
-				request.setAttribute("success", "Đã từ chối yêu cầu khôi phục mật khẩu thành công.");
-			}
-		} else {
-			request.setAttribute("error", "Hệ thống xử lý thất bại!");
+		if (ticketIdStr == null || ticketIdStr.isEmpty()) {
+			session.setAttribute("errorMsg", "Ticket không hợp lệ!");
+			response.sendRedirect(request.getContextPath() + "/admin/tickets");
+			return;
 		}
 
-		// Tải lại danh sách mới
-		List<PasswordReset> ticketList = ticketDAO.getAllManageableTickets();
-		request.setAttribute("ticketList", ticketList);
-		request.getRequestDispatcher("/views/ticket/admin-tickets.jsp").forward(request, response);
+		long ticketId;
+		try {
+			ticketId = Long.parseLong(ticketIdStr);
+		} catch (NumberFormatException e) {
+			session.setAttribute("errorMsg", "Ticket ID không hợp lệ!");
+			response.sendRedirect(request.getContextPath() + "/admin/tickets");
+			return;
+		}
+
+		if ("approve".equals(action)) {
+			if (newPassword == null || newPassword.trim().isEmpty()) {
+				session.setAttribute("errorMsg", "Vui lòng nhập mật khẩu mới!");
+				response.sendRedirect(request.getContextPath() + "/admin/tickets");
+				return;
+			}
+
+			dal.PasswordResetResult result = ticketDAO.processTicket(ticketId, admin.getId(), newPassword.trim());
+			if (result.isSuccess()) {
+				session.setAttribute("successMsg", "Duyệt thành công! Mật khẩu mới: " + result.getNewPassword());
+			} else {
+				session.setAttribute("errorMsg", result.getMessage());
+			}
+		} else if ("randomize".equals(action)) {
+			String randomPw = ticketDAO.generateRandomPassword();
+			session.setAttribute("randomPassword", randomPw);
+			session.setAttribute("pendingTicketId", ticketId);
+			response.sendRedirect(request.getContextPath() + "/admin/tickets");
+			return;
+		} else if ("edit".equals(action)) {
+			session.setAttribute("pendingTicketId", ticketId);
+			session.setAttribute("randomPassword", ticketDAO.generateRandomPassword());
+			response.sendRedirect(request.getContextPath() + "/admin/tickets");
+			return;
+		} else if ("reject".equals(action)) {
+			if (ticketDAO.rejectTicket(ticketId, admin.getId())) {
+				session.setAttribute("successMsg", "Đã từ chối yêu cầu!");
+			} else {
+				session.setAttribute("errorMsg", "Không thể từ chối yêu cầu!");
+			}
+		}
+
+		response.sendRedirect(request.getContextPath() + "/admin/tickets");
 	}
 }

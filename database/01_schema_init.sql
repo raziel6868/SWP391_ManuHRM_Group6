@@ -72,7 +72,8 @@ CREATE TABLE users (
     role_id BIGINT NOT NULL,
     
     -- Trạng thái
-    is_active BOOLEAN DEFAULT TRUE,             
+    is_active BOOLEAN DEFAULT TRUE,
+    must_change_password BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     
@@ -87,11 +88,12 @@ CREATE TABLE users (
 CREATE TABLE password_resets (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     user_id BIGINT NOT NULL,
-    
+
     status ENUM('PENDING', 'RESOLVED', 'REJECTED') DEFAULT 'PENDING',
+    new_password VARCHAR(255) NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    resolved_by BIGINT NULL,  
-    
+    resolved_by BIGINT NULL,
+
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (resolved_by) REFERENCES users(id) ON DELETE SET NULL
 );

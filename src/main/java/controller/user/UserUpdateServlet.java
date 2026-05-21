@@ -1,6 +1,7 @@
 package controller.user;
 
 import dal.DepartmentDAO;
+import dal.RoleDAO;
 import dal.UserDAO;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
@@ -10,16 +11,12 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import model.User;
 
-import dal.DepartmentDAO;
-import dal.UserDAO;
-import model.User;
-
 @WebServlet(name = "UserUpdateServlet", urlPatterns = {"/user-update"})
 public class UserUpdateServlet extends HttpServlet {
 
 	private final UserDAO userDAO = new UserDAO();
 	private final DepartmentDAO departmentDAO = new DepartmentDAO();
-	private final dal.RoleDAO roleDAO = new dal.RoleDAO();
+	private final RoleDAO roleDAO = new RoleDAO();
 
 	@Override
 	protected void doGet(HttpServletRequest request, HttpServletResponse response)
@@ -42,9 +39,9 @@ public class UserUpdateServlet extends HttpServlet {
 			request.setAttribute("departments", departmentDAO.getActiveDepartments());
 			request.setAttribute("roles", roleDAO.getActiveRoles());
 			// Lấy danh sách manager tiềm năng (loại trừ chính user này để tránh circular)
-			request.setAttribute("managers", userDAO.searchAndFilter("", null, null, true, null, 0, 1000));
+			request.setAttribute("managers", userDAO.searchUsers("", null, null, true, null, 0, 1000));
 
-			request.getRequestDispatcher("/views/user/user-form.jsp").forward(request, response);
+			request.getRequestDispatcher("/views/user/user-update.jsp").forward(request, response);
 		} catch (NumberFormatException e) {
 			response.sendRedirect(request.getContextPath() + "/user-list");
 		}
@@ -84,7 +81,7 @@ public class UserUpdateServlet extends HttpServlet {
 
 			String employeeTypeStr = request.getParameter("employeeType");
 			if (employeeTypeStr != null && !employeeTypeStr.trim().isEmpty()) {
-				user.setEmployeeType(model.User.EmployeeType.valueOf(employeeTypeStr));
+				user.setEmployeeType(User.EmployeeType.valueOf(employeeTypeStr));
 			}
 
 			String deptIdStr = request.getParameter("departmentId");
@@ -105,7 +102,7 @@ public class UserUpdateServlet extends HttpServlet {
 			String isActiveStr = request.getParameter("isActive");
 			user.setIsActive("on".equals(isActiveStr));
 
-			boolean success = userDAO.updateUserByAdmin(user, rawPassword);
+			boolean success = userDAO.updateByAdmin(user, rawPassword);
 
 			if (success) {
 				request.getSession().setAttribute("successMsg", "Cập nhật nhân viên thành công!");

@@ -16,18 +16,12 @@
         <filter-name>NotificationFilter</filter-name>
         <filter-class>filter.NotificationFilter</filter-class>
     </filter>
-
     <!-- Thứ tự filter -->
     <filter-mapping>
         <filter-name>AuthFilter</filter-name>
         <url-pattern>/*</url-pattern>
     </filter-mapping>
     
-    <filter-mapping>
-        <filter-name>NotificationFilter</filter-name>
-        <url-pattern>/*</url-pattern>
-    </filter-mapping>
-    <!-- Điều hướng trang báo lỗi -->
     <filter-mapping>
         <filter-name>NotificationFilter</filter-name>
         <url-pattern>/*</url-pattern>

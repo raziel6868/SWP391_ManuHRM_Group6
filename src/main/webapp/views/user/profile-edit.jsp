@@ -23,8 +23,8 @@
                     <p class="body-md text-on-surface-variant mt-1">Cập nhật thông tin cá nhân của bạn. Thông tin liên quan đến công việc chỉ có thể được sửa bởi HR Admin.</p>
                 </div>
 
-                <c:if test="${not empty error}">
-                    <div class="alert alert-danger shadow-sm border-0 mb-4">${error}</div>
+                <c:if test="${not empty errorMsg}">
+                    <div class="alert alert-danger shadow-sm border-0 mb-4">${errorMsg}</div>
                 </c:if>
 
                 <div class="card-premium p-4 p-md-5 mb-4 position-relative overflow-hidden">

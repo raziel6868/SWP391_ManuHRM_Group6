@@ -80,7 +80,7 @@ public class LoginServlet extends HttpServlet {
 
 	private void forwardWithError(HttpServletRequest request, HttpServletResponse response, String message)
 			throws ServletException, IOException {
-		request.setAttribute("error", message);
+		request.setAttribute("errorMsg", message);
 		request.setAttribute("identifier", request.getParameter("identifier"));
 		request.getRequestDispatcher("/views/auth/login.jsp").forward(request, response);
 	}

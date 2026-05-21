@@ -1,17 +1,17 @@
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
 <%@ taglib prefix="c" uri="jakarta.tags.core" %>
 
-<c:if test="${not empty error}">
+<c:if test="${not empty errorMsg}">
     <div class="alert alert-danger d-flex align-items-start gap-2" role="alert">
         <span class="material-symbols-outlined" style="font-size: 1.25rem;">error</span>
-        <span><c:out value="${error}" /></span>
+        <span><c:out value="${errorMsg}" /></span>
     </div>
 </c:if>
 
-<c:if test="${not empty success}">
+<c:if test="${not empty successMsg}">
     <div class="alert alert-success d-flex align-items-start gap-2" role="alert">
         <span class="material-symbols-outlined" style="font-size: 1.25rem;">check_circle</span>
-        <span><c:out value="${success}" /></span>
+        <span><c:out value="${successMsg}" /></span>
     </div>
 </c:if>
 

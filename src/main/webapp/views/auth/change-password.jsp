@@ -23,12 +23,12 @@
             </p>
         </div>
 
-        <c:if test="${not empty error}">
-            <div class="alert alert-error d-flex align-items-center gap-2 mb-3" role="alert">
-                <span class="material-symbols-outlined">error</span>
-                ${error}
-            </div>
-        </c:if>
+<c:if test="${not empty errorMsg}">
+                    <div class="alert alert-error d-flex align-items-center gap-2 mb-3" role="alert">
+                        <span class="material-symbols-outlined">error</span>
+                        ${errorMsg}
+                    </div>
+                </c:if>
 
         <form action="${pageContext.request.contextPath}/change-password" method="POST">
             <div class="mb-3">
@@ -64,10 +64,10 @@
                     <p class="body-md text-on-surface-variant mt-1">Đảm bảo tài khoản của bạn sử dụng mật khẩu dài và ngẫu nhiên để bảo mật.</p>
                 </div>
 
-                <c:if test="${not empty error}">
+                <c:if test="${not empty errorMsg}">
                     <div class="alert alert-error d-flex align-items-center gap-2 mb-4" role="alert">
                         <span class="material-symbols-outlined">error</span>
-                        ${error}
+                        ${errorMsg}
                     </div>
                 </c:if>
 

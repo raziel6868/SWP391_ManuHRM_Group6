@@ -152,8 +152,8 @@ public class TicketDAO {
 				SELECT t.id, t.user_id, t.status, t.created_at, u.employee_code, u.full_name
 				FROM password_resets t
 				INNER JOIN users u ON t.user_id = u.id
-				WHERE t.status IN ('PENDING', 'REJECTED')
-				ORDER BY CASE t.status WHEN 'PENDING' THEN 1 WHEN 'REJECTED' THEN 2 END, t.created_at DESC""";
+				WHERE t.status = 'PENDING'
+				ORDER BY t.created_at DESC""";
 
 		try (Connection conn = DBContext.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
 			try (ResultSet rs = ps.executeQuery()) {

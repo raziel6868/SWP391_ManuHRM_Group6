@@ -39,11 +39,11 @@ public class ForgotPasswordServlet extends HttpServlet {
 		}
 
 		// Gọi xuống DAO xử lý tạo Ticket kiểm tra ràng buộc nghiệp vụ
-		String result = ticketDAO.sendPasswordResetTicket(employeeCode.trim());
+		String result = ticketDAO.createResetTicket(employeeCode.trim());
 
 		if ("SUCCESS".equals(result)) {
 			forwardWithMessage(request, response, "success",
-					"Gửi yêu cầu thành công! Vui lòng liên hệ Tổ trưởng/Quản đốc hoặc Admin để nhận lại mật khẩu mới mặc định (123456).");
+					"Gửi yêu cầu thành công! Vui lòng liên hệ Admin để nhận lại mật khẩu mới mặc định");
 		} else {
 			forwardWithMessage(request, response, "error", result);
 		}

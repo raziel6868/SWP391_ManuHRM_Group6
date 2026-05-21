@@ -7,7 +7,7 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import model.PasswordReset;
-import org.mindrot.jbcrypt.BCrypt;
+import util.PasswordUtil;
 
 public class TicketDAO {
 
@@ -98,7 +98,7 @@ public class TicketDAO {
 				}
 			}
 
-			String passwordHash = BCrypt.hashpw(newPassword, BCrypt.gensalt(12));
+			String passwordHash = PasswordUtil.hashPassword(newPassword);
 
 			conn.setAutoCommit(false);
 			try {
@@ -174,21 +174,4 @@ public class TicketDAO {
 		return list;
 	}
 
-	// Aliases for backward compatibility
-	public String sendPasswordResetTicket(String employeeCode) {
-		return createResetTicket(employeeCode);
-	}
-
-	public List<PasswordReset> getAllManageableTickets() {
-		return getPendingTickets();
-	}
-
-	public String generateRandomPassword() {
-		String chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
-		StringBuilder sb = new StringBuilder();
-		for (int i = 0; i < 8; i++) {
-			sb.append(chars.charAt((int) (Math.random() * chars.length())));
-		}
-		return sb.toString();
-	}
 }

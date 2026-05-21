@@ -6,7 +6,7 @@
     <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title>Quên mật khẩu - ManuHRM</title>
-    <jsp:include page="/components/head.jsp" />
+    <link href="${pageContext.request.contextPath}/assets/css/main.css" rel="stylesheet">
 </head>
 <body class="bg-background text-on-surface d-flex align-items-center justify-content-center" style="min-height: 100vh;">
 

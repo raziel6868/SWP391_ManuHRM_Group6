@@ -8,8 +8,11 @@ import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
+import java.sql.Date;
 import model.User;
+import util.PermissionUtil;
 
 @WebServlet(name = "UserUpdateServlet", urlPatterns = {"/user-update"})
 public class UserUpdateServlet extends HttpServlet {
@@ -21,6 +24,9 @@ public class UserUpdateServlet extends HttpServlet {
 	@Override
 	protected void doGet(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
+		HttpSession session = request.getSession(false);
+		User authUser = (User) session.getAttribute("authUser");
+
 		String idParam = request.getParameter("id");
 		if (idParam == null || idParam.isBlank()) {
 			response.sendRedirect(request.getContextPath() + "/user-list");
@@ -35,10 +41,16 @@ public class UserUpdateServlet extends HttpServlet {
 				return;
 			}
 
+			// Kiểm tra quyền theo RBAC
+			if (!PermissionUtil.canManageUser(session, user)) {
+				session.setAttribute("errorMsg", "Bạn không có quyền chỉnh sửa nhân viên này.");
+				response.sendRedirect(request.getContextPath() + "/user-list");
+				return;
+			}
+
 			request.setAttribute("user", user);
 			request.setAttribute("departments", departmentDAO.getActiveDepartments());
 			request.setAttribute("roles", roleDAO.getActiveRoles());
-			// Lấy danh sách manager tiềm năng (loại trừ chính user này để tránh circular)
 			request.setAttribute("managers", userDAO.searchUsers("", null, null, true, null, 0, 1000));
 
 			request.getRequestDispatcher("/views/user/user-update.jsp").forward(request, response);
@@ -50,6 +62,9 @@ public class UserUpdateServlet extends HttpServlet {
 	@Override
 	protected void doPost(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
+		HttpSession session = request.getSession(false);
+		User authUser = (User) session.getAttribute("authUser");
+
 		request.setCharacterEncoding("UTF-8");
 
 		String idParam = request.getParameter("id");
@@ -60,21 +75,29 @@ public class UserUpdateServlet extends HttpServlet {
 
 		try {
 			Long id = Long.parseLong(idParam.trim());
-			model.User user = new model.User();
+			User targetUser = userDAO.getById(id);
+			if (targetUser == null) {
+				response.sendRedirect(request.getContextPath() + "/user-list");
+				return;
+			}
+
+			// Kiểm tra quyền theo RBAC
+			if (!PermissionUtil.canManageUser(session, targetUser)) {
+				session.setAttribute("errorMsg", "Bạn không có quyền chỉnh sửa nhân viên này.");
+				response.sendRedirect(request.getContextPath() + "/user-list");
+				return;
+			}
+
+			User user = new User();
 			user.setId(id);
 
-			// Fields that are not editable according to readonly attributes in JSP
-			// user.setEmployeeCode(request.getParameter("employeeCode"));
-			// user.setUsername(request.getParameter("username"));
-
 			String rawPassword = request.getParameter("password");
-
 			user.setFullName(request.getParameter("fullName"));
 			user.setPhone(request.getParameter("phone"));
 
 			String dobStr = request.getParameter("dob");
 			if (dobStr != null && !dobStr.trim().isEmpty()) {
-				user.setDob(java.sql.Date.valueOf(dobStr));
+				user.setDob(Date.valueOf(dobStr));
 			}
 
 			user.setJobTitle(request.getParameter("jobTitle"));
@@ -109,8 +132,6 @@ public class UserUpdateServlet extends HttpServlet {
 				response.sendRedirect(request.getContextPath() + "/user-list");
 			} else {
 				request.setAttribute("errorMsg", "Lỗi: Không thể cập nhật thông tin nhân viên.");
-				// We need to fetch the full user again to keep readonly fields if returning to
-				// form
 				User existingUser = userDAO.getById(id);
 				request.setAttribute("user", existingUser);
 				doGet(request, response);

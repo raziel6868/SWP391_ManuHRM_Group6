@@ -6,14 +6,11 @@
     <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title>Đổi mật khẩu - ManuHRM</title>
-    <jsp:include page="/components/head.jsp" />
+    <link href="${pageContext.request.contextPath}/assets/css/main.css" rel="stylesheet">
 </head>
-<body class="bg-background text-on-surface">
-
 <c:choose>
-<%-- Layout 1: Bắt buộc (centered, fullscreen) --%>
 <c:when test="${isRequired}">
-    <body class="bg-background text-on-surface d-flex align-items-center justify-content-center" style="min-height: 100vh;">
+<body class="bg-background text-on-surface d-flex align-items-center justify-content-center" style="min-height: 100vh;">
     <div class="card-premium p-4 p-md-5" style="max-width: 450px; width: 100%; margin: 20px; position: relative; overflow: hidden;">
         <div class="position-absolute top-0 start-0 w-100" style="height: 4px; background-color: var(--primary);"></div>
 
@@ -35,12 +32,6 @@
 
         <form action="${pageContext.request.contextPath}/change-password" method="POST">
             <div class="mb-3">
-                <label class="form-label fw-bold small text-uppercase text-muted">Mật khẩu hiện tại</label>
-                <input type="password" class="form-control p-3" name="currentPassword" required
-                       placeholder="Nhập mật khẩu hiện tại">
-            </div>
-
-            <div class="mb-3">
                 <label class="form-label fw-bold small text-uppercase text-muted">Mật khẩu mới</label>
                 <input type="password" class="form-control p-3" name="newPassword" required minlength="6"
                        placeholder="Nhập mật khẩu mới (ít nhất 6 ký tự)">
@@ -58,9 +49,10 @@
             </button>
         </form>
     </div>
-
-<%-- Layout 2: Tự nguyện (có sidebar) --%>
+</body>
+</c:when>
 <c:otherwise>
+<body class="bg-background text-on-surface">
     <div class="layout-wrapper">
         <jsp:include page="/components/sidebar.jsp" />
         <div class="main-content">
@@ -107,9 +99,8 @@
             </div>
         </div>
     </div>
+</body>
 </c:otherwise>
 </c:choose>
-
 <jsp:include page="/components/foot.jsp" />
-</body>
 </html>

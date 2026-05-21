@@ -4,11 +4,12 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Date;
 import java.util.ArrayList;
 import java.util.List;
 import model.User;
-import org.mindrot.jbcrypt.BCrypt;
 import util.PasswordUtil;
+import util.PermissionUtil;
 
 public class UserDAO {
 
@@ -83,6 +84,11 @@ public class UserDAO {
 
 	public List<User> searchUsers(String keyword, Long departmentId, Long roleId, Boolean isActive, String employeeType,
 			int offset, int limit) {
+		return searchUsers(keyword, departmentId, roleId, isActive, employeeType, offset, limit, null);
+	}
+
+	public List<User> searchUsers(String keyword, Long departmentId, Long roleId, Boolean isActive, String employeeType,
+			int offset, int limit, Long managerId) {
 		List<User> users = new ArrayList<>();
 		StringBuilder sql = new StringBuilder("""
 				SELECT u.id, u.employee_code, u.username, u.full_name,
@@ -96,6 +102,13 @@ public class UserDAO {
 
 		List<Object> params = new ArrayList<>();
 		appendSearchConditions(sql, params, keyword, departmentId, roleId, isActive, employeeType);
+
+		// Line Manager: chỉ thấy user dưới quyền
+		if (managerId != null) {
+			sql.append(" AND u.manager_id = ?");
+			params.add(managerId);
+		}
+
 		sql.append(" ORDER BY u.id ASC LIMIT ? OFFSET ?");
 		params.add(limit);
 		params.add(offset);
@@ -115,9 +128,20 @@ public class UserDAO {
 	}
 
 	public int countUsers(String keyword, Long departmentId, Long roleId, Boolean isActive, String employeeType) {
+		return countUsers(keyword, departmentId, roleId, isActive, employeeType, null);
+	}
+
+	public int countUsers(String keyword, Long departmentId, Long roleId, Boolean isActive, String employeeType,
+			Long managerId) {
 		StringBuilder sql = new StringBuilder("SELECT COUNT(*) FROM users u WHERE 1=1");
 		List<Object> params = new ArrayList<>();
 		appendSearchConditions(sql, params, keyword, departmentId, roleId, isActive, employeeType);
+
+		// Line Manager: chỉ đếm user dưới quyền
+		if (managerId != null) {
+			sql.append(" AND u.manager_id = ?");
+			params.add(managerId);
+		}
 
 		try (Connection conn = DBContext.getConnection();
 				PreparedStatement ps = conn.prepareStatement(sql.toString())) {
@@ -176,7 +200,7 @@ public class UserDAO {
 			ps.setString(i++, user.getPasswordHash());
 			ps.setString(i++, user.getFullName());
 			ps.setString(i++, user.getPhone());
-			ps.setDate(i++, user.getDob() != null ? new java.sql.Date(user.getDob().getTime()) : null);
+			ps.setDate(i++, user.getDob() != null ? new Date(user.getDob().getTime()) : null);
 			ps.setString(i++, user.getJobTitle());
 			ps.setObject(i++, user.getDepartmentId());
 			ps.setString(i++, user.getEmployeeType() != null ? user.getEmployeeType().name() : "OFFICE");
@@ -207,14 +231,14 @@ public class UserDAO {
 			int i = 1;
 			ps.setString(i++, user.getFullName());
 			ps.setString(i++, user.getPhone());
-			ps.setDate(i++, user.getDob() != null ? new java.sql.Date(user.getDob().getTime()) : null);
+			ps.setDate(i++, user.getDob() != null ? new Date(user.getDob().getTime()) : null);
 			ps.setString(i++, user.getJobTitle());
 			ps.setObject(i++, user.getDepartmentId());
 			ps.setString(i++, user.getEmployeeType() != null ? user.getEmployeeType().name() : "OFFICE");
 			ps.setObject(i++, user.getRoleId());
 			ps.setObject(i++, user.getManagerId());
 			if (updatePassword) {
-				ps.setString(i++, BCrypt.hashpw(optionalNewPassword, BCrypt.gensalt(12)));
+				ps.setString(i++, PasswordUtil.hashPassword(optionalNewPassword));
 			}
 			ps.setLong(i++, user.getId());
 			return ps.executeUpdate() > 0;
@@ -231,40 +255,11 @@ public class UserDAO {
 		try (Connection conn = DBContext.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
 			ps.setString(1, fullName);
 			ps.setString(2, phone);
-			ps.setDate(3, dob != null ? new java.sql.Date(dob.getTime()) : null);
+			ps.setDate(3, dob != null ? new Date(dob.getTime()) : null);
 			ps.setLong(4, id);
 			return ps.executeUpdate() > 0;
 		} catch (SQLException e) {
 			System.err.println("UserDAO.updateProfile() ERROR: " + e.getMessage());
-			return false;
-		}
-	}
-
-	public boolean changePassword(Long userId, String currentPassword, String newPassword) {
-		if (userId == null || currentPassword == null || newPassword == null)
-			return false;
-
-		String selectSql = "SELECT password_hash FROM users WHERE id = ?";
-		try (Connection conn = DBContext.getConnection()) {
-			String storedHash = null;
-			try (PreparedStatement ps = conn.prepareStatement(selectSql)) {
-				ps.setLong(1, userId);
-				try (ResultSet rs = ps.executeQuery()) {
-					if (rs.next())
-						storedHash = rs.getString("password_hash");
-				}
-			}
-			if (storedHash == null || !BCrypt.checkpw(currentPassword, storedHash))
-				return false;
-
-			String updateSql = "UPDATE users SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?";
-			try (PreparedStatement ps = conn.prepareStatement(updateSql)) {
-				ps.setString(1, BCrypt.hashpw(newPassword, BCrypt.gensalt(12)));
-				ps.setLong(2, userId);
-				return ps.executeUpdate() > 0;
-			}
-		} catch (SQLException e) {
-			System.err.println("UserDAO.changePassword() ERROR: " + e.getMessage());
 			return false;
 		}
 	}
@@ -392,6 +387,9 @@ public class UserDAO {
 			user.setRoleDisplayName(rs.getString("role_display_name"));
 		} catch (SQLException ignore) {
 		}
+
+		// Set role rank for RBAC
+		user.setRoleRank(PermissionUtil.getRoleRank(user.getRoleName()));
 
 		return user;
 	}

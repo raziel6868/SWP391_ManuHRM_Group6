@@ -29,6 +29,7 @@ public class User {
 	private String roleName;
 	private String roleDisplayName;
 	private String managerName;
+	private Integer roleRank; // RBAC rank
 
 	public Long getId() {
 		return id;
@@ -189,5 +190,13 @@ public class User {
 
 	public void setManagerName(String managerName) {
 		this.managerName = managerName;
+	}
+
+	public Integer getRoleRank() {
+		return roleRank;
+	}
+
+	public void setRoleRank(Integer roleRank) {
+		this.roleRank = roleRank;
 	}
 }

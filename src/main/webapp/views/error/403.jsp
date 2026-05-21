@@ -5,7 +5,7 @@
     <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title>403 Không có quyền truy cập - ManuHRM</title>
-    <jsp:include page="/components/head.jsp" />
+    <link href="${pageContext.request.contextPath}/assets/css/main.css" rel="stylesheet">
 </head>
 <body class="d-flex align-items-center justify-content-center min-vh-100 bg-surface-container-low text-on-surface">
     <main class="w-100 text-center d-flex flex-column align-items-center" style="max-width: 600px; padding: 2rem;">

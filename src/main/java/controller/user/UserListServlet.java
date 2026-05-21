@@ -52,9 +52,9 @@ public class UserListServlet extends HttpServlet {
 			page = 1;
 		int offset = (page - 1) * PAGE_SIZE;
 
-		List<User> users = userDAO.searchAndFilter(keyword, departmentId, roleId, isActive, employeeType, offset,
+		List<User> users = userDAO.searchUsers(keyword, departmentId, roleId, isActive, employeeType, offset,
 				PAGE_SIZE);
-		int totalRecords = userDAO.countSearchAndFilter(keyword, departmentId, roleId, isActive, employeeType);
+		int totalRecords = userDAO.countUsers(keyword, departmentId, roleId, isActive, employeeType);
 		int totalPages = (int) Math.ceil((double) totalRecords / PAGE_SIZE);
 		List<Department> departments = departmentDAO.getActiveDepartments();
 		List<Role> roles = roleDAO.getActiveRoles();

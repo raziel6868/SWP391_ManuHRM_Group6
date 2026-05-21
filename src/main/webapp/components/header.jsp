@@ -2,6 +2,7 @@
 <%@ taglib prefix="c" uri="jakarta.tags.core" %>
 <%@ taglib prefix="fn" uri="jakarta.tags.functions" %>
 <c:set var="user" value="${sessionScope.authUser}" />
+<c:set var="pendingCount" value="${sessionScope.pendingTicketCount != null ? sessionScope.pendingTicketCount : 0}" />
 
 <header class="top-header">
     <div class="d-flex align-items-center gap-3 flex-grow-1">
@@ -16,17 +17,23 @@
     </div>
 
     <div class="d-flex align-items-center gap-2">
-        <button class="btn btn-link text-on-surface-variant p-2" type="button" title="Thông báo">
-            <span class="material-symbols-outlined">notifications</span>
-        </button>
+        <c:if test="${user.roleName == 'ADMIN' || user.roleName == 'HR_MANAGER'}">
+            <a href="${pageContext.request.contextPath}/admin/tickets" class="notification-btn position-relative" title="Yêu cầu đặt lại mật khẩu">
+                <span class="material-symbols-outlined">notifications</span>
+                <c:if test="${pendingCount > 0}">
+                    <span class="badge-notification">${pendingCount > 9 ? '9+' : pendingCount}</span>
+                </c:if>
+            </a>
+        </c:if>
+        <c:if test="${user.roleName != 'ADMIN' && user.roleName != 'HR_MANAGER'}">
+            <button class="notification-btn" type="button" title="Thông báo">
+                <span class="material-symbols-outlined">notifications</span>
+            </button>
+        </c:if>
 
         <div class="vr mx-2 bg-outline-variant"></div>
 
         <div class="d-none d-md-flex align-items-center gap-2">
-            <div class="rounded-circle d-flex align-items-center justify-content-center text-white"
-                 style="width: 36px; height: 36px; background: var(--primary-gradient);">
-                <c:out value="${fn:substring(user.fullName, 0, 1)}" />
-            </div>
             <div>
                 <p class="label-sm fw-bold mb-0 text-on-surface"><c:out value="${user.username}" /></p>
                 <p class="label-sm text-muted mb-0" style="font-size: 11px;">

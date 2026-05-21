@@ -187,7 +187,7 @@ public class AuthFilter implements Filter {
 			return true;
 		if (path.startsWith("/login"))
 			return true;
-		if (path.startsWith("/auth/forgot-password"))
+		if (path.startsWith("/forgot-password"))
 			return true;
 		if (path.startsWith("/reset-password"))
 			return true;

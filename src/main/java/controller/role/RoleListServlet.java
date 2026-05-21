@@ -6,6 +6,7 @@ import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 import model.Role;
 
 import java.io.IOException;
@@ -20,6 +21,20 @@ public class RoleListServlet extends HttpServlet {
 	@Override
 	protected void doGet(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
+		HttpSession session = request.getSession();
+
+		// Chuyển message từ session sang request rồi xóa session
+		String successMsg = (String) session.getAttribute("successMsg");
+		String errorMsg = (String) session.getAttribute("errorMsg");
+		if (successMsg != null) {
+			request.setAttribute("successMsg", successMsg);
+			session.removeAttribute("successMsg");
+		}
+		if (errorMsg != null) {
+			request.setAttribute("errorMsg", errorMsg);
+			session.removeAttribute("errorMsg");
+		}
+
 		String keyword = request.getParameter("keyword");
 		String pageStr = request.getParameter("page");
 
@@ -36,8 +51,8 @@ public class RoleListServlet extends HttpServlet {
 		int offset = (page - 1) * limit;
 
 		RoleDAO roleDAO = new RoleDAO();
-		List<Role> roles = roleDAO.searchAndFilter(keyword, offset, limit);
-		int totalRoles = roleDAO.countTotalRoles(keyword);
+		List<Role> roles = roleDAO.searchRoles(keyword, offset, limit);
+		int totalRoles = roleDAO.countRoles(keyword);
 		int totalPages = (int) Math.ceil((double) totalRoles / limit);
 
 		request.setAttribute("roles", roles);

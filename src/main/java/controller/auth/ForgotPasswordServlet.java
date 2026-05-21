@@ -13,7 +13,7 @@ import jakarta.servlet.http.HttpServletResponse;
  * Servlet responsible for handling forgotten password requests. Allows users to
  * submit their employee code to request a password reset ticket.
  */
-@WebServlet(name = "ForgotPasswordServlet", urlPatterns = {"/auth/forgot-password"})
+@WebServlet(name = "ForgotPasswordServlet", urlPatterns = {"/forgot-password", "/auth/forgot-password"})
 public class ForgotPasswordServlet extends HttpServlet {
 
 	private final TicketDAO ticketDAO = new TicketDAO();

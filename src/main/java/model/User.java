@@ -21,6 +21,7 @@ public class User {
 	private EmployeeType employeeType;
 	private Long roleId;
 	private Boolean isActive;
+	private Boolean mustChangePassword;
 	private Timestamp createdAt;
 	private Timestamp updatedAt;
 
@@ -131,6 +132,14 @@ public class User {
 
 	public void setIsActive(Boolean isActive) {
 		this.isActive = isActive;
+	}
+
+	public Boolean getMustChangePassword() {
+		return mustChangePassword;
+	}
+
+	public void setMustChangePassword(Boolean mustChangePassword) {
+		this.mustChangePassword = mustChangePassword;
 	}
 
 	public Timestamp getCreatedAt() {

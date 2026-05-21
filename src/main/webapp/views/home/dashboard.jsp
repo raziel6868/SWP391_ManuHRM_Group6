@@ -8,13 +8,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Trang chủ | ManuHRM</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="${pageContext.request.contextPath}/assets/css/main.css">
-    <!-- Google Fonts Preconnect & Load -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+    <jsp:include page="/components/head.jsp" />
 </head>
 <body class="bg-background text-on-surface">
 <div class="layout-wrapper">
@@ -205,7 +199,7 @@
                         <h2 class="h4 text-on-surface fw-bold mb-3">Tài khoản</h2>
                         <div class="d-flex flex-column gap-3">
                             <div class="d-flex justify-content-between gap-3">
-                                <span class="text-on-surface-variant">Username</span>
+                                <span class="text-on-surface-variant">Tên đăng nhập</span>
                                 <strong><c:out value="${user.username}" /></strong>
                             </div>
                             <div class="d-flex justify-content-between gap-3">
@@ -235,7 +229,6 @@
     </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-<script src="${pageContext.request.contextPath}/assets/js/main.js"></script>
+<jsp:include page="/components/foot.jsp" />
 </body>
 </html>

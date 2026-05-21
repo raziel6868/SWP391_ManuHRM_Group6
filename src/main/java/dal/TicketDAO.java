@@ -7,151 +7,188 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import model.PasswordReset;
+import org.mindrot.jbcrypt.BCrypt;
 
 public class TicketDAO {
 
-	public String sendPasswordResetTicket(String employeeCode) {
-		String checkUserSql = "SELECT id FROM users WHERE employee_code = ?";
+	public int countPendingTickets() {
+		String sql = "SELECT COUNT(*) FROM password_resets WHERE status = 'PENDING'";
+		try (Connection conn = DBContext.getConnection()) {
+			if (conn == null)
+				return 0;
+			try (PreparedStatement ps = conn.prepareStatement(sql); ResultSet rs = ps.executeQuery()) {
+				if (rs.next())
+					return rs.getInt(1);
+			}
+		} catch (SQLException e) {
+			System.err.println("TicketDAO.countPendingTickets() ERROR: " + e.getMessage());
+		}
+		return 0;
+	}
+
+	public String createResetTicket(String employeeCode) {
+		if (employeeCode == null || employeeCode.isBlank()) {
+			return "Mã nhân viên/tài khoản không hợp lệ!";
+		}
+
+		String checkUserSql = "SELECT id FROM users WHERE employee_code = ? OR username = ?";
 		String checkTicketSql = "SELECT id FROM password_resets WHERE user_id = ? AND status = 'PENDING'";
 		String insertTicketSql = "INSERT INTO password_resets (user_id, status) VALUES (?, 'PENDING')";
 
 		try (Connection conn = DBContext.getConnection()) {
-			if (conn == null) {
+			if (conn == null)
 				return "Lỗi kết nối cơ sở dữ liệu!";
-			}
 
 			long userId = -1;
-
-			// BƯỚC 1: Kiểm tra xem Employee Code có tồn tại không và lấy ra user_id
-			try (PreparedStatement psCheckUser = conn.prepareStatement(checkUserSql)) {
-				psCheckUser.setString(1, employeeCode);
-				try (ResultSet rs = psCheckUser.executeQuery()) {
+			try (PreparedStatement ps = conn.prepareStatement(checkUserSql)) {
+				ps.setString(1, employeeCode);
+				ps.setString(2, employeeCode);
+				try (ResultSet rs = ps.executeQuery()) {
 					if (rs.next()) {
 						userId = rs.getLong("id");
 					} else {
-						return "Mã nhân viên (Employee Code) không tồn tại trên hệ thống!";
+						return "Mã nhân viên hoặc tài khoản không tồn tại trên hệ thống!";
 					}
 				}
 			}
 
-			// BƯỚC 2: Kiểm tra trùng lặp (Spam)
-			try (PreparedStatement psCheckTicket = conn.prepareStatement(checkTicketSql)) {
-				psCheckTicket.setLong(1, userId);
-				try (ResultSet rs = psCheckTicket.executeQuery()) {
+			try (PreparedStatement ps = conn.prepareStatement(checkTicketSql)) {
+				ps.setLong(1, userId);
+				try (ResultSet rs = ps.executeQuery()) {
 					if (rs.next()) {
 						return "Yêu cầu của bạn đang ở trạng thái chờ duyệt. Vui lòng không gửi lại liên tục!";
 					}
 				}
 			}
 
-			// BƯỚC 3: Tạo yêu cầu
-			try (PreparedStatement psInsert = conn.prepareStatement(insertTicketSql)) {
-				psInsert.setLong(1, userId);
-				if (psInsert.executeUpdate() > 0) {
+			try (PreparedStatement ps = conn.prepareStatement(insertTicketSql)) {
+				ps.setLong(1, userId);
+				if (ps.executeUpdate() > 0) {
 					return "SUCCESS";
 				}
 			}
 		} catch (SQLException e) {
-			e.printStackTrace();
+			System.err.println("TicketDAO.createResetTicket() ERROR: " + e.getMessage());
 		}
 		return "Đã xảy ra lỗi hệ thống trong quá trình tạo ticket!";
 	}
 
-	public boolean updateTicketStatus(long ticketId, long adminId, String action) {
-		String updateTicketSql = """
-				UPDATE password_resets
-				SET status = ?, resolved_by = ?
-				WHERE id = ?
-				""";
-		String updateUserPassSql = """
-				UPDATE users
-				SET password_hash = ?, updated_at = CURRENT_TIMESTAMP
-				WHERE id = (SELECT user_id FROM password_resets WHERE id = ?)
-				""";
-
-		Connection conn = DBContext.getConnection();
-		if (conn == null) {
-			return false;
+	public PasswordResetResult processTicket(long ticketId, long adminId, String newPassword) {
+		if (ticketId <= 0 || adminId <= 0 || newPassword == null || newPassword.isBlank()) {
+			return new PasswordResetResult(false, "Thông tin không hợp lệ!");
 		}
 
-		try {
+		String getUserIdSql = "SELECT user_id FROM password_resets WHERE id = ? AND status = 'PENDING'";
+		String updateTicketSql = "UPDATE password_resets SET status = 'RESOLVED', resolved_by = ?, new_password = ? WHERE id = ?";
+		String updateUserPassSql = "UPDATE users SET password_hash = ?, must_change_password = TRUE, updated_at = CURRENT_TIMESTAMP WHERE id = ?";
+
+		try (Connection conn = DBContext.getConnection()) {
+			if (conn == null)
+				return new PasswordResetResult(false, "Lỗi kết nối cơ sở dữ liệu!");
+
+			long userId = -1;
+			try (PreparedStatement ps = conn.prepareStatement(getUserIdSql)) {
+				ps.setLong(1, ticketId);
+				try (ResultSet rs = ps.executeQuery()) {
+					if (rs.next()) {
+						userId = rs.getLong("user_id");
+					} else {
+						return new PasswordResetResult(false, "Ticket không tồn tại hoặc đã được xử lý!");
+					}
+				}
+			}
+
+			String passwordHash = BCrypt.hashpw(newPassword, BCrypt.gensalt(12));
+
 			conn.setAutoCommit(false);
-			String targetStatus = action.equals("APPROVE") ? "RESOLVED" : "REJECTED";
-
-			if (action.equals("APPROVE")) {
-				// Default hash for "123456"
-				String defaultHash = "$2a$12$0wwAa21is/sQAN8BtCCkQuDqbYwfRLTxYJFPWjTiIW4EpSXCOdjTS";
-				try (PreparedStatement psUser = conn.prepareStatement(updateUserPassSql)) {
-					psUser.setString(1, defaultHash);
-					psUser.setLong(2, ticketId);
-					psUser.executeUpdate();
-				}
-			}
-
-			try (PreparedStatement psTicket = conn.prepareStatement(updateTicketSql)) {
-				psTicket.setString(1, targetStatus);
-				psTicket.setLong(2, adminId);
-				psTicket.setLong(3, ticketId);
-
-				if (psTicket.executeUpdate() > 0) {
-					conn.commit();
-					return true;
-				}
-			}
-
-			conn.rollback();
-		} catch (SQLException e) {
-			e.printStackTrace();
 			try {
-				if (conn != null)
-					conn.rollback();
-			} catch (SQLException ex) {
-				ex.printStackTrace();
-			}
-		} finally {
-			try {
-				if (conn != null) {
-					conn.setAutoCommit(true);
-					conn.close();
+				try (PreparedStatement ps = conn.prepareStatement(updateUserPassSql)) {
+					ps.setString(1, passwordHash);
+					ps.setLong(2, userId);
+					ps.executeUpdate();
 				}
+
+				try (PreparedStatement ps = conn.prepareStatement(updateTicketSql)) {
+					ps.setLong(1, adminId);
+					ps.setString(2, newPassword);
+					ps.setLong(3, ticketId);
+					if (ps.executeUpdate() > 0) {
+						conn.commit();
+						return new PasswordResetResult(true, newPassword);
+					}
+				}
+				conn.rollback();
 			} catch (SQLException e) {
-				e.printStackTrace();
+				conn.rollback();
+				System.err.println("TicketDAO.processTicket() ERROR: " + e.getMessage());
+			} finally {
+				conn.setAutoCommit(true);
 			}
+		} catch (SQLException e) {
+			System.err.println("TicketDAO.processTicket() ERROR: " + e.getMessage());
 		}
-		return false;
+		return new PasswordResetResult(false, "Đã xảy ra lỗi hệ thống!");
 	}
 
-	public List<PasswordReset> getAllManageableTickets() {
+	public boolean rejectTicket(long ticketId, long adminId) {
+		if (ticketId <= 0 || adminId <= 0)
+			return false;
+
+		String updateSql = "UPDATE password_resets SET status = 'REJECTED', resolved_by = ? WHERE id = ? AND status = 'PENDING'";
+
+		try (Connection conn = DBContext.getConnection(); PreparedStatement ps = conn.prepareStatement(updateSql)) {
+			ps.setLong(1, adminId);
+			ps.setLong(2, ticketId);
+			return ps.executeUpdate() > 0;
+		} catch (SQLException e) {
+			System.err.println("TicketDAO.rejectTicket() ERROR: " + e.getMessage());
+			return false;
+		}
+	}
+
+	public List<PasswordReset> getPendingTickets() {
 		List<PasswordReset> list = new ArrayList<>();
 		String sql = """
 				SELECT t.id, t.user_id, t.status, t.created_at, u.employee_code, u.full_name
 				FROM password_resets t
 				INNER JOIN users u ON t.user_id = u.id
 				WHERE t.status IN ('PENDING', 'REJECTED')
-				ORDER BY CASE t.status
-				         WHEN 'PENDING' THEN 1
-				         WHEN 'REJECTED' THEN 2
-				         END,
-				         t.created_at DESC
-				""";
+				ORDER BY CASE t.status WHEN 'PENDING' THEN 1 WHEN 'REJECTED' THEN 2 END, t.created_at DESC""";
 
-		try (Connection conn = DBContext.getConnection();
-				PreparedStatement ps = conn.prepareStatement(sql);
-				ResultSet rs = ps.executeQuery()) {
-
-			while (rs.next()) {
-				PasswordReset ticket = new PasswordReset();
-				ticket.setId(rs.getLong("id"));
-				ticket.setUserId(rs.getLong("user_id"));
-				ticket.setStatus(PasswordReset.Status.valueOf(rs.getString("status")));
-				ticket.setCreatedAt(rs.getTimestamp("created_at"));
-				ticket.setEmployeeCode(rs.getString("employee_code"));
-				ticket.setFullName(rs.getString("full_name"));
-				list.add(ticket);
+		try (Connection conn = DBContext.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+			try (ResultSet rs = ps.executeQuery()) {
+				while (rs.next()) {
+					PasswordReset ticket = new PasswordReset();
+					ticket.setId(rs.getLong("id"));
+					ticket.setUserId(rs.getLong("user_id"));
+					ticket.setStatus(PasswordReset.Status.valueOf(rs.getString("status")));
+					ticket.setCreatedAt(rs.getTimestamp("created_at"));
+					ticket.setEmployeeCode(rs.getString("employee_code"));
+					ticket.setFullName(rs.getString("full_name"));
+					list.add(ticket);
+				}
 			}
 		} catch (SQLException e) {
-			e.printStackTrace();
+			System.err.println("TicketDAO.getPendingTickets() ERROR: " + e.getMessage());
 		}
 		return list;
+	}
+
+	// Aliases for backward compatibility
+	public String sendPasswordResetTicket(String employeeCode) {
+		return createResetTicket(employeeCode);
+	}
+
+	public List<PasswordReset> getAllManageableTickets() {
+		return getPendingTickets();
+	}
+
+	public String generateRandomPassword() {
+		String chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
+		StringBuilder sb = new StringBuilder();
+		for (int i = 0; i < 8; i++) {
+			sb.append(chars.charAt((int) (Math.random() * chars.length())));
+		}
+		return sb.toString();
 	}
 }

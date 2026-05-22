@@ -7,7 +7,7 @@ public class Role {
 	private String description;
 	private Boolean isActive;
 	private Boolean isSystem;
-	private Integer rank;
+	private Integer hierarchyLevel;
 
 	public Long getId() {
 		return id;
@@ -57,11 +57,11 @@ public class Role {
 		this.isSystem = isSystem;
 	}
 
-	public Integer getRank() {
-		return rank;
+	public Integer getHierarchyLevel() {
+		return hierarchyLevel;
 	}
 
-	public void setRank(Integer rank) {
-		this.rank = rank;
+	public void setHierarchyLevel(Integer hierarchyLevel) {
+		this.hierarchyLevel = hierarchyLevel;
 	}
 }

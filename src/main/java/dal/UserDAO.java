@@ -20,7 +20,7 @@ public class UserDAO {
 				       u.phone, u.job_title, u.employee_type, u.is_active, u.must_change_password,
 				       u.department_id, u.role_id, u.manager_id,
 				       d.name AS department_name, r.name AS role_name, r.display_name AS role_display_name,
-				       COALESCE(r.rank, 1) AS role_rank
+				       COALESCE(r.hierarchy_level, 1) AS hierarchy_level
 				FROM users u
 				LEFT JOIN departments d ON u.department_id = d.id
 				LEFT JOIN roles r ON u.role_id = r.id
@@ -55,7 +55,7 @@ public class UserDAO {
 				       u.phone, u.dob, u.job_title, u.employee_type, u.is_active,
 				       u.department_id, u.role_id, u.manager_id, u.created_at, u.updated_at,
 				       d.name AS department_name, r.name AS role_name, r.display_name AS role_display_name,
-				       COALESCE(r.rank, 1) AS role_rank,
+				       COALESCE(r.hierarchy_level, 1) AS hierarchy_level,
 				       m.full_name AS manager_name
 				FROM users u
 				LEFT JOIN departments d ON u.department_id = d.id
@@ -96,7 +96,7 @@ public class UserDAO {
 				       u.phone, u.job_title, u.employee_type, u.is_active,
 				       u.department_id, u.role_id, u.manager_id,
 				       d.name AS department_name, r.name AS role_name, r.display_name AS role_display_name,
-				       COALESCE(r.rank, 1) AS role_rank
+				       COALESCE(r.hierarchy_level, 1) AS hierarchy_level
 				FROM users u
 				LEFT JOIN departments d ON u.department_id = d.id
 				LEFT JOIN roles r ON u.role_id = r.id
@@ -390,8 +390,8 @@ public class UserDAO {
 		} catch (SQLException ignore) {
 		}
 		try {
-			Object rankObj = rs.getObject("role_rank");
-			user.setRoleRank(rankObj != null ? ((Number) rankObj).intValue() : 1);
+			Object hierarchyObj = rs.getObject("hierarchy_level");
+			user.setHierarchyLevel(hierarchyObj != null ? ((Number) hierarchyObj).intValue() : 1);
 		} catch (SQLException ignore) {
 		}
 		return user;

@@ -38,9 +38,9 @@ public class UserStatusServlet extends HttpServlet {
 			return;
 		}
 
-		// canChangeStatus: chỉ rank >= 3 (HR_MANAGER/SYSADMIN) được khóa/mở
-		int authRank = authUser.getRoleRank() != null ? authUser.getRoleRank() : 1;
-		if (authRank < 3) {
+		// canChangeStatus: chỉ hierarchyLevel >= 3 (HR_MANAGER/SYSADMIN) được khóa/mở
+		int authHierarchyLevel = authUser.getHierarchyLevel() != null ? authUser.getHierarchyLevel() : 1;
+		if (authHierarchyLevel < 3) {
 			session.setAttribute("errorMsg", "Bạn không có quyền thay đổi trạng thái nhân viên.");
 			response.sendRedirect("user-list");
 			return;

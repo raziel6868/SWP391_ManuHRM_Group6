@@ -105,12 +105,13 @@
                                                     class="btn btn-sm btn-icon text-on-surface-variant hover-primary" title="Phân quyền">
                                                     <span class="material-symbols-outlined" style="font-size: 1.25rem;">key</span>
                                                 </a>
-                                                <c:if test="${canDeactivateList[status.index]}">
+                                                <%-- DEBUG: hasPerm=${hasRoleStatusPerm} lvl=${r.hierarchyLevel} cnt=${activeUserCounts[status.index]} deact=${canDeactivateList[status.index]} --%>
+                                                <c:if test="${hasRoleStatusPerm && r.hierarchyLevel <= 2}">
                                                     <form action="${pageContext.request.contextPath}/role-status" method="POST" class="d-inline m-0">
                                                         <input type="hidden" name="id" value="${r.id}" />
                                                         <input type="hidden" name="isActive" value="${!r.isActive}" />
-                                                        <button type="submit" class="btn btn-sm btn-icon text-on-surface-variant hover-primary"
-                                                            title="${r.isActive ? 'Vô hiệu hóa' : 'Kích hoạt'}">
+                                                        <button type="submit" class="btn btn-sm btn-icon ${canDeactivateList[status.index] ? 'text-on-surface-variant hover-primary' : 'text-disabled'}"
+                                                            title="${canDeactivateList[status.index] ? (r.isActive ? 'Vô hiệu hóa' : 'Kích hoạt') : 'Không thể vô hiệu hóa - còn nhân viên đang hoạt động'}">
                                                             <span class="material-symbols-outlined" style="font-size: 1.25rem;">${r.isActive ? 'lock' : 'lock_open'}</span>
                                                         </button>
                                                     </form>

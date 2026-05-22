@@ -76,7 +76,7 @@ public class RoleDAO {
 			ps.setString(3, role.getDescription());
 			ps.setBoolean(4, role.getIsActive() != null && role.getIsActive());
 			ps.setBoolean(5, role.getIsSystem() != null && role.getIsSystem());
-			ps.setInt(6, role.getRank() != null ? role.getRank() : 1);
+			ps.setInt(6, role.getHierarchyLevel() != null ? role.getHierarchyLevel() : 1);
 			return ps.executeUpdate() > 0;
 		} catch (SQLException e) {
 			System.err.println("RoleDAO.insert() ERROR: " + e.getMessage());
@@ -94,7 +94,7 @@ public class RoleDAO {
 			ps.setString(1, role.getName());
 			ps.setString(2, role.getDisplayName());
 			ps.setString(3, role.getDescription());
-			ps.setInt(4, role.getRank() != null ? role.getRank() : 1);
+			ps.setInt(4, role.getHierarchyLevel() != null ? role.getHierarchyLevel() : 1);
 			ps.setLong(5, role.getId());
 			return ps.executeUpdate() > 0;
 		} catch (SQLException e) {
@@ -178,7 +178,7 @@ public class RoleDAO {
 		r.setDescription(rs.getString("description"));
 		r.setIsActive(rs.getBoolean("is_active"));
 		r.setIsSystem(rs.getBoolean("is_system"));
-		r.setRank(rs.getObject("rank") != null ? rs.getInt("rank") : 1);
+		r.setHierarchyLevel(rs.getObject("hierarchy_level") != null ? rs.getInt("hierarchy_level") : 1);
 		return r;
 	}
 }

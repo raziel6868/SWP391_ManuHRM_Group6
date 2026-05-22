@@ -44,9 +44,9 @@ public class UserDetailServlet extends HttpServlet {
 		}
 
 		// Mọi người đều xem được user detail
-		// Rank <= 2 (LINE_MANAGER, EMPLOYEE): chỉ xem được subordinate
-		int authRank = authUser.getRoleRank() != null ? authUser.getRoleRank() : 1;
-		if (authRank <= 2) {
+		// HierarchyLevel <= 2 (LINE_MANAGER, EMPLOYEE): chỉ xem được subordinate
+		int authHierarchyLevel = authUser.getHierarchyLevel() != null ? authUser.getHierarchyLevel() : 1;
+		if (authHierarchyLevel <= 2) {
 			if (targetUser.getManagerId() == null || !targetUser.getManagerId().equals(authUser.getId())) {
 				session.setAttribute("errorMsg", "Bạn không có quyền xem thông tin nhân viên này.");
 				response.sendRedirect("user-list");
@@ -54,9 +54,10 @@ public class UserDetailServlet extends HttpServlet {
 			}
 		}
 
-		// canEdit/canDeactivate: chỉ rank >= 3 (HR_MANAGER/SYSADMIN) được sửa/khóa
+		// canEdit/canDeactivate: chỉ hierarchyLevel >= 3 (HR_MANAGER/SYSADMIN) được
+		// sửa/khóa
 		// LINE_MANAGER (rank 2) và EMPLOYEE (rank 1) không có quyền này
-		boolean canEdit = (authRank >= 3) && !authUser.getId().equals(targetUser.getId());
+		boolean canEdit = (authHierarchyLevel >= 3) && !authUser.getId().equals(targetUser.getId());
 		boolean canDeactivate = canEdit;
 		request.setAttribute("user", targetUser);
 		request.setAttribute("canEdit", canEdit);

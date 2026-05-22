@@ -13,23 +13,25 @@ public class RoleDAO {
 	// === QUERY: Lấy danh sách Role ===
 
 	public List<Role> getActiveRoles() {
-		return getRoles("""
-				SELECT id, name, display_name, description, is_active, is_system
-				FROM roles WHERE is_active = TRUE ORDER BY id ASC""", null);
+		return getRoles(
+				"""
+						SELECT id, name, display_name, description, is_active, is_system, COALESCE(hierarchy_level, 1) AS hierarchy_level
+						FROM roles WHERE is_active = TRUE ORDER BY hierarchy_level DESC, id ASC""",
+				null);
 	}
 
 	public List<Role> searchRoles(String keyword, int offset, int limit) {
 		if (keyword == null || keyword.trim().isEmpty()) {
 			return getRoles(
-					"SELECT id, name, display_name, description, is_active, is_system FROM roles ORDER BY id ASC LIMIT ? OFFSET ?",
+					"SELECT id, name, display_name, description, is_active, is_system, COALESCE(hierarchy_level, 1) AS hierarchy_level FROM roles ORDER BY hierarchy_level DESC, id ASC LIMIT ? OFFSET ?",
 					List.of(limit, offset));
 		}
 		String like = "%" + keyword.trim() + "%";
 		String sql = """
-				SELECT id, name, display_name, description, is_active, is_system
+				SELECT id, name, display_name, description, is_active, is_system, COALESCE(hierarchy_level, 1) AS hierarchy_level
 				FROM roles
-				WHERE name LIKE ? OR display_name LIKE ? OR description LIKE ?
-				ORDER BY id ASC LIMIT ? OFFSET ?""";
+				WHERE (name LIKE ? OR display_name LIKE ? OR description LIKE ?)
+				ORDER BY hierarchy_level DESC, id ASC LIMIT ? OFFSET ?""";
 		return getRoles(sql, List.of(like, like, like, limit, offset));
 	}
 
@@ -48,7 +50,7 @@ public class RoleDAO {
 	public Role getById(Long id) {
 		if (id == null)
 			return null;
-		String sql = "SELECT id, name, display_name, description, is_active, is_system FROM roles WHERE id = ?";
+		String sql = "SELECT id, name, display_name, description, is_active, is_system, COALESCE(hierarchy_level, 1) AS hierarchy_level FROM roles WHERE id = ?";
 		return getRole(sql, List.of(id));
 	}
 
@@ -66,14 +68,15 @@ public class RoleDAO {
 		if (role == null || role.getName() == null)
 			return false;
 		String sql = """
-				INSERT INTO roles (name, display_name, description, is_active, is_system)
-				VALUES (?, ?, ?, ?, ?)""";
+				INSERT INTO roles (name, display_name, description, is_active, is_system, hierarchy_level)
+				VALUES (?, ?, ?, ?, ?, ?)""";
 		try (Connection conn = DBContext.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
 			ps.setString(1, role.getName());
 			ps.setString(2, role.getDisplayName());
 			ps.setString(3, role.getDescription());
 			ps.setBoolean(4, role.getIsActive() != null && role.getIsActive());
 			ps.setBoolean(5, role.getIsSystem() != null && role.getIsSystem());
+			ps.setInt(6, role.getRank() != null ? role.getRank() : 1);
 			return ps.executeUpdate() > 0;
 		} catch (SQLException e) {
 			System.err.println("RoleDAO.insert() ERROR: " + e.getMessage());
@@ -85,13 +88,14 @@ public class RoleDAO {
 		if (role == null || role.getId() == null)
 			return false;
 		String sql = """
-				UPDATE roles SET name = ?, display_name = ?, description = ?
+				UPDATE roles SET name = ?, display_name = ?, description = ?, hierarchy_level = ?
 				WHERE id = ? AND is_system = FALSE""";
 		try (Connection conn = DBContext.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
 			ps.setString(1, role.getName());
 			ps.setString(2, role.getDisplayName());
 			ps.setString(3, role.getDescription());
-			ps.setLong(4, role.getId());
+			ps.setInt(4, role.getRank() != null ? role.getRank() : 1);
+			ps.setLong(5, role.getId());
 			return ps.executeUpdate() > 0;
 		} catch (SQLException e) {
 			System.err.println("RoleDAO.update() ERROR: " + e.getMessage());
@@ -174,6 +178,7 @@ public class RoleDAO {
 		r.setDescription(rs.getString("description"));
 		r.setIsActive(rs.getBoolean("is_active"));
 		r.setIsSystem(rs.getBoolean("is_system"));
+		r.setRank(rs.getObject("rank") != null ? rs.getInt("rank") : 1);
 		return r;
 	}
 }

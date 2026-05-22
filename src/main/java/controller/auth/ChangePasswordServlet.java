@@ -66,7 +66,7 @@ public class ChangePasswordServlet extends HttpServlet {
 				try (ResultSet rs = ps.executeQuery()) {
 					if (rs.next()) {
 						String storedHash = rs.getString("password_hash");
-						if (!util.PasswordUtil.checkPassword(currentPassword, storedHash)) {
+						if (!PasswordUtil.checkPassword(currentPassword, storedHash)) {
 							forwardWithError(request, response, "Mật khẩu hiện tại không chính xác.", isRequired);
 							return;
 						}

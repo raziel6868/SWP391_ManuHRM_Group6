@@ -35,33 +35,31 @@
 
         <hr class="my-3 border-secondary opacity-25">
 
-        <c:forEach var="permission" items="${permissions}">
-            <c:set var="showInSidebar" value="true" />
+        <c:forEach var="permission" items="${sessionScope.permissions}">
+            <c:set var="showInSidebar" value="false" />
             <c:choose>
                 <c:when test="${permission.code == 'USER_VIEW'}">
-                    <c:url var="permissionUrl" value="/user-list" />
-                    <c:set var="permissionIcon" value="groups" />
-                    <c:set var="permissionDisplayName" value="Quản lý Nhân sự" />
+                    <c:set var="showInSidebar" value="true" />
+                    <c:set var="menuIcon" value="groups" />
+                    <c:set var="menuLabel" value="Quản lý Nhân sự" />
                 </c:when>
                 <c:when test="${permission.code == 'ROLE_VIEW'}">
-                    <c:url var="permissionUrl" value="/role-list" />
-                    <c:set var="permissionIcon" value="verified_user" />
-                    <c:set var="permissionDisplayName" value="Quản lý Vai trò" />
+                    <c:set var="showInSidebar" value="true" />
+                    <c:set var="menuIcon" value="verified_user" />
+                    <c:set var="menuLabel" value="Quản lý Vai trò" />
                 </c:when>
-                <c:otherwise>
-                    <c:set var="showInSidebar" value="false" />
-                </c:otherwise>
             </c:choose>
 
             <c:if test="${showInSidebar}">
-                <a class="sidebar-nav-item text-decoration-none" href="${permissionUrl}">
-                    <span class="material-symbols-outlined"><c:out value="${permissionIcon}" /></span>
-                    <span><c:out value="${permissionDisplayName}" /></span>
+                <c:url var="menuUrl" value="${permission.urlPattern}" />
+                <a class="sidebar-nav-item text-decoration-none" href="${menuUrl}">
+                    <span class="material-symbols-outlined"><c:out value="${menuIcon}" /></span>
+                    <span><c:out value="${menuLabel}" /></span>
                 </a>
             </c:if>
         </c:forEach>
 
-        <c:if test="${empty permissions}">
+        <c:if test="${empty sessionScope.permissions}">
             <div class="text-on-surface-variant body-sm px-3 py-2">
                 Role hiện tại chưa có quyền quản trị.
             </div>

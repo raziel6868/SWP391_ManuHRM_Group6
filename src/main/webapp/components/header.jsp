@@ -17,18 +17,18 @@
     </div>
 
     <div class="d-flex align-items-center gap-2">
-        <c:if test="${user.roleName == 'SYSADMIN' || user.roleName == 'HR_MANAGER'}">
-            <a href="${pageContext.request.contextPath}/admin/tickets" class="notification-btn" title="Yêu cầu đặt lại mật khẩu">
-                <span class="material-symbols-outlined">notifications</span>
-                <c:if test="${pendingCount > 0}">
-                    <span class="badge-notification">${pendingCount > 9 ? '9+' : pendingCount}</span>
+        <%-- Notification bell: chỉ hiện khi có TICKET_VIEW permission (dynamic RBAC từ DB) --%>
+        <c:if test="${not empty sessionScope.permissions}">
+            <c:forEach var="p" items="${sessionScope.permissions}">
+                <c:if test="${p.code == 'TICKET_VIEW'}">
+                    <a href="${pageContext.request.contextPath}/admin/tickets" class="notification-btn" title="Yêu cầu đặt lại mật khẩu">
+                        <span class="material-symbols-outlined">notifications</span>
+                        <c:if test="${pendingCount > 0}">
+                            <span class="badge-notification">${pendingCount > 9 ? '9+' : pendingCount}</span>
+                        </c:if>
+                    </a>
                 </c:if>
-            </a>
-        </c:if>
-        <c:if test="${user.roleName != 'SYSADMIN' && user.roleName != 'HR_MANAGER'}">
-            <button class="notification-btn" type="button" title="Thông báo">
-                <span class="material-symbols-outlined">notifications</span>
-            </button>
+            </c:forEach>
         </c:if>
     </div>
 </header>

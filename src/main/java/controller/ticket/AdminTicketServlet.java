@@ -1,6 +1,7 @@
 package controller.ticket;
 
 import dal.TicketDAO;
+import dal.PasswordResetResult;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
@@ -79,7 +80,7 @@ public class AdminTicketServlet extends HttpServlet {
 				return;
 			}
 
-			dal.PasswordResetResult result = ticketDAO.processTicket(ticketId, admin.getId(), newPassword.trim());
+			PasswordResetResult result = ticketDAO.processTicket(ticketId, admin.getId(), newPassword.trim());
 			if (result.isSuccess()) {
 				session.setAttribute("successMsg", "Duyệt thành công! Mật khẩu mới: " + result.getNewPassword());
 			} else {

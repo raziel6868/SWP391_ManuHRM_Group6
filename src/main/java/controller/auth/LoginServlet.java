@@ -63,6 +63,7 @@ public class LoginServlet extends HttpServlet {
 			HttpSession session = request.getSession(true);
 			session.setAttribute("authUser", user);
 			session.setAttribute("permissions", permissionDAO.getPermissionsByRoleId(user.getRoleId()));
+			session.setAttribute("ALLOWED_URLS", permissionDAO.getAllowedUrlsByRoleId(user.getRoleId()));
 			session.setMaxInactiveInterval(30 * 60);
 
 			// Check if user must change password

@@ -25,11 +25,12 @@ CREATE TABLE departments (
 -- ==========================================
 CREATE TABLE roles (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(50) UNIQUE NOT NULL,       
-    display_name VARCHAR(100) NOT NULL,     
+    name VARCHAR(50) UNIQUE NOT NULL,
+    display_name VARCHAR(100) NOT NULL,
     description TEXT,
     is_active BOOLEAN DEFAULT TRUE,
-    is_system BOOLEAN DEFAULT FALSE         
+    is_system BOOLEAN DEFAULT FALSE,
+    hierarchy_level INT DEFAULT 1
 );
 
 CREATE TABLE permissions (

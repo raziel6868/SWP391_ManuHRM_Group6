@@ -10,8 +10,10 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
+import model.Permission;
 import model.User;
 import java.sql.Date;
+import java.util.List;
 import util.PasswordUtil;
 import util.ValidationUtil;
 
@@ -26,10 +28,9 @@ public class UserCreateServlet extends HttpServlet {
 	protected void doGet(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
 		HttpSession session = request.getSession(false);
-		model.User authUser = (model.User) session.getAttribute("authUser");
 
-		// Chỉ HR_Manager và Sysadmin mới được tạo user
-		if ("EMPLOYEE".equals(authUser.getRoleName()) || "LINE_MANAGER".equals(authUser.getRoleName())) {
+		// Kiểm tra quyền USER_CREATE từ DB (dynamic RBAC)
+		if (!hasPermission(session, "USER_CREATE")) {
 			session.setAttribute("errorMsg", "Bạn không có quyền thêm nhân viên mới.");
 			response.sendRedirect(request.getContextPath() + "/user-list");
 			return;
@@ -45,10 +46,9 @@ public class UserCreateServlet extends HttpServlet {
 	protected void doPost(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
 		HttpSession session = request.getSession(false);
-		model.User authUser = (model.User) session.getAttribute("authUser");
 
-		// Chỉ HR_Manager và Sysadmin mới được tạo user
-		if ("EMPLOYEE".equals(authUser.getRoleName()) || "LINE_MANAGER".equals(authUser.getRoleName())) {
+		// Kiểm tra quyền USER_CREATE từ DB (dynamic RBAC)
+		if (!hasPermission(session, "USER_CREATE")) {
 			session.setAttribute("errorMsg", "Bạn không có quyền thêm nhân viên mới.");
 			response.sendRedirect(request.getContextPath() + "/user-list");
 			return;
@@ -195,5 +195,18 @@ public class UserCreateServlet extends HttpServlet {
 		request.setAttribute("departments", departmentDAO.getActiveDepartments());
 		request.setAttribute("roles", roleDAO.getActiveRoles());
 		request.setAttribute("managers", userDAO.searchUsers("", null, null, true, null, 0, 1000));
+	}
+
+	private boolean hasPermission(HttpSession session, String code) {
+		if (session == null || code == null)
+			return false;
+		List<Permission> perms = (List<Permission>) session.getAttribute("permissions");
+		if (perms == null)
+			return false;
+		for (Permission p : perms) {
+			if (code.equals(p.getCode()))
+				return true;
+		}
+		return false;
 	}
 }

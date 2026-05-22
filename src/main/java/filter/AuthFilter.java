@@ -3,9 +3,13 @@ package filter;
 import jakarta.servlet.*;
 import jakarta.servlet.annotation.*;
 import java.io.*;
+import java.util.HashSet;
+import java.util.Set;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
+import model.Permission;
+import java.util.List;
 
 public class AuthFilter implements Filter {
 
@@ -38,15 +42,54 @@ public class AuthFilter implements Filter {
 		HttpServletRequest httpRequest = (HttpServletRequest) request;
 		HttpServletResponse httpResponse = (HttpServletResponse) response;
 		String contextPath = httpRequest.getContextPath();
-		String path = httpRequest.getRequestURI().substring(contextPath.length()).toLowerCase();
+		String servletPath = httpRequest.getServletPath();
 
-		if (isPublic(path)) {
+		if (servletPath == null) {
+			servletPath = "";
+		}
+
+		String lowerPath = servletPath.toLowerCase();
+
+		if (isPublic(lowerPath)) {
+			request.setAttribute("_authPass", Boolean.TRUE);
 			return;
 		}
 
 		HttpSession session = httpRequest.getSession(false);
 		if (session == null || session.getAttribute("authUser") == null) {
-			httpResponse.sendRedirect(contextPath + "/login");
+			request.setAttribute("_authPass", Boolean.FALSE);
+			request.setAttribute("_authRedirect", contextPath + "/login");
+			return;
+		}
+
+		if (lowerPath.startsWith("/role-")) {
+			List<Permission> perms = (List<Permission>) session.getAttribute("permissions");
+			boolean hasRoleView = false;
+			if (perms != null) {
+				for (Permission p : perms) {
+					if ("ROLE_VIEW".equals(p.getCode())) {
+						hasRoleView = true;
+						break;
+					}
+				}
+			}
+			if (!hasRoleView) {
+				request.setAttribute("_authPass", Boolean.FALSE);
+				request.setAttribute("_authRedirect", contextPath + "/views/error/403.jsp");
+				return;
+			}
+		}
+
+		Set allowedUrlsRaw = (Set) session.getAttribute("ALLOWED_URLS");
+		if (allowedUrlsRaw == null) {
+			allowedUrlsRaw = new HashSet();
+		}
+
+		if (allowedUrlsRaw.contains(servletPath)) {
+			request.setAttribute("_authPass", Boolean.TRUE);
+		} else {
+			request.setAttribute("_authPass", Boolean.FALSE);
+			request.setAttribute("_authRedirect", contextPath + "/views/error/403.jsp");
 		}
 	}
 
@@ -54,6 +97,14 @@ public class AuthFilter implements Filter {
 			throws IOException, ServletException {
 		if (debug) {
 			log("AuthFilter:DoAfterProcessing");
+		}
+
+		Boolean authPass = (Boolean) request.getAttribute("_authPass");
+		String redirectPath = (String) request.getAttribute("_authRedirect");
+
+		if (Boolean.FALSE.equals(authPass) && redirectPath != null) {
+			HttpServletResponse httpResponse = (HttpServletResponse) response;
+			httpResponse.sendRedirect(redirectPath);
 		}
 	}
 
@@ -64,52 +115,25 @@ public class AuthFilter implements Filter {
 			log("AuthFilter:doFilter()");
 		}
 
-		HttpServletRequest httpRequest = (HttpServletRequest) request;
-		HttpServletResponse httpResponse = (HttpServletResponse) response;
-
-		String contextPath = httpRequest.getContextPath();
-		String path = httpRequest.getRequestURI().substring(contextPath.length()).toLowerCase();
-
-		// Public paths - cho qua
-		if (isPublic(path)) {
-			chain.doFilter(request, response);
-			return;
-		}
-
-		HttpSession session = httpRequest.getSession(false);
-		if (session == null || session.getAttribute("authUser") == null) {
-			httpResponse.sendRedirect(contextPath + "/login");
-			return;
-		}
-
-		model.User authUser = (model.User) session.getAttribute("authUser");
-		String roleName = authUser.getRoleName();
-
-		// Employee: chỉ được xem profile, redirect các trang khác
-		if ("EMPLOYEE".equals(roleName)) {
-			if (isManagerOnly(path)) {
-				session.setAttribute("errorMsg", "Bạn không có quyền truy cập trang này.");
-				httpResponse.sendRedirect(contextPath + "/profile");
-				return;
+		doBeforeProcessing(request, response);
+		Throwable problem = null;
+		try {
+			Boolean authPass = (Boolean) request.getAttribute("_authPass");
+			if (Boolean.TRUE.equals(authPass)) {
+				chain.doFilter(request, response);
 			}
-			if (isAdminOnly(path)) {
-				session.setAttribute("errorMsg", "Bạn không có quyền truy cập trang này.");
-				httpResponse.sendRedirect(contextPath + "/profile");
-				return;
-			}
+		} catch (Throwable t) {
+			problem = t;
+			t.printStackTrace();
 		}
-
-		// Line Manager: không được vào role management
-		if ("LINE_MANAGER".equals(roleName)) {
-			if (isAdminOnly(path)) {
-				session.setAttribute("errorMsg", "Bạn không có quyền truy cập trang này.");
-				httpResponse.sendRedirect(contextPath + "/user-list");
-				return;
-			}
+		doAfterProcessing(request, response);
+		if (problem != null) {
+			if (problem instanceof ServletException)
+				throw (ServletException) problem;
+			if (problem instanceof IOException)
+				throw (IOException) problem;
+			sendProcessingError(problem, response);
 		}
-
-		// HR Manager và Sysadmin: được vào tất cả
-		chain.doFilter(request, response);
 	}
 
 	public FilterConfig getFilterConfig() {
@@ -151,11 +175,11 @@ public class AuthFilter implements Filter {
 				response.setContentType("text/html");
 				PrintStream ps = new PrintStream(response.getOutputStream());
 				PrintWriter pw = new PrintWriter(ps);
-				pw.print("<html>\n<head>\n<title>Error</title>\n</head>\n<body>\n"); // NOI18N
+				pw.print("<html>\n<head>\n<title>Error</title>\n</head>\n<body>\n");
 
 				pw.print("<h1>The resource did not process correctly</h1>\n<pre>\n");
 				pw.print(stackTrace);
-				pw.print("</pre></body>\n</html>"); // NOI18N
+				pw.print("</pre></body>\n</html>");
 				pw.close();
 				ps.close();
 				response.getOutputStream().close();
@@ -189,22 +213,22 @@ public class AuthFilter implements Filter {
 			return true;
 		if (path.startsWith("/views/error/"))
 			return true;
+		if (path.startsWith("/auth/"))
+			return true;
 		if (path.startsWith("/login"))
+			return true;
+		if (path.startsWith("/logout"))
 			return true;
 		if (path.startsWith("/forgot-password"))
 			return true;
 		if (path.startsWith("/reset-password"))
 			return true;
+		if (path.startsWith("/change-password"))
+			return true;
+		if (path.startsWith("/home"))
+			return true;
+		if (path.startsWith("/profile"))
+			return true;
 		return false;
-	}
-
-	private boolean isAdminOnly(String path) {
-		// Chỉ Admin (Sysadmin/HR_Manager) được vào trang quản lý vai trò
-		return path.startsWith("/role-list") || path.startsWith("/role-permission") || path.startsWith("/role-status");
-	}
-
-	private boolean isManagerOnly(String path) {
-		// Chỉ Line Manager trở lên được vào trang quản lý nhân viên
-		return path.startsWith("/user-list") || path.startsWith("/user-detail") || path.startsWith("/user-status");
 	}
 }

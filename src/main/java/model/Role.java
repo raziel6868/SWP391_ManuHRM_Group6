@@ -7,6 +7,7 @@ public class Role {
 	private String description;
 	private Boolean isActive;
 	private Boolean isSystem;
+	private Integer rank;
 
 	public Long getId() {
 		return id;
@@ -54,5 +55,13 @@ public class Role {
 
 	public void setIsSystem(Boolean isSystem) {
 		this.isSystem = isSystem;
+	}
+
+	public Integer getRank() {
+		return rank;
+	}
+
+	public void setRank(Integer rank) {
+		this.rank = rank;
 	}
 }

@@ -9,6 +9,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import model.Permission;
 import model.Role;
+import java.util.ArrayList;
 
 import java.io.IOException;
 import java.util.List;
@@ -75,7 +76,7 @@ public class RolePermissionServlet extends HttpServlet {
 
 			String[] permissionIdStrs = request.getParameterValues("permissionIds");
 
-			java.util.List<Long> permissionIds = new java.util.ArrayList<>();
+			List<Long> permissionIds = new ArrayList<>();
 			if (permissionIdStrs != null) {
 				for (String pId : permissionIdStrs) {
 					permissionIds.add(Long.parseLong(pId));

@@ -5,7 +5,9 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import model.Permission;
 
 public class PermissionDAO {
@@ -117,5 +119,41 @@ public class PermissionDAO {
 		p.setUrlPattern(rs.getString("url_pattern"));
 		p.setModule(rs.getString("module"));
 		return p;
+	}
+
+	/**
+	 * Lấy danh sách URL patterns mà một role được phép truy cập. Dùng cho
+	 * AuthFilter kiểm tra quyền động theo URL.
+	 *
+	 * @param roleId
+	 *            ID của role
+	 * @return Set chứa các URL patterns (dạng "/user-list", "/role-permission",
+	 *         ...)
+	 */
+	public Set<String> getAllowedUrlsByRoleId(Long roleId) {
+		Set<String> urls = new HashSet<>();
+		if (roleId == null)
+			return urls;
+
+		String sql = """
+				SELECT p.url_pattern
+				FROM permissions p
+				INNER JOIN role_permissions rp ON rp.permission_id = p.id
+				WHERE rp.role_id = ?""";
+
+		try (Connection conn = DBContext.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+			ps.setLong(1, roleId);
+			try (ResultSet rs = ps.executeQuery()) {
+				while (rs.next()) {
+					String urlPattern = rs.getString("url_pattern");
+					if (urlPattern != null && !urlPattern.trim().isEmpty()) {
+						urls.add(urlPattern.trim());
+					}
+				}
+			}
+		} catch (SQLException e) {
+			System.err.println("PermissionDAO.getAllowedUrlsByRoleId() ERROR: " + e.getMessage());
+		}
+		return urls;
 	}
 }

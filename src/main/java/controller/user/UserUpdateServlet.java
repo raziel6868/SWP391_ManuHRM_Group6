@@ -12,7 +12,6 @@ import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
 import java.sql.Date;
 import model.User;
-import util.PermissionUtil;
 
 @WebServlet(name = "UserUpdateServlet", urlPatterns = {"/user-update"})
 public class UserUpdateServlet extends HttpServlet {
@@ -26,6 +25,14 @@ public class UserUpdateServlet extends HttpServlet {
 			throws ServletException, IOException {
 		HttpSession session = request.getSession(false);
 		User authUser = (User) session.getAttribute("authUser");
+
+		// canUpdate: chỉ rank >= 3 (HR_MANAGER/SYSADMIN) được sửa
+		int authRank = authUser.getRoleRank() != null ? authUser.getRoleRank() : 1;
+		if (authRank < 3) {
+			session.setAttribute("errorMsg", "Bạn không có quyền chỉnh sửa nhân viên.");
+			response.sendRedirect(request.getContextPath() + "/user-list");
+			return;
+		}
 
 		String idParam = request.getParameter("id");
 		if (idParam == null || idParam.isBlank()) {
@@ -41,9 +48,9 @@ public class UserUpdateServlet extends HttpServlet {
 				return;
 			}
 
-			// Kiểm tra quyền theo RBAC
-			if (!PermissionUtil.canManageUser(session, user)) {
-				session.setAttribute("errorMsg", "Bạn không có quyền chỉnh sửa nhân viên này.");
+			// Không tự sửa mình
+			if (authUser.getId().equals(user.getId())) {
+				session.setAttribute("errorMsg", "Bạn không thể tự chỉnh sửa thông tin của mình.");
 				response.sendRedirect(request.getContextPath() + "/user-list");
 				return;
 			}
@@ -65,6 +72,14 @@ public class UserUpdateServlet extends HttpServlet {
 		HttpSession session = request.getSession(false);
 		User authUser = (User) session.getAttribute("authUser");
 
+		// canUpdate: chỉ rank >= 3 (HR_MANAGER/SYSADMIN) được sửa
+		int authRank = authUser.getRoleRank() != null ? authUser.getRoleRank() : 1;
+		if (authRank < 3) {
+			session.setAttribute("errorMsg", "Bạn không có quyền chỉnh sửa nhân viên.");
+			response.sendRedirect(request.getContextPath() + "/user-list");
+			return;
+		}
+
 		request.setCharacterEncoding("UTF-8");
 
 		String idParam = request.getParameter("id");
@@ -81,9 +96,9 @@ public class UserUpdateServlet extends HttpServlet {
 				return;
 			}
 
-			// Kiểm tra quyền theo RBAC
-			if (!PermissionUtil.canManageUser(session, targetUser)) {
-				session.setAttribute("errorMsg", "Bạn không có quyền chỉnh sửa nhân viên này.");
+			// Không tự sửa mình
+			if (authUser.getId().equals(targetUser.getId())) {
+				session.setAttribute("errorMsg", "Bạn không thể tự chỉnh sửa thông tin của mình.");
 				response.sendRedirect(request.getContextPath() + "/user-list");
 				return;
 			}

@@ -8,7 +8,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import model.User;
-import util.PermissionUtil;
 
 import java.io.IOException;
 
@@ -39,6 +38,14 @@ public class UserStatusServlet extends HttpServlet {
 			return;
 		}
 
+		// canChangeStatus: chỉ rank >= 3 (HR_MANAGER/SYSADMIN) được khóa/mở
+		int authRank = authUser.getRoleRank() != null ? authUser.getRoleRank() : 1;
+		if (authRank < 3) {
+			session.setAttribute("errorMsg", "Bạn không có quyền thay đổi trạng thái nhân viên.");
+			response.sendRedirect("user-list");
+			return;
+		}
+
 		Long targetId;
 		try {
 			targetId = Long.parseLong(idParam.trim());
@@ -47,16 +54,15 @@ public class UserStatusServlet extends HttpServlet {
 			return;
 		}
 
-		// Lấy thông tin target user
 		User targetUser = userDAO.getById(targetId);
 		if (targetUser == null) {
 			response.sendRedirect("user-list");
 			return;
 		}
 
-		// Kiểm tra quyền theo RBAC
-		if (!PermissionUtil.canManageUser(session, targetUser)) {
-			session.setAttribute("errorMsg", "Bạn không có quyền thay đổi trạng thái nhân viên này.");
+		// Không tự khóa mình
+		if (authUser.getId().equals(targetUser.getId())) {
+			session.setAttribute("errorMsg", "Bạn không thể tự khóa/mở tài khoản của mình.");
 			response.sendRedirect("user-list");
 			return;
 		}

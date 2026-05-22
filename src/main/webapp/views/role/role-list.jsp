@@ -67,7 +67,7 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                <c:forEach var="r" items="${roles}">
+                                <c:forEach var="r" items="${roles}" varStatus="status">
                                     <tr <c:if test="${!r.isActive}">style="background-color: rgba(255,255,255,0.5); opacity: 0.8;"</c:if>>
                                         <td class="fw-medium text-on-surface">${r.name}</td>
                                         <td>${r.displayName}</td>
@@ -105,7 +105,7 @@
                                                     class="btn btn-sm btn-icon text-on-surface-variant hover-primary" title="Phân quyền">
                                                     <span class="material-symbols-outlined" style="font-size: 1.25rem;">key</span>
                                                 </a>
-                                                <c:if test="${r.name == 'LINE_MANAGER' || r.name == 'EMPLOYEE'}">
+                                                <c:if test="${canDeactivateList[status.index]}">
                                                     <form action="${pageContext.request.contextPath}/role-status" method="POST" class="d-inline m-0">
                                                         <input type="hidden" name="id" value="${r.id}" />
                                                         <input type="hidden" name="isActive" value="${!r.isActive}" />

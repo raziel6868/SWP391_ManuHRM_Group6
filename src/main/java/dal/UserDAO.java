@@ -9,7 +9,6 @@ import java.util.ArrayList;
 import java.util.List;
 import model.User;
 import util.PasswordUtil;
-import util.PermissionUtil;
 
 public class UserDAO {
 
@@ -20,7 +19,8 @@ public class UserDAO {
 				SELECT u.id, u.employee_code, u.username, u.password_hash, u.full_name,
 				       u.phone, u.job_title, u.employee_type, u.is_active, u.must_change_password,
 				       u.department_id, u.role_id, u.manager_id,
-				       d.name AS department_name, r.name AS role_name, r.display_name AS role_display_name
+				       d.name AS department_name, r.name AS role_name, r.display_name AS role_display_name,
+				       COALESCE(r.rank, 1) AS role_rank
 				FROM users u
 				LEFT JOIN departments d ON u.department_id = d.id
 				LEFT JOIN roles r ON u.role_id = r.id
@@ -55,6 +55,7 @@ public class UserDAO {
 				       u.phone, u.dob, u.job_title, u.employee_type, u.is_active,
 				       u.department_id, u.role_id, u.manager_id, u.created_at, u.updated_at,
 				       d.name AS department_name, r.name AS role_name, r.display_name AS role_display_name,
+				       COALESCE(r.rank, 1) AS role_rank,
 				       m.full_name AS manager_name
 				FROM users u
 				LEFT JOIN departments d ON u.department_id = d.id
@@ -94,7 +95,8 @@ public class UserDAO {
 				SELECT u.id, u.employee_code, u.username, u.full_name,
 				       u.phone, u.job_title, u.employee_type, u.is_active,
 				       u.department_id, u.role_id, u.manager_id,
-				       d.name AS department_name, r.name AS role_name, r.display_name AS role_display_name
+				       d.name AS department_name, r.name AS role_name, r.display_name AS role_display_name,
+				       COALESCE(r.rank, 1) AS role_rank
 				FROM users u
 				LEFT JOIN departments d ON u.department_id = d.id
 				LEFT JOIN roles r ON u.role_id = r.id
@@ -387,10 +389,11 @@ public class UserDAO {
 			user.setRoleDisplayName(rs.getString("role_display_name"));
 		} catch (SQLException ignore) {
 		}
-
-		// Set role rank for RBAC
-		user.setRoleRank(PermissionUtil.getRoleRank(user.getRoleName()));
-
+		try {
+			Object rankObj = rs.getObject("role_rank");
+			user.setRoleRank(rankObj != null ? ((Number) rankObj).intValue() : 1);
+		} catch (SQLException ignore) {
+		}
 		return user;
 	}
 }

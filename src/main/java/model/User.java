@@ -29,7 +29,7 @@ public class User {
 	private String roleName;
 	private String roleDisplayName;
 	private String managerName;
-	private Integer roleRank; // RBAC rank
+	private Integer hierarchyLevel; // RBAC hierarchy level
 
 	public Long getId() {
 		return id;
@@ -192,11 +192,11 @@ public class User {
 		this.managerName = managerName;
 	}
 
-	public Integer getRoleRank() {
-		return roleRank;
+	public Integer getHierarchyLevel() {
+		return hierarchyLevel;
 	}
 
-	public void setRoleRank(Integer roleRank) {
-		this.roleRank = roleRank;
+	public void setHierarchyLevel(Integer hierarchyLevel) {
+		this.hierarchyLevel = hierarchyLevel;
 	}
 }

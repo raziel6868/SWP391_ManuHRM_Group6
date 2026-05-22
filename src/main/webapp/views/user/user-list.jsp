@@ -128,13 +128,13 @@
                                                             <span class="material-symbols-outlined" style="font-size: 1.25rem;">visibility</span>
                                                         </a>
                                                         <%-- Edit: rank >= 3 (HR/SYS) có thể sửa, nhưng không sửa được người cùng rank = SYSADMIN nếu auth là HR --%>
-                                                        <c:if test="${canEditUsers && authUserId != u.id && (u.roleRank < authUserRank || authUserRank >= 4)}">
+                                                        <c:if test="${canEditUsers && authUserId != u.id && (u.hierarchyLevel < authUserHierarchyLevel || authUserHierarchyLevel >= 4)}">
                                                         <a href="${pageContext.request.contextPath}/user-update?id=${u.id}" class="btn btn-sm btn-icon text-on-surface-variant hover-primary" title="Chỉnh sửa">
                                                             <span class="material-symbols-outlined" style="font-size: 1.25rem;">edit</span>
                                                         </a>
                                                         </c:if>
                                                         <%-- Deactivate: chỉ rank >= 3 và target rank < auth rank (HR không khóa được SYSADMIN) --%>
-                                                        <c:if test="${canDeactivateUsers && authUserId != u.id && u.roleRank < authUserRank}">
+                                                        <c:if test="${canDeactivateUsers && authUserId != u.id && u.hierarchyLevel < authUserHierarchyLevel}">
                                                             <form method="post" action="${pageContext.request.contextPath}/user-status" class="d-inline m-0">
                                                                 <input type="hidden" name="id" value="${u.id}" />
                                                                 <input type="hidden" name="referer" value="list" />

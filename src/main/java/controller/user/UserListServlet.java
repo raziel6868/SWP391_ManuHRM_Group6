@@ -54,7 +54,7 @@ public class UserListServlet extends HttpServlet {
 		// Rank <= 2 (LINE_MANAGER, EMPLOYEE): chỉ thấy user dưới quyền mình (theo
 		// managerId)
 		Long managerId = null;
-		int authRank = authUser.getRoleRank() != null ? authUser.getRoleRank() : 1;
+		int authRank = authUser.getHierarchyLevel() != null ? authUser.getHierarchyLevel() : 1;
 		if (authRank <= 2) {
 			managerId = authUser.getId();
 		}
@@ -66,15 +66,14 @@ public class UserListServlet extends HttpServlet {
 		List<Department> departments = departmentDAO.getActiveDepartments();
 		List<Role> roles = roleDAO.getActiveRoles();
 
-		// Truyền thông tin RBAC xuống JSP - rank từ DB (User.roleRank)
-		request.setAttribute("authUserRank", authRank);
+		// Truyền thông tin RBAC xuống JSP - hierarchyLevel từ DB
+		request.setAttribute("authUserHierarchyLevel", authRank);
 		request.setAttribute("authUserId", authUser.getId());
 		request.setAttribute("authUserRoleName", authUser.getRoleName());
 
-		// RBAC: canEdit/canDeactivate dựa trên rank từ DB (User.roleRank)
-		// rank >= 3: HR_MANAGER và SYSADMIN có thể sửa/khóa (nhắm vào
-		// LINE_MANAGER/EMPLOYEE trong danh sách)
-		// rank <= 2: LINE_MANAGER/EMPLOYEE không thể sửa/khóa ai
+		// RBAC: canEdit/canDeactivate dựa trên hierarchyLevel từ DB
+		// hierarchyLevel >= 3: HR_MANAGER và SYSADMIN có thể sửa/khóa
+		// hierarchyLevel <= 2: LINE_MANAGER/EMPLOYEE không thể sửa/khóa ai
 		boolean canEditUsers = (authRank >= 3);
 		boolean canDeactivateUsers = (authRank >= 3);
 		request.setAttribute("canEditUsers", canEditUsers);

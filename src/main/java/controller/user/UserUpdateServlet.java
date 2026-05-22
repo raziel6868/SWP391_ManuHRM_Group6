@@ -26,9 +26,9 @@ public class UserUpdateServlet extends HttpServlet {
 		HttpSession session = request.getSession(false);
 		User authUser = (User) session.getAttribute("authUser");
 
-		// canUpdate: chỉ rank >= 3 (HR_MANAGER/SYSADMIN) được sửa
-		int authRank = authUser.getRoleRank() != null ? authUser.getRoleRank() : 1;
-		if (authRank < 3) {
+		// canUpdate: chỉ hierarchyLevel >= 3 (HR_MANAGER/SYSADMIN) được sửa
+		int authHierarchyLevel = authUser.getHierarchyLevel() != null ? authUser.getHierarchyLevel() : 1;
+		if (authHierarchyLevel < 3) {
 			session.setAttribute("errorMsg", "Bạn không có quyền chỉnh sửa nhân viên.");
 			response.sendRedirect(request.getContextPath() + "/user-list");
 			return;
@@ -72,9 +72,9 @@ public class UserUpdateServlet extends HttpServlet {
 		HttpSession session = request.getSession(false);
 		User authUser = (User) session.getAttribute("authUser");
 
-		// canUpdate: chỉ rank >= 3 (HR_MANAGER/SYSADMIN) được sửa
-		int authRank = authUser.getRoleRank() != null ? authUser.getRoleRank() : 1;
-		if (authRank < 3) {
+		// canUpdate: chỉ hierarchyLevel >= 3 (HR_MANAGER/SYSADMIN) được sửa
+		int authHierarchyLevel = authUser.getHierarchyLevel() != null ? authUser.getHierarchyLevel() : 1;
+		if (authHierarchyLevel < 3) {
 			session.setAttribute("errorMsg", "Bạn không có quyền chỉnh sửa nhân viên.");
 			response.sendRedirect(request.getContextPath() + "/user-list");
 			return;

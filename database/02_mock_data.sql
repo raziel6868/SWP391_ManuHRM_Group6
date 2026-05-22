@@ -18,7 +18,7 @@ INSERT INTO departments (id, name, department_type, parent_id, is_active) VALUES
 (4, 'Xưởng Lắp Ráp A', 'FACTORY', NULL, 1),
 (5, 'Tổ Cắt Hàn (Xưởng A)', 'FACTORY', 4, 1);
 
--- 4 Role cốt lõi (rank: cao hơn → quản lý được thấp hơn)
+-- 4 Role cốt lõi (hierarchy_level: cao hơn → quản lý được thấp hơn)
 INSERT INTO roles (id, name, display_name, description, is_system, is_active, hierarchy_level) VALUES
 (1, 'SYSADMIN',    'Quản trị Hệ thống', 'Nắm toàn quyền IT, cấu hình hệ thống', 1, 1, 4),
 (2, 'HR_MANAGER',  'Quản lý Nhân sự',   'Tuyển dụng, cập nhật hồ sơ, khóa tài khoản', 1, 1, 3),

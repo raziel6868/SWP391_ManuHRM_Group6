@@ -63,9 +63,9 @@ public class RoleStatusServlet extends HttpServlet {
 				return;
 			}
 
-			if (!newStatus) { // Vô hiệu hóa role: chỉ rank <= 2 (LINE_MANAGER, EMPLOYEE)
-				int roleRank = role.getRank() != null ? role.getRank() : 1;
-				if (roleRank > 2) {
+			if (!newStatus) { // Vô hiệu hóa role: chỉ hierarchy_level <= 2 (LINE_MANAGER, EMPLOYEE)
+				int roleHierarchy = role.getHierarchyLevel() != null ? role.getHierarchyLevel() : 1;
+				if (roleHierarchy > 2) {
 					session.setAttribute("errorMsg", "Chỉ có thể vô hiệu hóa vai trò Line Manager và Employee.");
 					response.sendRedirect(request.getContextPath() + "/role-list");
 					return;

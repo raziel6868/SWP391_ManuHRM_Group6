@@ -73,15 +73,12 @@ public class RoleListServlet extends HttpServlet {
 		int totalRoles = roleDAO.countRoles(keyword);
 		int totalPages = (int) Math.ceil((double) totalRoles / limit);
 
-		// Tính canDeactivate cho mỗi role: chỉ LINE_MANAGER/EMPLOYEE + không có user
-		// active
 		List<Boolean> canDeactivateList = new ArrayList<>();
 		for (Role r : roles) {
 			boolean canDeact = false;
 			if (hasRoleStatusPerm) {
-				// Rank <= 2: chỉ LINE_MANAGER (2) và EMPLOYEE (1) được deactive
-				int roleRank = r.getRank() != null ? r.getRank() : 1;
-				if (roleRank <= 2) {
+				int roleHierarchy = r.getHierarchyLevel() != null ? r.getHierarchyLevel() : 1;
+				if (roleHierarchy <= 2) {
 					int activeCount = userDAO.countActiveUsersByRoleId(r.getId());
 					canDeact = (activeCount == 0);
 				}

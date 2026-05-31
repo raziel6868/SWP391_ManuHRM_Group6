@@ -51,7 +51,8 @@ public class UserListServlet extends HttpServlet {
 			page = 1;
 		int offset = (page - 1) * PAGE_SIZE;
 
-		// Rank <= 2 (LINE_MANAGER, EMPLOYEE): chỉ thấy user dưới quyền mình (theo
+		// Rank <= 2 (PRODUCTION_SUPERVISOR, EMPLOYEE): chỉ thấy user dưới quyền mình
+		// (theo
 		// managerId)
 		Long managerId = null;
 		int authRank = authUser.getHierarchyLevel() != null ? authUser.getHierarchyLevel() : 1;

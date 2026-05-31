@@ -44,7 +44,8 @@ public class UserDetailServlet extends HttpServlet {
 		}
 
 		// Mọi người đều xem được user detail
-		// HierarchyLevel <= 2 (LINE_MANAGER, EMPLOYEE): chỉ xem được subordinate
+		// HierarchyLevel <= 2 (PRODUCTION_SUPERVISOR, EMPLOYEE): chỉ xem được
+		// subordinate
 		int authHierarchyLevel = authUser.getHierarchyLevel() != null ? authUser.getHierarchyLevel() : 1;
 		if (authHierarchyLevel <= 2) {
 			if (targetUser.getManagerId() == null || !targetUser.getManagerId().equals(authUser.getId())) {
@@ -56,7 +57,7 @@ public class UserDetailServlet extends HttpServlet {
 
 		// canEdit/canDeactivate: chỉ hierarchyLevel >= 3 (HR_MANAGER/SYSADMIN) được
 		// sửa/khóa
-		// LINE_MANAGER (rank 2) và EMPLOYEE (rank 1) không có quyền này
+		// PRODUCTION_SUPERVISOR (rank 2) và EMPLOYEE (rank 1) không có quyền này
 		boolean canEdit = (authHierarchyLevel >= 3) && !authUser.getId().equals(targetUser.getId());
 		boolean canDeactivate = canEdit;
 		request.setAttribute("user", targetUser);

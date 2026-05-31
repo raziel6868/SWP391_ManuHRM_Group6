@@ -15,7 +15,8 @@ public class User {
 	private String fullName;
 	private String phone;
 	private Date dob;
-	private String jobTitle;
+	private Long jobTitleId;
+	private String jobTitleName;
 	private Long departmentId;
 	private Long managerId;
 	private EmployeeType employeeType;
@@ -87,12 +88,20 @@ public class User {
 		this.dob = dob;
 	}
 
-	public String getJobTitle() {
-		return jobTitle;
+	public Long getJobTitleId() {
+		return jobTitleId;
 	}
 
-	public void setJobTitle(String jobTitle) {
-		this.jobTitle = jobTitle;
+	public void setJobTitleId(Long jobTitleId) {
+		this.jobTitleId = jobTitleId;
+	}
+
+	public String getJobTitleName() {
+		return jobTitleName;
+	}
+
+	public void setJobTitleName(String jobTitleName) {
+		this.jobTitleName = jobTitleName;
 	}
 
 	public Long getDepartmentId() {

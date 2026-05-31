@@ -3,6 +3,7 @@ package controller.user;
 import dal.DepartmentDAO;
 import dal.UserDAO;
 import dal.RoleDAO;
+import dal.JobTitleDAO;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
@@ -22,6 +23,7 @@ public class UserCreateServlet extends HttpServlet {
 
 	private final DepartmentDAO departmentDAO = new DepartmentDAO();
 	private final RoleDAO roleDAO = new RoleDAO();
+	private final JobTitleDAO jobTitleDAO = new JobTitleDAO();
 	private final UserDAO userDAO = new UserDAO();
 
 	@Override
@@ -38,6 +40,7 @@ public class UserCreateServlet extends HttpServlet {
 
 		request.setAttribute("departments", departmentDAO.getActiveDepartments());
 		request.setAttribute("roles", roleDAO.getActiveRoles());
+		request.setAttribute("jobTitles", jobTitleDAO.getActiveJobTitles());
 		request.setAttribute("managers", userDAO.searchUsers("", null, null, true, null, 0, 1000));
 		request.getRequestDispatcher("/views/user/user-create.jsp").forward(request, response);
 	}
@@ -150,7 +153,7 @@ public class UserCreateServlet extends HttpServlet {
 				user.setDob(Date.valueOf(dobStr));
 			}
 
-			user.setJobTitle(request.getParameter("jobTitle"));
+			user.setJobTitleId(paramLong(request, "jobTitleId"));
 
 			String employeeTypeStr = request.getParameter("employeeType");
 			if (employeeTypeStr != null && !employeeTypeStr.trim().isEmpty()) {
@@ -194,7 +197,19 @@ public class UserCreateServlet extends HttpServlet {
 	private void setFormAttributes(HttpServletRequest request) {
 		request.setAttribute("departments", departmentDAO.getActiveDepartments());
 		request.setAttribute("roles", roleDAO.getActiveRoles());
+		request.setAttribute("jobTitles", jobTitleDAO.getActiveJobTitles());
 		request.setAttribute("managers", userDAO.searchUsers("", null, null, true, null, 0, 1000));
+	}
+
+	private Long paramLong(HttpServletRequest request, String name) {
+		String val = request.getParameter(name);
+		if (val == null || val.trim().isEmpty())
+			return null;
+		try {
+			return Long.parseLong(val);
+		} catch (NumberFormatException e) {
+			return null;
+		}
 	}
 
 	private boolean hasPermission(HttpSession session, String code) {

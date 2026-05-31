@@ -58,7 +58,7 @@
                             </c:choose>
                         </div>
                         <p class="body-lg text-on-surface-variant mb-3">
-                            <c:out value="${not empty user.jobTitle ? user.jobTitle : 'N/A'}" />
+                            <c:out value="${not empty user.jobTitleName ? user.jobTitleName : 'N/A'}" />
                         </p>
 
                         <div class="d-flex flex-wrap justify-content-center justify-content-md-start gap-3">

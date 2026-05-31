@@ -1,6 +1,14 @@
 ### Environment Variables
 .env
 
+### Local AI planning artifacts ###
+AGENTS.md
+_bmad-output/
+docs/
+_bmad/
+.agents/
+.codex/
+
 ### Maven ###
 target/
 !.mvn/wrapper/maven-wrapper.jar

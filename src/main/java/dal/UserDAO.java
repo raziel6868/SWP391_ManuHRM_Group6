@@ -17,13 +17,15 @@ public class UserDAO {
 	public User findActiveUserByLogin(String identifier, String plainPassword) {
 		String sql = """
 				SELECT u.id, u.employee_code, u.username, u.password_hash, u.full_name,
-				       u.phone, u.job_title, u.employee_type, u.is_active, u.must_change_password,
+				       u.phone, u.employee_type, u.is_active, u.must_change_password,
+				       u.job_title_id, jt.name AS job_title_name,
 				       u.department_id, u.role_id, u.manager_id,
 				       d.name AS department_name, r.name AS role_name, r.display_name AS role_display_name,
 				       COALESCE(r.hierarchy_level, 1) AS hierarchy_level
 				FROM users u
 				LEFT JOIN departments d ON u.department_id = d.id
 				LEFT JOIN roles r ON u.role_id = r.id
+				LEFT JOIN job_titles jt ON u.job_title_id = jt.id
 				WHERE (u.username = ? OR u.employee_code = ?) AND u.is_active = TRUE AND r.is_active = TRUE
 				LIMIT 1""";
 
@@ -52,7 +54,8 @@ public class UserDAO {
 			return null;
 		String sql = """
 				SELECT u.id, u.employee_code, u.username, u.full_name,
-				       u.phone, u.dob, u.job_title, u.employee_type, u.is_active,
+				       u.phone, u.dob, u.employee_type, u.is_active,
+				       u.job_title_id, jt.name AS job_title_name,
 				       u.department_id, u.role_id, u.manager_id, u.created_at, u.updated_at,
 				       d.name AS department_name, r.name AS role_name, r.display_name AS role_display_name,
 				       COALESCE(r.hierarchy_level, 1) AS hierarchy_level,
@@ -60,6 +63,7 @@ public class UserDAO {
 				FROM users u
 				LEFT JOIN departments d ON u.department_id = d.id
 				LEFT JOIN roles r ON u.role_id = r.id
+				LEFT JOIN job_titles jt ON u.job_title_id = jt.id
 				LEFT JOIN users m ON u.manager_id = m.id
 				WHERE u.id = ?""";
 
@@ -93,13 +97,15 @@ public class UserDAO {
 		List<User> users = new ArrayList<>();
 		StringBuilder sql = new StringBuilder("""
 				SELECT u.id, u.employee_code, u.username, u.full_name,
-				       u.phone, u.job_title, u.employee_type, u.is_active,
+				       u.phone, u.employee_type, u.is_active,
+				       u.job_title_id, jt.name AS job_title_name,
 				       u.department_id, u.role_id, u.manager_id,
 				       d.name AS department_name, r.name AS role_name, r.display_name AS role_display_name,
 				       COALESCE(r.hierarchy_level, 1) AS hierarchy_level
 				FROM users u
 				LEFT JOIN departments d ON u.department_id = d.id
 				LEFT JOIN roles r ON u.role_id = r.id
+				LEFT JOIN job_titles jt ON u.job_title_id = jt.id
 				WHERE 1=1""");
 
 		List<Object> params = new ArrayList<>();
@@ -192,7 +198,7 @@ public class UserDAO {
 			return false;
 		String sql = """
 				INSERT INTO users (employee_code, username, password_hash, full_name, phone, dob,
-				                   job_title, department_id, employee_type, role_id, manager_id, is_active)
+				                   job_title_id, department_id, employee_type, role_id, manager_id, is_active)
 				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""";
 
 		try (Connection conn = DBContext.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -203,7 +209,7 @@ public class UserDAO {
 			ps.setString(i++, user.getFullName());
 			ps.setString(i++, user.getPhone());
 			ps.setDate(i++, user.getDob() != null ? new Date(user.getDob().getTime()) : null);
-			ps.setString(i++, user.getJobTitle());
+			ps.setObject(i++, user.getJobTitleId());
 			ps.setObject(i++, user.getDepartmentId());
 			ps.setString(i++, user.getEmployeeType() != null ? user.getEmployeeType().name() : "OFFICE");
 			ps.setObject(i++, user.getRoleId());
@@ -222,7 +228,7 @@ public class UserDAO {
 		boolean updatePassword = optionalNewPassword != null && !optionalNewPassword.trim().isEmpty();
 
 		StringBuilder sql = new StringBuilder("""
-				UPDATE users SET full_name = ?, phone = ?, dob = ?, job_title = ?,
+				UPDATE users SET full_name = ?, phone = ?, dob = ?, job_title_id = ?,
 				                 department_id = ?, employee_type = ?, role_id = ?, manager_id = ?""");
 		if (updatePassword)
 			sql.append(", password_hash = ?");
@@ -234,7 +240,7 @@ public class UserDAO {
 			ps.setString(i++, user.getFullName());
 			ps.setString(i++, user.getPhone());
 			ps.setDate(i++, user.getDob() != null ? new Date(user.getDob().getTime()) : null);
-			ps.setString(i++, user.getJobTitle());
+			ps.setObject(i++, user.getJobTitleId());
 			ps.setObject(i++, user.getDepartmentId());
 			ps.setString(i++, user.getEmployeeType() != null ? user.getEmployeeType().name() : "OFFICE");
 			ps.setObject(i++, user.getRoleId());
@@ -345,7 +351,10 @@ public class UserDAO {
 		user.setUsername(rs.getString("username"));
 		user.setFullName(rs.getString("full_name"));
 		user.setPhone(rs.getString("phone"));
-		user.setJobTitle(rs.getString("job_title"));
+		user.setJobTitleId(rs.getLong("job_title_id"));
+		if (!rs.wasNull()) {
+			user.setJobTitleName(rs.getString("job_title_name"));
+		}
 		user.setIsActive(rs.getBoolean("is_active"));
 
 		try {

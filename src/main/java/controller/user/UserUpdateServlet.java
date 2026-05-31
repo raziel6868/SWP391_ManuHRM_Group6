@@ -3,6 +3,7 @@ package controller.user;
 import dal.DepartmentDAO;
 import dal.RoleDAO;
 import dal.UserDAO;
+import dal.JobTitleDAO;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
@@ -19,6 +20,7 @@ public class UserUpdateServlet extends HttpServlet {
 	private final UserDAO userDAO = new UserDAO();
 	private final DepartmentDAO departmentDAO = new DepartmentDAO();
 	private final RoleDAO roleDAO = new RoleDAO();
+	private final JobTitleDAO jobTitleDAO = new JobTitleDAO();
 
 	@Override
 	protected void doGet(HttpServletRequest request, HttpServletResponse response)
@@ -58,6 +60,7 @@ public class UserUpdateServlet extends HttpServlet {
 			request.setAttribute("user", user);
 			request.setAttribute("departments", departmentDAO.getActiveDepartments());
 			request.setAttribute("roles", roleDAO.getActiveRoles());
+			request.setAttribute("jobTitles", jobTitleDAO.getActiveJobTitles());
 			request.setAttribute("managers", userDAO.searchUsers("", null, null, true, null, 0, 1000));
 
 			request.getRequestDispatcher("/views/user/user-update.jsp").forward(request, response);
@@ -115,7 +118,7 @@ public class UserUpdateServlet extends HttpServlet {
 				user.setDob(Date.valueOf(dobStr));
 			}
 
-			user.setJobTitle(request.getParameter("jobTitle"));
+			user.setJobTitleId(paramLong(request, "jobTitleId"));
 
 			String employeeTypeStr = request.getParameter("employeeType");
 			if (employeeTypeStr != null && !employeeTypeStr.trim().isEmpty()) {
@@ -154,6 +157,17 @@ public class UserUpdateServlet extends HttpServlet {
 		} catch (Exception e) {
 			e.printStackTrace();
 			response.sendRedirect(request.getContextPath() + "/user-list");
+		}
+	}
+
+	private Long paramLong(HttpServletRequest request, String name) {
+		String val = request.getParameter(name);
+		if (val == null || val.trim().isEmpty())
+			return null;
+		try {
+			return Long.parseLong(val);
+		} catch (NumberFormatException e) {
+			return null;
 		}
 	}
 }

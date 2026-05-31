@@ -77,7 +77,7 @@
                                     </c:otherwise>
                                 </c:choose>
                             </div>
-                            <p class="body-lg text-on-surface-variant mb-3">${user.jobTitle}</p>
+                            <p class="body-lg text-on-surface-variant mb-3">${user.jobTitleName}</p>
                             <div class="d-flex flex-wrap justify-content-center justify-content-md-start gap-3">
                                 <div class="d-flex align-items-center gap-2 text-on-surface-variant">
                                     <span class="material-symbols-outlined" style="font-size: 1.125rem;">badge</span>

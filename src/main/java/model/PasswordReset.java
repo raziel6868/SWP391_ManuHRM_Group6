@@ -13,6 +13,7 @@ public class PasswordReset {
 	private Status status;
 	private Timestamp createdAt;
 	private Long resolvedBy;
+	private Timestamp resolvedAt;
 	private String newPassword;
 
 	// Các trường bổ trợ (Không có trong table DB nhưng cần để hiển thị lên UI)
@@ -62,6 +63,14 @@ public class PasswordReset {
 
 	public void setResolvedBy(Long resolvedBy) {
 		this.resolvedBy = resolvedBy;
+	}
+
+	public Timestamp getResolvedAt() {
+		return resolvedAt;
+	}
+
+	public void setResolvedAt(Timestamp resolvedAt) {
+		this.resolvedAt = resolvedAt;
 	}
 
 	public String getNewPassword() {

@@ -64,7 +64,7 @@
                                     <span class="text-muted small">Phòng ban:</span> <strong class="text-on-surface">${user.departmentName}</strong>
                                 </div>
                                 <div class="col-6">
-                                    <span class="text-muted small">Chức danh:</span> <strong class="text-on-surface">${user.jobTitle}</strong>
+                                    <span class="text-muted small">Chức danh:</span> <strong class="text-on-surface">${user.jobTitleName}</strong>
                                 </div>
                             </div>
                         </div>

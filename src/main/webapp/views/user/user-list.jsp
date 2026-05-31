@@ -21,7 +21,7 @@
                         <h2 class="h3 text-on-surface fw-bold mb-1">Quản lý nhân sự</h2>
                         <p class="body-md text-on-surface-variant mb-0">Danh sách nhân viên (${totalRecords} người)</p>
                     </div>
-                    <c:if test="${sessionScope.authUser.roleName != 'LINE_MANAGER' && sessionScope.authUser.roleName != 'EMPLOYEE'}">
+                    <c:if test="${sessionScope.authUser.roleName != 'PRODUCTION_SUPERVISOR' && sessionScope.authUser.roleName != 'EMPLOYEE'}">
                     <a href="${pageContext.request.contextPath}/user-create" class="btn-primary-gradient text-decoration-none px-3 py-2 d-flex align-items-center gap-2 shadow-sm">
                         <span class="material-symbols-outlined" style="font-size: 1.125rem;">person_add</span>
                         Thêm nhân viên
@@ -105,7 +105,7 @@
                                                 <td class="fw-medium text-on-surface">${u.employeeCode}</td>
                                                 <td class="fw-bold">${u.fullName}</td>
                                                 <td>${u.username}</td>
-                                                <td class="text-on-surface-variant">${u.jobTitle}</td>
+                                                <td class="text-on-surface-variant">${u.jobTitleName}</td>
                                                 <td>${u.departmentName}</td>
                                                 <td>
                                                     <span class="badge border bg-surface-container-high text-on-surface">

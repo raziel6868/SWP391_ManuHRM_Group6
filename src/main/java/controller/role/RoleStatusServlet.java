@@ -63,10 +63,11 @@ public class RoleStatusServlet extends HttpServlet {
 				return;
 			}
 
-			if (!newStatus) { // Vô hiệu hóa role: chỉ hierarchy_level <= 2 (LINE_MANAGER, EMPLOYEE)
+			if (!newStatus) { // Vô hiệu hóa role: chỉ hierarchy_level <= 2 (PRODUCTION_SUPERVISOR, EMPLOYEE)
 				int roleHierarchy = role.getHierarchyLevel() != null ? role.getHierarchyLevel() : 1;
 				if (roleHierarchy > 2) {
-					session.setAttribute("errorMsg", "Chỉ có thể vô hiệu hóa vai trò Line Manager và Employee.");
+					session.setAttribute("errorMsg",
+							"Chỉ có thể vô hiệu hóa vai trò Production Supervisor và Employee.");
 					response.sendRedirect(request.getContextPath() + "/role-list");
 					return;
 				}

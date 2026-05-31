@@ -65,8 +65,12 @@
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label text-on-surface fw-medium mb-1">Chức danh</label>
-                                <input type="text" name="jobTitle" class="form-control input-premium"
-                                    value="${user.jobTitle}" />
+                                <select name="jobTitleId" class="form-select input-premium">
+                                    <option value="">-- Không có chức danh --</option>
+                                    <c:forEach var="jt" items="${jobTitles}">
+                                        <option value="${jt.id}" ${jt.id == user.jobTitleId ? 'selected' : ''}>${jt.name}</option>
+                                    </c:forEach>
+                                </select>
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label text-on-surface fw-medium mb-1">Loại nhân sự</label>

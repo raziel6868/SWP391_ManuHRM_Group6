@@ -48,6 +48,11 @@
                     <c:set var="menuIcon" value="verified_user" />
                     <c:set var="menuLabel" value="Quản lý Vai trò" />
                 </c:when>
+                <c:when test="${permission.code == 'CONTRACT_TYPE_VIEW'}">
+                    <c:set var="showInSidebar" value="true" />
+                    <c:set var="menuIcon" value="description" />
+                    <c:set var="menuLabel" value="Quản lý Loại hợp đồng" />
+                </c:when>
             </c:choose>
 
             <c:if test="${showInSidebar}">

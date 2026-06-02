@@ -9,6 +9,7 @@ public class Department {
 	private String name;
 	private DepartmentType departmentType;
 	private Long parentId;
+	private String parentName;
 	private Boolean isActive;
 
 	public Long getId() {
@@ -41,6 +42,14 @@ public class Department {
 
 	public void setParentId(Long parentId) {
 		this.parentId = parentId;
+	}
+
+	public String getParentName() {
+		return parentName;
+	}
+
+	public void setParentName(String parentName) {
+		this.parentName = parentName;
 	}
 
 	public Boolean getIsActive() {

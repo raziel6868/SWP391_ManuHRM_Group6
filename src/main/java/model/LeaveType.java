@@ -2,10 +2,13 @@ package model;
 
 import java.sql.Timestamp;
 
-public class JobTitle {
+public class LeaveType {
+
 	private Long id;
+	private String code;
 	private String name;
 	private String description;
+	private Boolean isPaid;
 	private Boolean isActive;
 	private Timestamp createdAt;
 	private Timestamp updatedAt;
@@ -16,6 +19,14 @@ public class JobTitle {
 
 	public void setId(Long id) {
 		this.id = id;
+	}
+
+	public String getCode() {
+		return code;
+	}
+
+	public void setCode(String code) {
+		this.code = code;
 	}
 
 	public String getName() {
@@ -32,6 +43,14 @@ public class JobTitle {
 
 	public void setDescription(String description) {
 		this.description = description;
+	}
+
+	public Boolean getIsPaid() {
+		return isPaid;
+	}
+
+	public void setIsPaid(Boolean isPaid) {
+		this.isPaid = isPaid;
 	}
 
 	public Boolean getIsActive() {

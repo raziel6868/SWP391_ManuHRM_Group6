@@ -21,9 +21,16 @@ target/
 .idea/jarRepositories.xml
 .idea/compiler.xml
 .idea/libraries/
+.idea/artifacts/
 *.iws
 *.iml
 *.ipr
+
+### Build output ###
+out/
+
+### Project tracking ###
+project_tracking.md
 
 ### Eclipse ###
 .apt_generated

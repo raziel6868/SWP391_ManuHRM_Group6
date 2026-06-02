@@ -3,7 +3,6 @@ package model;
 import java.sql.Timestamp;
 
 public class JobTitle {
-
 	private Long id;
 	private String name;
 	private String description;

@@ -18,10 +18,6 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import model.User;
 
-/**
- *
- * @author Khanh Manh
- */
 @WebServlet(name = "UserProfileEditServlet", urlPatterns = {"/profile/edit"})
 public class UserProfileEditServlet extends HttpServlet {
 

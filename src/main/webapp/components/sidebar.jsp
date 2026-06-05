@@ -3,12 +3,10 @@
 <%@ taglib prefix="fn" uri="jakarta.tags.functions" %>
 <c:set var="user" value="${sessionScope.authUser}" />
 <c:set var="currentPath" value="${pageContext.request.servletPath}" />
-<c:set var="catalogMenuOpen"
-       value="${currentPath == '/user-list' or currentPath == '/role-list' or currentPath == '/contract-type-list' or currentPath == '/leave-type-list' or currentPath == '/shift-list' or currentPath == '/job-title-list' or currentPath == '/department-list'}" />
-<c:set var="hasCatalogMenu" value="${false}" />
+<c:set var="hasAdminPermission" value="${false}" />
 <c:forEach var="permission" items="${sessionScope.permissions}">
     <c:if test="${permission.code == 'USER_VIEW' or permission.code == 'ROLE_VIEW' or permission.code == 'CONTRACT_TYPE_VIEW' or permission.code == 'LEAVE_TYPE_VIEW' or permission.code == 'SHIFT_VIEW' or permission.code == 'JOB_TITLE_VIEW' or permission.code == 'DEPARTMENT_VIEW'}">
-        <c:set var="hasCatalogMenu" value="${true}" />
+        <c:set var="hasAdminPermission" value="${true}" />
     </c:if>
 </c:forEach>
 
@@ -34,6 +32,69 @@
             <span>Bảng điều khiển</span>
         </a>
 
+        <c:forEach var="permission" items="${sessionScope.permissions}">
+            <c:choose>
+                <c:when test="${permission.code == 'USER_VIEW'}">
+                    <c:url var="menuUrl" value="${permission.urlPattern}" />
+                    <a class="${currentPath == permission.urlPattern ? 'sidebar-nav-item active text-decoration-none' : 'sidebar-nav-item text-decoration-none'}"
+                       href="${menuUrl}">
+                        <span class="material-symbols-outlined">groups</span>
+                        <span>Quản lý Nhân sự</span>
+                    </a>
+                </c:when>
+                <c:when test="${permission.code == 'ROLE_VIEW'}">
+                    <c:url var="menuUrl" value="${permission.urlPattern}" />
+                    <a class="${currentPath == permission.urlPattern ? 'sidebar-nav-item active text-decoration-none' : 'sidebar-nav-item text-decoration-none'}"
+                       href="${menuUrl}">
+                        <span class="material-symbols-outlined">verified_user</span>
+                        <span>Quản lý Vai trò</span>
+                    </a>
+                </c:when>
+                <c:when test="${permission.code == 'CONTRACT_TYPE_VIEW'}">
+                    <c:url var="menuUrl" value="${permission.urlPattern}" />
+                    <a class="${currentPath == permission.urlPattern ? 'sidebar-nav-item active text-decoration-none' : 'sidebar-nav-item text-decoration-none'}"
+                       href="${menuUrl}">
+                        <span class="material-symbols-outlined">description</span>
+                        <span>Quản lý Loại hợp đồng</span>
+                    </a>
+                </c:when>
+                <c:when test="${permission.code == 'LEAVE_TYPE_VIEW'}">
+                    <c:url var="menuUrl" value="${permission.urlPattern}" />
+                    <a class="${currentPath == permission.urlPattern ? 'sidebar-nav-item active text-decoration-none' : 'sidebar-nav-item text-decoration-none'}"
+                       href="${menuUrl}">
+                        <span class="material-symbols-outlined">event_busy</span>
+                        <span>Quản lý Loại nghỉ</span>
+                    </a>
+                </c:when>
+                <c:when test="${permission.code == 'SHIFT_VIEW'}">
+                    <c:url var="menuUrl" value="${permission.urlPattern}" />
+                    <a class="${currentPath == permission.urlPattern ? 'sidebar-nav-item active text-decoration-none' : 'sidebar-nav-item text-decoration-none'}"
+                       href="${menuUrl}">
+                        <span class="material-symbols-outlined">schedule</span>
+                        <span>Quản lý Ca làm việc</span>
+                    </a>
+                </c:when>
+                <c:when test="${permission.code == 'JOB_TITLE_VIEW'}">
+                    <c:url var="menuUrl" value="${permission.urlPattern}" />
+                    <a class="${currentPath == permission.urlPattern ? 'sidebar-nav-item active text-decoration-none' : 'sidebar-nav-item text-decoration-none'}"
+                       href="${menuUrl}">
+                        <span class="material-symbols-outlined">badge</span>
+                        <span>Quản lý Chức danh</span>
+                    </a>
+                </c:when>
+                <c:when test="${permission.code == 'DEPARTMENT_VIEW'}">
+                    <c:url var="menuUrl" value="${permission.urlPattern}" />
+                    <a class="${currentPath == permission.urlPattern ? 'sidebar-nav-item active text-decoration-none' : 'sidebar-nav-item text-decoration-none'}"
+                       href="${menuUrl}">
+                        <span class="material-symbols-outlined">account_tree</span>
+                        <span>Quản lý Phòng ban</span>
+                    </a>
+                </c:when>
+            </c:choose>
+        </c:forEach>
+
+        <hr class="my-3 border-secondary opacity-25">
+
         <c:url var="profileUrl" value="/profile" />
         <a class="${currentPath == '/profile' ? 'sidebar-nav-item active text-decoration-none' : 'sidebar-nav-item text-decoration-none'}"
            href="${profileUrl}">
@@ -41,87 +102,7 @@
             <span>Hồ sơ của tôi</span>
         </a>
 
-        <c:if test="${hasCatalogMenu}">
-            <hr class="my-3 border-secondary opacity-25">
-
-            <div class="sidebar-nav-item ${catalogMenuOpen ? 'active' : ''}" style="cursor: default;">
-                <span class="material-symbols-outlined">folder_open</span>
-                <span>Quản lý danh mục</span>
-            </div>
-
-            <div class="sidebar-submenu-list" style="display: flex; flex-direction: column; width: 100%; gap: 0.25rem; margin-bottom: 0.75rem;">
-                <c:forEach var="permission" items="${sessionScope.permissions}">
-                    <c:choose>
-                        <c:when test="${permission.code == 'USER_VIEW'}">
-                            <c:url var="menuUrl" value="${permission.urlPattern}" />
-                            <a class="${currentPath == permission.urlPattern ? 'sidebar-submenu-item active text-decoration-none' : 'sidebar-submenu-item text-decoration-none'}"
-                               href="${menuUrl}"
-                               style="display: flex; align-items: center; gap: 0.75rem; width: 100%; margin-left: 0; padding: 0.65rem 1rem 0.65rem 3rem; box-sizing: border-box;">
-                                <span class="material-symbols-outlined">groups</span>
-                                <span>Quản lý Nhân sự</span>
-                            </a>
-                        </c:when>
-                        <c:when test="${permission.code == 'ROLE_VIEW'}">
-                            <c:url var="menuUrl" value="${permission.urlPattern}" />
-                            <a class="${currentPath == permission.urlPattern ? 'sidebar-submenu-item active text-decoration-none' : 'sidebar-submenu-item text-decoration-none'}"
-                               href="${menuUrl}"
-                               style="display: flex; align-items: center; gap: 0.75rem; width: 100%; margin-left: 0; padding: 0.65rem 1rem 0.65rem 3rem; box-sizing: border-box;">
-                                <span class="material-symbols-outlined">verified_user</span>
-                                <span>Quản lý Vai trò</span>
-                            </a>
-                        </c:when>
-                        <c:when test="${permission.code == 'CONTRACT_TYPE_VIEW'}">
-                            <c:url var="menuUrl" value="${permission.urlPattern}" />
-                            <a class="${currentPath == permission.urlPattern ? 'sidebar-submenu-item active text-decoration-none' : 'sidebar-submenu-item text-decoration-none'}"
-                               href="${menuUrl}"
-                               style="display: flex; align-items: center; gap: 0.75rem; width: 100%; margin-left: 0; padding: 0.65rem 1rem 0.65rem 3rem; box-sizing: border-box;">
-                                <span class="material-symbols-outlined">description</span>
-                                <span>Quản lý Loại hợp đồng</span>
-                            </a>
-                        </c:when>
-                        <c:when test="${permission.code == 'LEAVE_TYPE_VIEW'}">
-                            <c:url var="menuUrl" value="${permission.urlPattern}" />
-                            <a class="${currentPath == permission.urlPattern ? 'sidebar-submenu-item active text-decoration-none' : 'sidebar-submenu-item text-decoration-none'}"
-                               href="${menuUrl}"
-                               style="display: flex; align-items: center; gap: 0.75rem; width: 100%; margin-left: 0; padding: 0.65rem 1rem 0.65rem 3rem; box-sizing: border-box;">
-                                <span class="material-symbols-outlined">event_busy</span>
-                                <span>Quản lý Loại nghỉ</span>
-                            </a>
-                        </c:when>
-                        <c:when test="${permission.code == 'SHIFT_VIEW'}">
-                            <c:url var="menuUrl" value="${permission.urlPattern}" />
-                            <a class="${currentPath == permission.urlPattern ? 'sidebar-submenu-item active text-decoration-none' : 'sidebar-submenu-item text-decoration-none'}"
-                               href="${menuUrl}"
-                               style="display: flex; align-items: center; gap: 0.75rem; width: 100%; margin-left: 0; padding: 0.65rem 1rem 0.65rem 3rem; box-sizing: border-box;">
-                                <span class="material-symbols-outlined">schedule</span>
-                                <span>Quản lý Ca làm việc</span>
-                            </a>
-                        </c:when>
-                        <c:when test="${permission.code == 'JOB_TITLE_VIEW'}">
-                            <c:url var="menuUrl" value="${permission.urlPattern}" />
-                            <a class="${currentPath == permission.urlPattern ? 'sidebar-submenu-item active text-decoration-none' : 'sidebar-submenu-item text-decoration-none'}"
-                               href="${menuUrl}"
-                               style="display: flex; align-items: center; gap: 0.75rem; width: 100%; margin-left: 0; padding: 0.65rem 1rem 0.65rem 3rem; box-sizing: border-box;">
-                                <span class="material-symbols-outlined">badge</span>
-                                <span>Quản lý Chức danh</span>
-                            </a>
-                        </c:when>
-                        <c:when test="${permission.code == 'DEPARTMENT_VIEW'}">
-                            <c:url var="menuUrl" value="${permission.urlPattern}" />
-                            <a class="${currentPath == permission.urlPattern ? 'sidebar-submenu-item active text-decoration-none' : 'sidebar-submenu-item text-decoration-none'}"
-                               href="${menuUrl}"
-                               style="display: flex; align-items: center; gap: 0.75rem; width: 100%; margin-left: 0; padding: 0.65rem 1rem 0.65rem 3rem; box-sizing: border-box;">
-                                <span class="material-symbols-outlined">account_tree</span>
-                                <span>Quản lý Phòng ban</span>
-                            </a>
-                        </c:when>
-                    </c:choose>
-                </c:forEach>
-            </div>
-        </c:if>
-
-        <c:if test="${empty sessionScope.permissions}">
-            <hr class="my-3 border-secondary opacity-25">
+        <c:if test="${not hasAdminPermission}">
             <div class="text-on-surface-variant body-sm px-3 py-2">
                 Role hiện tại chưa có quyền quản trị.
             </div>

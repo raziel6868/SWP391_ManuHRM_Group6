@@ -7,7 +7,7 @@
     <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title>Quản lý nhân sự - ManuHRM</title>
-    <link href="${pageContext.request.contextPath}/assets/css/main.css" rel="stylesheet">
+    <link href="${pageContext.request.contextPath}/assets/css/main.css?v=sidebar-fix-20260605-1349" rel="stylesheet">
 </head>
 <body class="bg-background text-on-surface">
     <div class="layout-wrapper">

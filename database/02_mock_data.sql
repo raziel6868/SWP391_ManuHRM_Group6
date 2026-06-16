@@ -1,4 +1,4 @@
--- =========================================================
+﻿-- =========================================================
 -- ManuHRM Iter 1 + Iter 2 + Iter 3 - Mock data
 -- Run after 01_schema_init.sql.
 -- =========================================================
@@ -97,7 +97,7 @@ INSERT INTO permissions (id, code, name, url_pattern, module) VALUES
 (31, 'CONTRACT_TYPE_STATUS', 'Kich hoat/Vo hieu Loai hop dong',  '/contract-type-status', 'CONTRACT_TYPE');
 
 -- =========================================================
--- Iter 2 + Iter 3 Permissions (IDs 32+)
+-- Iter 2 + Iter 3 Permissions (IDs 32-77)
 -- =========================================================
 
 INSERT INTO permissions (id, code, name, url_pattern, module) VALUES
@@ -121,39 +121,41 @@ INSERT INTO permissions (id, code, name, url_pattern, module) VALUES
 (47, 'LEAVE_REQUEST_REJECT',    'Reject leave request',     '/leave-request-reject',    'LEAVE'),
 -- Shift Assignment
 (48, 'SHIFT_ASSIGNMENT_VIEW',   'View shift assignments',   '/shift-assignment-list',   'SHIFT'),
+(49, 'SHIFT_ASSIGNMENT_ASSIGN', 'Assign single shift',     '/shift-assignment-assign', 'SHIFT'),
+(50, 'SHIFT_ASSIGNMENT_BULK',   'Bulk assign shifts',      '/shift-assignment-bulk',   'SHIFT'),
 -- Attendance
-(49, 'ATTENDANCE_VIEW',         'View all attendance',      '/attendance-list',         'ATTENDANCE'),
-(50, 'ATTENDANCE_MY_VIEW',      'View own attendance',      '/attendance-my',           'ATTENDANCE'),
-(51, 'ATTENDANCE_IMPORT',       'Import attendance Excel',  '/attendance-import',       'ATTENDANCE'),
-(52, 'ATTENDANCE_CORRECTION_REQUEST', 'Request correction',  '/attendance-correction-request', 'ATTENDANCE'),
-(53, 'ATTENDANCE_CORRECTION_APPROVE','Approve correction',   '/attendance-correction-approve', 'ATTENDANCE'),
-(54, 'ATTENDANCE_CORRECTION_REJECT', 'Reject correction',   '/attendance-correction-reject',  'ATTENDANCE'),
-(55, 'ATTENDANCE_CORRECTION_VIEW', 'View attendance corrections', '/attendance-correction-list', 'ATTENDANCE'),
+(51, 'ATTENDANCE_VIEW',         'View all attendance',      '/attendance-list',         'ATTENDANCE'),
+(52, 'ATTENDANCE_MY_VIEW',      'View own attendance',      '/attendance-my',           'ATTENDANCE'),
+(53, 'ATTENDANCE_IMPORT',       'Import attendance Excel',  '/attendance-import',       'ATTENDANCE'),
+(54, 'ATTENDANCE_CORRECTION_REQUEST', 'Request correction',  '/attendance-correction-request', 'ATTENDANCE'),
+(55, 'ATTENDANCE_CORRECTION_APPROVE','Approve correction',   '/attendance-correction-approve', 'ATTENDANCE'),
+(56, 'ATTENDANCE_CORRECTION_REJECT', 'Reject correction',   '/attendance-correction-reject',  'ATTENDANCE'),
+(57, 'ATTENDANCE_CORRECTION_VIEW', 'View attendance corrections', '/attendance-correction-list', 'ATTENDANCE'),
 -- Overtime
-(56, 'OT_VIEW',                 'View overtime records',    '/overtime-list',           'OVERTIME'),
-(57, 'OT_REQUEST',              'Request overtime',         '/overtime-request',        'OVERTIME'),
-(58, 'OT_APPROVE',              'Approve overtime',         '/overtime-approve',        'OVERTIME'),
-(59, 'OT_REJECT',               'Reject overtime',          '/overtime-reject',         'OVERTIME'),
+(58, 'OT_VIEW',                 'View overtime records',    '/overtime-list',           'OVERTIME'),
+(59, 'OT_REQUEST',              'Request overtime',         '/overtime-request',        'OVERTIME'),
+(60, 'OT_APPROVE',              'Approve overtime',         '/overtime-approve',        'OVERTIME'),
+(61, 'OT_REJECT',               'Reject overtime',          '/overtime-reject',         'OVERTIME'),
 -- Salary / Payroll
-(60, 'SALARY_BASE_VIEW',        'View salary bases',        '/salary-base-list',        'SALARY'),
-(61, 'SALARY_BASE_SETUP',       'Set/update salary base',   '/salary-base-setup',       'SALARY'),
-(62, 'PAYROLL_VIEW',            'View payroll preview',     '/payroll-preview',         'PAYROLL'),
-(63, 'PAYROLL_GENERATE',        'Generate monthly payroll', '/payroll-generate',        'PAYROLL'),
-(64, 'PAYSLIP_VIEW',            'View payslip',             '/payslip-view',            'PAYSLIP'),
+(62, 'SALARY_BASE_VIEW',        'View salary bases',        '/salary-base-list',        'SALARY'),
+(63, 'SALARY_BASE_SETUP',       'Set/update salary base',   '/salary-base-setup',       'SALARY'),
+(64, 'PAYROLL_VIEW',            'View payroll preview',     '/payroll-preview',         'PAYROLL'),
+(65, 'PAYROLL_GENERATE',        'Generate monthly payroll', '/payroll-generate',        'PAYROLL'),
+(66, 'PAYSLIP_VIEW',            'View payslip',             '/payslip-view',            'PAYSLIP'),
 -- Monthly Sheet
-(65, 'MONTHLY_SHEET_VIEW',      'View monthly sheets',      '/monthly-sheet-list',      'PAYROLL'),
-(66, 'MONTHLY_SHEET_CLOSE',     'Close monthly sheet',      '/monthly-sheet-close',     'PAYROLL'),
-(67, 'MONTHLY_SHEET_REOPEN',    'Reopen monthly sheet',     '/monthly-sheet-reopen',    'PAYROLL'),
+(67, 'MONTHLY_SHEET_VIEW',      'View monthly sheets',      '/monthly-sheet-list',      'PAYROLL'),
+(68, 'MONTHLY_SHEET_CLOSE',     'Close monthly sheet',      '/monthly-sheet-close',     'PAYROLL'),
+(69, 'MONTHLY_SHEET_REOPEN',    'Reopen monthly sheet',     '/monthly-sheet-reopen',    'PAYROLL'),
 -- Reports
-(68, 'REPORT_ATTENDANCE',       'Attendance report',        '/report-attendance',       'REPORT'),
-(69, 'REPORT_LEAVE',            'Leave report',             '/report-leave',            'REPORT'),
-(70, 'REPORT_HEADCOUNT',        'Headcount report',         '/report-headcount',        'REPORT'),
-(71, 'REPORT_CONTRACT',         'Contract report',          '/report-contract',         'REPORT'),
-(72, 'REPORT_PAYROLL',          'Payroll report',           '/report-payroll',          'REPORT'),
-(73, 'REPORT_OT',               'Overtime report',          '/report-overtime',         'REPORT'),
+(70, 'REPORT_ATTENDANCE',       'Attendance report',        '/report-attendance',       'REPORT'),
+(71, 'REPORT_LEAVE',            'Leave report',             '/report-leave',            'REPORT'),
+(72, 'REPORT_HEADCOUNT',        'Headcount report',         '/report-headcount',        'REPORT'),
+(73, 'REPORT_CONTRACT',         'Contract report',          '/report-contract',         'REPORT'),
+(74, 'REPORT_PAYROLL',          'Payroll report',           '/report-payroll',          'REPORT'),
+(75, 'REPORT_OT',               'Overtime report',          '/report-overtime',         'REPORT'),
 -- Audit
-(74, 'AUDIT_LOG_VIEW',          'View audit log',           '/audit-log-list',          'AUDIT'),
-(75, 'APPROVAL_HISTORY_VIEW',   'View approval history',    '/approval-history-list',   'AUDIT');
+(76, 'AUDIT_LOG_VIEW',          'View audit log',           '/audit-log-list',          'AUDIT'),
+(77, 'APPROVAL_HISTORY_VIEW',   'View approval history',    '/approval-history-list',   'AUDIT');
 
 -- =========================================================
 -- Iter 1 Role Permissions (Explicit)
@@ -197,42 +199,39 @@ INSERT INTO role_permissions (role_id, permission_id) VALUES
 (1, 53), (1, 54), (1, 55), (1, 56), (1, 57), (1, 58), (1, 59),
 (1, 60), (1, 61), (1, 62), (1, 63), (1, 64), (1, 65), (1, 66),
 (1, 67), (1, 68), (1, 69), (1, 70), (1, 71), (1, 72), (1, 73),
-(1, 74), (1, 75);
+(1, 74), (1, 75), (1, 76), (1, 77);
 
--- HR_MANAGER: all Iter 2/3 except supervisor-only codes
+-- HR_MANAGER: explicit operational scope
 INSERT INTO role_permissions (role_id, permission_id) VALUES
 -- Contracts
 (2, 32), (2, 33), (2, 34), (2, 35), (2, 36), (2, 37), (2, 38),
 -- Leave
-(2, 39), (2, 40), (2, 41),
-(2, 46), (2, 47),
+(2, 39), (2, 40), (2, 41), (2, 46), (2, 47),
 -- Shift Assignment
-(2, 48),
+(2, 48), (2, 49), (2, 50),
 -- Attendance
-(2, 49), (2, 51), (2, 55),
-(2, 53), (2, 54),
+(2, 51), (2, 53), (2, 55), (2, 56), (2, 57),
 -- Overtime
-(2, 56), (2, 58), (2, 59),
+(2, 58), (2, 60), (2, 61),
 -- Salary / Payroll
-(2, 60), (2, 61), (2, 62), (2, 63), (2, 64),
+(2, 62), (2, 63), (2, 64), (2, 65), (2, 66),
 -- Monthly Sheet
-(2, 65), (2, 66), (2, 67),
+(2, 67), (2, 68), (2, 69),
 -- Reports
-(2, 68), (2, 69), (2, 70), (2, 71), (2, 72), (2, 73),
+(2, 70), (2, 71), (2, 72), (2, 73), (2, 74), (2, 75),
 -- Audit
-(2, 74), (2, 75);
+(2, 76), (2, 77);
 
 -- PRODUCTION_SUPERVISOR: exact operational scope
 INSERT INTO role_permissions (role_id, permission_id) VALUES
 (3, 45), (3, 47),
-(3, 48), (3, 49), (3, 55), (3, 53), (3, 54),
-(3, 56), (3, 57);
+(3, 48), (3, 51), (3, 57), (3, 55), (3, 56),
+(3, 58), (3, 59);
 
 -- EMPLOYEE: self-service scope only
 INSERT INTO role_permissions (role_id, permission_id) VALUES
 (4, 42), (4, 43), (4, 44),
-(4, 50), (4, 52), (4, 55),
-(4, 64);
+(4, 52), (4, 54), (4, 66);
 
 -- =========================================================
 -- Iter 1 master data
@@ -297,10 +296,10 @@ INSERT INTO overtime_records (user_id, date, requested_hours, reason, status) VA
 (5, '2026-06-14', 2, 'San xuat tang cuong don hang', 'PENDING');
 
 INSERT INTO salary_bases (user_id, base_salary, effective_from) VALUES
-(4, 12000000, '2024-01-01');
+(5, 8000000, '2024-01-01');
 
--- For demo user: employee accountant_mai (user_id=4) needs salary base for payroll preview calculation.
--- EMPLOYEE role has PAYSLIP_VIEW permission (ID 64) and monthly_salaries row at line 303+;
+-- For demo user: worker_an (user_id=5) needs salary base for payroll preview calculation.
+-- EMPLOYEE role has PAYSLIP_VIEW permission (ID 64) and monthly_salaries row at line 309;
 -- salary base enables end-to-end demo of payslip-view flow per Phase 6 success criteria.
 
 INSERT INTO monthly_sheets (year, month, status, closed_at, closed_by) VALUES
@@ -311,3 +310,4 @@ INSERT INTO monthly_salaries (monthly_sheet_id, user_id, actual_work_days, ot_ho
 
 INSERT INTO audit_logs (event_code, entity_type, entity_id, actor_id, actor_name, changed_fields, ip_address) VALUES
 ('SYSTEM_RESET', 'DATABASE', 1, 1, 'admin', 'Reset to Iter 3 baseline', '127.0.0.1');
+

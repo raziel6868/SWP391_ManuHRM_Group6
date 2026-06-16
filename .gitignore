@@ -1,13 +1,14 @@
 ### Environment Variables
 .env
 
-### Local AI planning artifacts ###
 AGENTS.md
 _bmad-output/
-docs/
 _bmad/
+docs/
+plans/
 .agents/
 .codex/
+group6_frontend_template/
 
 ### Maven ###
 target/

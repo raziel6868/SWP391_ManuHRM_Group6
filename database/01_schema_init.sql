@@ -1,5 +1,5 @@
 -- =========================================================
--- ManuHRM Iter 1 - Full schema init
+-- ManuHRM Iter 1 + Iter 2 + Iter 3 - Full schema init
 -- =========================================================
 
 DROP DATABASE IF EXISTS manufacturing_hrm;
@@ -11,6 +11,17 @@ USE manufacturing_hrm;
 
 SET FOREIGN_KEY_CHECKS = 0;
 DROP TABLE IF EXISTS password_resets;
+DROP TABLE IF EXISTS monthly_salaries;
+DROP TABLE IF EXISTS monthly_sheets;
+DROP TABLE IF EXISTS salary_bases;
+DROP TABLE IF EXISTS overtime_records;
+DROP TABLE IF EXISTS attendance_corrections;
+DROP TABLE IF EXISTS attendance_records;
+DROP TABLE IF EXISTS shift_assignments;
+DROP TABLE IF EXISTS leave_requests;
+DROP TABLE IF EXISTS leave_balances;
+DROP TABLE IF EXISTS contracts;
+DROP TABLE IF EXISTS audit_logs;
 DROP TABLE IF EXISTS users;
 DROP TABLE IF EXISTS role_permissions;
 DROP TABLE IF EXISTS permissions;
@@ -118,7 +129,6 @@ CREATE TABLE users (
 
 -- =========================================================
 -- 4. Password reset ticket
--- Column new_password is kept because current TicketDAO uses it.
 -- =========================================================
 
 CREATE TABLE password_resets (
@@ -171,4 +181,200 @@ CREATE TABLE contract_types (
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- =========================================================
+-- 6. Iter 2 + Iter 3 transaction tables
+-- =========================================================
+
+CREATE TABLE contracts (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT NOT NULL,
+    contract_type_id BIGINT NOT NULL,
+    start_date DATE NOT NULL,
+    end_date DATE NULL,
+    salary DECIMAL(15,2) NULL,
+    file_path VARCHAR(500) NULL,
+    status ENUM('ACTIVE', 'EXPIRED', 'PENDING_RENEWAL', 'TERMINATED') NOT NULL DEFAULT 'ACTIVE',
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_contracts_user
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_contracts_contract_type
+        FOREIGN KEY (contract_type_id) REFERENCES contract_types(id) ON DELETE RESTRICT
+);
+
+CREATE TABLE leave_balances (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT NOT NULL,
+    leave_type_id BIGINT NOT NULL,
+    year INT NOT NULL,
+    total_days DECIMAL(5,2) NOT NULL DEFAULT 0,
+    used_days DECIMAL(5,2) NOT NULL DEFAULT 0,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_leave_balances_user
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    CONSTRAINT fk_leave_balances_leave_type
+        FOREIGN KEY (leave_type_id) REFERENCES leave_types(id) ON DELETE RESTRICT,
+    CONSTRAINT uq_leave_balances_user_type_year
+        UNIQUE (user_id, leave_type_id, year)
+);
+
+CREATE TABLE leave_requests (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT NOT NULL,
+    leave_type_id BIGINT NOT NULL,
+    start_date DATE NOT NULL,
+    end_date DATE NOT NULL,
+    days DECIMAL(5,2) NOT NULL,
+    reason TEXT NULL,
+    status ENUM('PENDING', 'APPROVED_LEVEL_1', 'APPROVED', 'REJECTED', 'CANCELLED') NOT NULL DEFAULT 'PENDING',
+    level_1_approver_id BIGINT NULL,
+    level_1_approved_at TIMESTAMP NULL,
+    approver_id BIGINT NULL,
+    approved_at TIMESTAMP NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_leave_requests_user
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_leave_requests_leave_type
+        FOREIGN KEY (leave_type_id) REFERENCES leave_types(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_leave_requests_level_1_approver
+        FOREIGN KEY (level_1_approver_id) REFERENCES users(id) ON DELETE SET NULL,
+    CONSTRAINT fk_leave_requests_approver
+        FOREIGN KEY (approver_id) REFERENCES users(id) ON DELETE SET NULL
+);
+
+CREATE TABLE shift_assignments (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT NOT NULL,
+    shift_id BIGINT NOT NULL,
+    date DATE NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_shift_assignments_user
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    CONSTRAINT fk_shift_assignments_shift
+        FOREIGN KEY (shift_id) REFERENCES shifts(id) ON DELETE RESTRICT,
+    CONSTRAINT uq_shift_assignments_user_date
+        UNIQUE (user_id, date)
+);
+
+CREATE TABLE attendance_records (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT NOT NULL,
+    date DATE NOT NULL,
+    shift_id BIGINT NULL,
+    check_in TIME NULL,
+    check_out TIME NULL,
+    working_hours DECIMAL(5,2) NULL,
+    status ENUM('NORMAL', 'LATE', 'ABSENT', 'OT') NOT NULL DEFAULT 'NORMAL',
+    import_batch_id VARCHAR(100) NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_attendance_records_user
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    CONSTRAINT fk_attendance_records_shift
+        FOREIGN KEY (shift_id) REFERENCES shifts(id) ON DELETE SET NULL,
+    CONSTRAINT uq_attendance_records_user_date
+        UNIQUE (user_id, date)
+);
+
+CREATE TABLE attendance_corrections (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    attendance_record_id BIGINT NOT NULL,
+    requested_by BIGINT NOT NULL,
+    new_check_in TIME NULL,
+    new_check_out TIME NULL,
+    reason TEXT NULL,
+    status ENUM('PENDING', 'APPROVED', 'REJECTED') NOT NULL DEFAULT 'PENDING',
+    approver_id BIGINT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_attendance_corrections_record
+        FOREIGN KEY (attendance_record_id) REFERENCES attendance_records(id) ON DELETE CASCADE,
+    CONSTRAINT fk_attendance_corrections_requested_by
+        FOREIGN KEY (requested_by) REFERENCES users(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_attendance_corrections_approver
+        FOREIGN KEY (approver_id) REFERENCES users(id) ON DELETE SET NULL
+);
+
+CREATE TABLE overtime_records (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT NOT NULL,
+    date DATE NOT NULL,
+    requested_hours DECIMAL(5,2) NOT NULL,
+    approved_hours DECIMAL(5,2) NULL,
+    reason TEXT NULL,
+    status ENUM('PENDING', 'APPROVED', 'REJECTED') NOT NULL DEFAULT 'PENDING',
+    approver_id BIGINT NULL,
+    approved_at TIMESTAMP NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_overtime_records_user
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_overtime_records_approver
+        FOREIGN KEY (approver_id) REFERENCES users(id) ON DELETE SET NULL
+);
+
+CREATE TABLE salary_bases (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT NOT NULL,
+    base_salary DECIMAL(15,2) NOT NULL,
+    effective_from DATE NOT NULL,
+    effective_to DATE NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_salary_bases_user
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    CONSTRAINT uq_salary_bases_user_effective_from
+        UNIQUE (user_id, effective_from)
+);
+
+CREATE TABLE monthly_sheets (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    year INT NOT NULL,
+    month INT NOT NULL,
+    status ENUM('OPEN', 'CLOSED') NOT NULL DEFAULT 'OPEN',
+    closed_at TIMESTAMP NULL,
+    closed_by BIGINT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_monthly_sheets_closed_by
+        FOREIGN KEY (closed_by) REFERENCES users(id) ON DELETE SET NULL,
+    CONSTRAINT uq_monthly_sheets_year_month
+        UNIQUE (year, month)
+);
+
+CREATE TABLE monthly_salaries (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    monthly_sheet_id BIGINT NOT NULL,
+    user_id BIGINT NOT NULL,
+    actual_work_days DECIMAL(5,2) NOT NULL DEFAULT 0,
+    ot_hours DECIMAL(5,2) NOT NULL DEFAULT 0,
+    gross_salary DECIMAL(15,2) NOT NULL DEFAULT 0,
+    deductions DECIMAL(15,2) NOT NULL DEFAULT 0,
+    net_salary DECIMAL(15,2) NOT NULL DEFAULT 0,
+    status ENUM('DRAFT', 'FINAL', 'PAID') NOT NULL DEFAULT 'DRAFT',
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_monthly_salaries_sheet
+        FOREIGN KEY (monthly_sheet_id) REFERENCES monthly_sheets(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_monthly_salaries_user
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE RESTRICT
+);
+
+CREATE TABLE audit_logs (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    event_code VARCHAR(100) NOT NULL,
+    entity_type VARCHAR(100) NOT NULL,
+    entity_id BIGINT NULL,
+    actor_id BIGINT NOT NULL,
+    actor_name VARCHAR(100) NOT NULL,
+    changed_fields TEXT NULL,
+    ip_address VARCHAR(45) NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_audit_logs_actor
+        FOREIGN KEY (actor_id) REFERENCES users(id) ON DELETE RESTRICT
 );

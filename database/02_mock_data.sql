@@ -299,7 +299,7 @@ INSERT INTO salary_bases (user_id, base_salary, effective_from) VALUES
 (5, 8000000, '2024-01-01');
 
 -- For demo user: worker_an (user_id=5) needs salary base for payroll preview calculation.
--- EMPLOYEE role has PAYSLIP_VIEW permission (ID 64) and monthly_salaries row at line 309;
+-- EMPLOYEE role has PAYSLIP_VIEW permission (ID 66) and monthly_salaries row at line 309;
 -- salary base enables end-to-end demo of payslip-view flow per Phase 6 success criteria.
 
 INSERT INTO monthly_sheets (year, month, status, closed_at, closed_by) VALUES

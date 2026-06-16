@@ -231,8 +231,7 @@ INSERT INTO role_permissions (role_id, permission_id) VALUES
 -- EMPLOYEE: self-service scope only
 INSERT INTO role_permissions (role_id, permission_id) VALUES
 (4, 42), (4, 43), (4, 44),
-(4, 50), (4, 52), (4, 55),
-(4, 64);
+(4, 50), (4, 52), (4, 64);
 
 -- =========================================================
 -- Iter 1 master data
@@ -297,10 +296,10 @@ INSERT INTO overtime_records (user_id, date, requested_hours, reason, status) VA
 (5, '2026-06-14', 2, 'San xuat tang cuong don hang', 'PENDING');
 
 INSERT INTO salary_bases (user_id, base_salary, effective_from) VALUES
-(4, 12000000, '2024-01-01');
+(5, 8000000, '2024-01-01');
 
--- For demo user: employee accountant_mai (user_id=4) needs salary base for payroll preview calculation.
--- EMPLOYEE role has PAYSLIP_VIEW permission (ID 64) and monthly_salaries row at line 303+;
+-- For demo user: worker_an (user_id=5) needs salary base for payroll preview calculation.
+-- EMPLOYEE role has PAYSLIP_VIEW permission (ID 64) and monthly_salaries row at line 309;
 -- salary base enables end-to-end demo of payslip-view flow per Phase 6 success criteria.
 
 INSERT INTO monthly_sheets (year, month, status, closed_at, closed_by) VALUES

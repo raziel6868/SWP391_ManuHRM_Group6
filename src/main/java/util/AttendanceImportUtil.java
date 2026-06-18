@@ -1,0 +1,247 @@
+package util;
+
+import dal.AttendanceDAO;
+import java.io.IOException;
+import java.io.InputStream;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.sql.Date;
+import java.sql.Time;
+import java.time.Duration;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
+import model.AttendanceRecord;
+import model.Shift;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.CellType;
+import org.apache.poi.ss.usermodel.DataFormatter;
+import org.apache.poi.ss.usermodel.DateUtil;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.ss.usermodel.WorkbookFactory;
+
+public class AttendanceImportUtil {
+
+	private static final int LATE_THRESHOLD_MINUTES = 15;
+
+	private final AttendanceDAO attendanceDAO;
+
+	public AttendanceImportUtil() {
+		this(new AttendanceDAO());
+	}
+
+	public AttendanceImportUtil(AttendanceDAO attendanceDAO) {
+		this.attendanceDAO = attendanceDAO;
+	}
+
+	public List<AttendanceRecord> parseExcel(InputStream inputStream) throws AttendanceImportException {
+		List<AttendanceRecord> records = new ArrayList<>();
+		List<String> errors = new ArrayList<>();
+		Set<String> importedKeys = new HashSet<>();
+		String importBatchId = UUID.randomUUID().toString();
+
+		try (Workbook workbook = WorkbookFactory.create(inputStream)) {
+			Sheet sheet = workbook.getSheetAt(0);
+			DataFormatter formatter = new DataFormatter();
+
+			for (int rowIndex = 1; rowIndex <= sheet.getLastRowNum(); rowIndex++) {
+				Row row = sheet.getRow(rowIndex);
+				if (row == null || isBlankRow(row, formatter)) {
+					continue;
+				}
+
+				int displayRow = rowIndex + 1;
+				String employeeCode = readText(row.getCell(0), formatter);
+				LocalDate date = readDate(row.getCell(1), formatter);
+				LocalTime checkIn = readTime(row.getCell(2), formatter);
+				LocalTime checkOut = readTime(row.getCell(3), formatter);
+
+				validateRequired(errors, displayRow, employeeCode, date, checkIn, checkOut);
+				if (employeeCode == null || date == null || checkIn == null || checkOut == null) {
+					continue;
+				}
+
+				if (!checkOut.isAfter(checkIn)) {
+					errors.add("Dòng " + displayRow + ": Giờ ra phải lớn hơn giờ vào.");
+					continue;
+				}
+
+				String key = employeeCode.toUpperCase() + "|" + date;
+				if (!importedKeys.add(key)) {
+					errors.add("Dòng " + displayRow + ": Trùng dữ liệu nhân viên/ngày trong file.");
+					continue;
+				}
+
+				Long userId = attendanceDAO.findActiveUserIdByEmployeeCode(employeeCode);
+				if (userId == null) {
+					errors.add("Dòng " + displayRow + ": Không tìm thấy nhân viên đang hoạt động có mã " + employeeCode
+							+ ".");
+					continue;
+				}
+
+				Date sqlDate = Date.valueOf(date);
+				Shift shift = attendanceDAO.findShiftForUserAndDate(userId, sqlDate);
+				if (shift == null) {
+					errors.add("Dòng " + displayRow + ": Chưa có ca làm mặc định để gán dữ liệu chấm công.");
+					continue;
+				}
+
+				AttendanceRecord record = new AttendanceRecord();
+				record.setUserId(userId);
+				record.setEmployeeCode(employeeCode);
+				record.setDate(sqlDate);
+				record.setShiftId(shift.getId());
+				record.setCheckIn(Time.valueOf(checkIn));
+				record.setCheckOut(Time.valueOf(checkOut));
+				record.setWorkingHours(calculateWorkingHours(checkIn, checkOut, shift.getBreakMinutes()));
+				record.setStatus(resolveStatus(checkIn, shift.getStartTime()));
+				record.setImportBatchId(importBatchId);
+				records.add(record);
+			}
+		} catch (IOException e) {
+			throw new AttendanceImportException(
+					List.of("Không thể đọc file Excel. Vui lòng kiểm tra lại file tải lên."));
+		} catch (Exception e) {
+			throw new AttendanceImportException(List.of("File Excel không hợp lệ hoặc không đúng định dạng .xlsx."));
+		}
+
+		if (!errors.isEmpty()) {
+			throw new AttendanceImportException(errors);
+		}
+		if (records.isEmpty()) {
+			throw new AttendanceImportException(List.of("File không có dòng dữ liệu hợp lệ để import."));
+		}
+
+		return records;
+	}
+
+	private void validateRequired(List<String> errors, int rowNumber, String employeeCode, LocalDate date,
+			LocalTime checkIn, LocalTime checkOut) {
+		if (employeeCode == null) {
+			errors.add("Dòng " + rowNumber + ": Thiếu mã nhân viên.");
+		}
+		if (date == null) {
+			errors.add("Dòng " + rowNumber + ": Ngày không hợp lệ. Định dạng gợi ý: yyyy-MM-dd.");
+		}
+		if (checkIn == null) {
+			errors.add("Dòng " + rowNumber + ": Giờ vào không hợp lệ. Định dạng gợi ý: HH:mm.");
+		}
+		if (checkOut == null) {
+			errors.add("Dòng " + rowNumber + ": Giờ ra không hợp lệ. Định dạng gợi ý: HH:mm.");
+		}
+	}
+
+	private boolean isBlankRow(Row row, DataFormatter formatter) {
+		for (int i = 0; i < 4; i++) {
+			if (readText(row.getCell(i), formatter) != null) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	private String readText(Cell cell, DataFormatter formatter) {
+		if (cell == null) {
+			return null;
+		}
+		String value = formatter.formatCellValue(cell);
+		if (value == null || value.trim().isEmpty()) {
+			return null;
+		}
+		return value.trim();
+	}
+
+	private LocalDate readDate(Cell cell, DataFormatter formatter) {
+		if (cell == null) {
+			return null;
+		}
+		if (cell.getCellType() == CellType.NUMERIC && DateUtil.isCellDateFormatted(cell)) {
+			return cell.getDateCellValue().toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
+		}
+
+		String value = readText(cell, formatter);
+		if (value == null) {
+			return null;
+		}
+
+		List<DateTimeFormatter> formatters = List.of(DateTimeFormatter.ISO_LOCAL_DATE,
+				DateTimeFormatter.ofPattern("dd/MM/yyyy"), DateTimeFormatter.ofPattern("d/M/yyyy"));
+		for (DateTimeFormatter dateFormatter : formatters) {
+			try {
+				return LocalDate.parse(value, dateFormatter);
+			} catch (DateTimeParseException ignore) {
+			}
+		}
+		return null;
+	}
+
+	private LocalTime readTime(Cell cell, DataFormatter formatter) {
+		if (cell == null) {
+			return null;
+		}
+		if (cell.getCellType() == CellType.NUMERIC && DateUtil.isCellDateFormatted(cell)) {
+			LocalDateTime dateTime = cell.getDateCellValue().toInstant().atZone(ZoneId.systemDefault())
+					.toLocalDateTime();
+			return dateTime.toLocalTime().withSecond(0).withNano(0);
+		}
+
+		String value = readText(cell, formatter);
+		if (value == null) {
+			return null;
+		}
+
+		List<DateTimeFormatter> formatters = List.of(DateTimeFormatter.ofPattern("HH:mm"),
+				DateTimeFormatter.ofPattern("H:mm"), DateTimeFormatter.ofPattern("HH:mm:ss"),
+				DateTimeFormatter.ofPattern("H:mm:ss"));
+		for (DateTimeFormatter timeFormatter : formatters) {
+			try {
+				return LocalTime.parse(value, timeFormatter).withSecond(0).withNano(0);
+			} catch (DateTimeParseException ignore) {
+			}
+		}
+		return null;
+	}
+
+	private BigDecimal calculateWorkingHours(LocalTime checkIn, LocalTime checkOut, Integer breakMinutes) {
+		long minutes = Duration.between(checkIn, checkOut).toMinutes();
+		minutes -= breakMinutes != null ? breakMinutes : 0;
+		if (minutes < 0) {
+			minutes = 0;
+		}
+		return BigDecimal.valueOf(minutes).divide(BigDecimal.valueOf(60), 2, RoundingMode.HALF_UP);
+	}
+
+	private String resolveStatus(LocalTime checkIn, Time shiftStartTime) {
+		if (checkIn == null) {
+			return "ABSENT";
+		}
+		if (shiftStartTime == null) {
+			return "NORMAL";
+		}
+		LocalTime lateTime = shiftStartTime.toLocalTime().plusMinutes(LATE_THRESHOLD_MINUTES);
+		return checkIn.isAfter(lateTime) ? "LATE" : "NORMAL";
+	}
+
+	public static class AttendanceImportException extends Exception {
+		private final List<String> errors;
+
+		public AttendanceImportException(List<String> errors) {
+			super("Attendance import validation failed");
+			this.errors = errors;
+		}
+
+		public List<String> getErrors() {
+			return errors;
+		}
+	}
+}

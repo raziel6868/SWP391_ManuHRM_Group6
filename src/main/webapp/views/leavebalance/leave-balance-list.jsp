@@ -1,5 +1,6 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 <%@ taglib prefix="c" uri="jakarta.tags.core" %>
+<%@ taglib prefix="fmt" uri="jakarta.tags.fmt" %>
 <!DOCTYPE html>
 <html lang="vi">
 <head>
@@ -102,9 +103,15 @@
                                             <span class="ms-2"><c:out value="${balance.leaveTypeName}" /></span>
                                         </td>
                                         <td>${balance.year}</td>
-                                        <td class="text-end fw-medium">${balance.totalDays}</td>
-                                        <td class="text-end">${balance.usedDays}</td>
-                                        <td class="text-end fw-medium">${balance.totalDays - balance.usedDays}</td>
+                                        <td class="text-end fw-medium">
+                                            <fmt:formatNumber value="${balance.totalDays}" minFractionDigits="0" maxFractionDigits="2" />
+                                        </td>
+                                        <td class="text-end">
+                                            <fmt:formatNumber value="${balance.usedDays}" minFractionDigits="0" maxFractionDigits="2" />
+                                        </td>
+                                        <td class="text-end fw-medium">
+                                            <fmt:formatNumber value="${balance.totalDays - balance.usedDays}" minFractionDigits="0" maxFractionDigits="2" />
+                                        </td>
                                         <c:if test="${canSetup}">
                                             <td class="text-end">
                                                 <a href="${pageContext.request.contextPath}/leave-balance-setup?userId=${balance.userId}&leaveTypeId=${balance.leaveTypeId}&year=${balance.year}"

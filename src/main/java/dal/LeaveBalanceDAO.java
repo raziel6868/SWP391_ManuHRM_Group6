@@ -102,6 +102,40 @@ public class LeaveBalanceDAO {
 		return null;
 	}
 
+	public List<LeaveBalance> searchByUserAndYear(Long userId, Integer year) {
+		List<LeaveBalance> balances = new ArrayList<>();
+		if (userId == null || year == null) {
+			return balances;
+		}
+
+		String sql = """
+				SELECT lb.id, lb.user_id, lb.leave_type_id, lb.year, lb.total_days, lb.used_days,
+				       lb.created_at, lb.updated_at,
+				       u.employee_code, u.full_name AS employee_name,
+				       d.name AS department_name,
+				       lt.code AS leave_type_code, lt.name AS leave_type_name
+				FROM leave_balances lb
+				INNER JOIN users u ON u.id = lb.user_id
+				LEFT JOIN departments d ON d.id = u.department_id
+				INNER JOIN leave_types lt ON lt.id = lb.leave_type_id
+				WHERE lb.user_id = ? AND lb.year = ?
+				ORDER BY lt.code ASC
+				""";
+
+		try (Connection conn = DBContext.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+			ps.setLong(1, userId);
+			ps.setInt(2, year);
+			try (ResultSet rs = ps.executeQuery()) {
+				while (rs.next()) {
+					balances.add(mapRow(rs));
+				}
+			}
+		} catch (SQLException e) {
+			System.err.println("LeaveBalanceDAO.searchByUserAndYear() ERROR: " + e.getMessage());
+		}
+		return balances;
+	}
+
 	public boolean upsert(Long userId, Long leaveTypeId, Integer year, BigDecimal totalDays) {
 		if (userId == null || leaveTypeId == null || year == null || totalDays == null) {
 			return false;

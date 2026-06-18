@@ -1,5 +1,6 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 <%@ taglib prefix="c" uri="jakarta.tags.core" %>
+<%@ taglib prefix="fmt" uri="jakarta.tags.fmt" %>
 <!DOCTYPE html>
 <html lang="vi">
 <head>
@@ -92,19 +93,25 @@
                                 <div class="col-md-4">
                                     <div class="p-3 rounded-3 border border-outline-variant bg-surface">
                                         <div class="label-sm text-on-surface-variant text-uppercase mb-1">Đã thiết lập</div>
-                                        <div class="h5 mb-0">${existingBalance.totalDays} ngày</div>
+                                        <div class="h5 mb-0">
+                                            <fmt:formatNumber value="${existingBalance.totalDays}" minFractionDigits="0" maxFractionDigits="2" /> ngày
+                                        </div>
                                     </div>
                                 </div>
                                 <div class="col-md-4">
                                     <div class="p-3 rounded-3 border border-outline-variant bg-surface">
                                         <div class="label-sm text-on-surface-variant text-uppercase mb-1">Đã sử dụng</div>
-                                        <div class="h5 mb-0">${existingBalance.usedDays} ngày</div>
+                                        <div class="h5 mb-0">
+                                            <fmt:formatNumber value="${existingBalance.usedDays}" minFractionDigits="0" maxFractionDigits="2" /> ngày
+                                        </div>
                                     </div>
                                 </div>
                                 <div class="col-md-4">
                                     <div class="p-3 rounded-3 border border-outline-variant bg-surface">
                                         <div class="label-sm text-on-surface-variant text-uppercase mb-1">Còn lại</div>
-                                        <div class="h5 mb-0">${existingBalance.totalDays - existingBalance.usedDays} ngày</div>
+                                        <div class="h5 mb-0">
+                                            <fmt:formatNumber value="${existingBalance.totalDays - existingBalance.usedDays}" minFractionDigits="0" maxFractionDigits="2" /> ngày
+                                        </div>
                                     </div>
                                 </div>
                             </div>

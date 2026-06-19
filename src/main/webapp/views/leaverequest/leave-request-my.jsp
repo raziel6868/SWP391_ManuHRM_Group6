@@ -48,7 +48,7 @@
                                     <th>Người duyệt cấp 1</th>
                                     <th>Người duyệt cuối</th>
                                     <c:if test="${canCancel}">
-                                        <th class="text-end">Thao tac</th>
+                                        <th class="text-end">Thao tác</th>
                                     </c:if>
                                 </tr>
                             </thead>
@@ -100,8 +100,8 @@
                                                         <input type="hidden" name="id" value="${leaveRequest.id}" />
                                                         <button type="submit"
                                                                 class="btn btn-sm btn-icon text-danger"
-                                                                title="Huy don nghi"
-                                                                onclick="return confirm('Ban co chac muon huy don nghi nay?');">
+                                                                title="Hủy đơn nghỉ"
+                                                                onclick="return confirm('Bạn có chắc muốn hủy đơn nghỉ này?');">
                                                             <span class="material-symbols-outlined" style="font-size: 1.25rem;">cancel</span>
                                                         </button>
                                                     </form>

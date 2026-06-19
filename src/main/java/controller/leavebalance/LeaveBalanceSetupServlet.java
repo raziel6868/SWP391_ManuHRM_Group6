@@ -76,53 +76,53 @@ public class LeaveBalanceSetupServlet extends HttpServlet {
 
 		boolean success = leaveBalanceDAO.upsert(userId, leaveTypeId, year, totalDays);
 		if (success) {
-			request.getSession().setAttribute("successMsg", "Thiet lap han muc nghi phep thanh cong.");
+			request.getSession().setAttribute("successMsg", "Thiết lập hạn mức nghỉ phép thành công.");
 			response.sendRedirect(request.getContextPath() + "/leave-balance-list?year=" + year);
 			return;
 		}
 
-		request.setAttribute("errorMsg", "Khong the thiet lap han muc nghi phep. Vui long thu lai.");
+		request.setAttribute("errorMsg", "Không thể thiết lập hạn mức nghỉ phép. Vui lòng thử lại.");
 		populateFormData(request);
 		request.getRequestDispatcher("/views/leavebalance/leave-balance-setup.jsp").forward(request, response);
 	}
 
 	private String validate(Long userId, Long leaveTypeId, Integer year, BigDecimal totalDays) {
 		if (userId == null) {
-			return "Vui long chon nhan vien.";
+			return "Vui lòng chọn nhân viên.";
 		}
 		if (leaveTypeId == null) {
-			return "Vui long chon loai nghi.";
+			return "Vui lòng chọn loại nghỉ.";
 		}
 		if (year == null) {
-			return "Nam ap dung khong duoc de trong.";
+			return "Năm áp dụng không được để trống.";
 		}
 		if (year < 2000 || year > 2100) {
-			return "Nam ap dung khong hop le.";
+			return "Năm áp dụng không hợp lệ.";
 		}
 		if (totalDays == null) {
-			return "Tong so ngay phep khong hop le.";
+			return "Tổng số ngày phép không hợp lệ.";
 		}
 		if (totalDays.compareTo(BigDecimal.ZERO) < 0) {
-			return "Tong so ngay phep khong duoc nho hon 0.";
+			return "Tổng số ngày phép không được nhỏ hơn 0.";
 		}
 		if (totalDays.compareTo(MAX_TOTAL_DAYS) > 0) {
-			return "Tong so ngay phep khong duoc vuot qua 999.99.";
+			return "Tổng số ngày phép không được vượt quá 999.99.";
 		}
 
 		User user = userDAO.getById(userId);
 		if (user == null || user.getIsActive() == null || !user.getIsActive()) {
-			return "Nhan vien khong ton tai hoac da bi khoa.";
+			return "Nhân viên không tồn tại hoặc đã bị khóa.";
 		}
 
 		LeaveType leaveType = leaveTypeDAO.getById(leaveTypeId);
 		if (leaveType == null || leaveType.getIsActive() == null || !leaveType.getIsActive()) {
-			return "Loai nghi khong ton tai hoac da bi vo hieu hoa.";
+			return "Loại nghỉ không tồn tại hoặc đã bị vô hiệu hóa.";
 		}
 
 		LeaveBalance existingBalance = leaveBalanceDAO.getByUserAndTypeAndYear(userId, leaveTypeId, year);
 		if (existingBalance != null && existingBalance.getUsedDays() != null
 				&& totalDays.compareTo(existingBalance.getUsedDays()) < 0) {
-			return "Tong so ngay phep khong duoc nho hon so ngay da su dung.";
+			return "Tổng số ngày phép không được nhỏ hơn số ngày đã sử dụng.";
 		}
 
 		return null;

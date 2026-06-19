@@ -90,52 +90,52 @@ public class LeaveRequestCreateServlet extends HttpServlet {
 
 		boolean success = leaveRequestDAO.insert(leaveRequest);
 		if (success) {
-			session.setAttribute("successMsg", "Gui don nghi phep thanh cong.");
+			session.setAttribute("successMsg", "Gửi đơn nghỉ phép thành công.");
 			response.sendRedirect(request.getContextPath() + "/leave-request-my");
 			return;
 		}
 
-		request.setAttribute("errorMsg", "Khong the gui don nghi phep. Vui long thu lai.");
+		request.setAttribute("errorMsg", "Không thể gửi đơn nghỉ phép. Vui lòng thử lại.");
 		populateFormData(request, authUser.getId(), balanceYear);
 		request.getRequestDispatcher("/views/leaverequest/leave-request-create.jsp").forward(request, response);
 	}
 
 	private String validate(Long userId, Long leaveTypeId, LocalDate startDate, LocalDate endDate, String reason) {
 		if (leaveTypeId == null) {
-			return "Vui long chon loai nghi.";
+			return "Vui lòng chọn loại nghỉ.";
 		}
 		if (startDate == null) {
-			return "Ngay bat dau khong hop le.";
+			return "Ngày bắt đầu không hợp lệ.";
 		}
 		if (endDate == null) {
-			return "Ngay ket thuc khong hop le.";
+			return "Ngày kết thúc không hợp lệ.";
 		}
 		if (endDate.isBefore(startDate)) {
-			return "Ngay ket thuc khong duoc truoc ngay bat dau.";
+			return "Ngày kết thúc không được trước ngày bắt đầu.";
 		}
 		if (startDate.getYear() != endDate.getYear()) {
-			return "Don nghi khong duoc vuot qua 2 nam khac nhau.";
+			return "Đơn nghỉ không được vượt qua 2 năm khác nhau.";
 		}
 		if (reason != null && reason.length() > 1000) {
-			return "Ly do nghi khong duoc vuot qua 1000 ky tu.";
+			return "Lý do nghỉ không được vượt quá 1000 ký tự.";
 		}
 
 		LeaveType leaveType = leaveTypeDAO.getById(leaveTypeId);
 		if (leaveType == null || leaveType.getIsActive() == null || !leaveType.getIsActive()) {
-			return "Loai nghi khong ton tai hoac da bi vo hieu hoa.";
+			return "Loại nghỉ không tồn tại hoặc đã bị vô hiệu hóa.";
 		}
 
 		long requestedDays = ChronoUnit.DAYS.between(startDate, endDate) + 1;
 		LeaveBalance balance = leaveBalanceDAO.getByUserAndTypeAndYear(userId, leaveTypeId, startDate.getYear());
 		if (balance == null) {
-			return "Chua thiet lap han muc nghi cho loai nghi nay trong nam " + startDate.getYear() + ".";
+			return "Chưa thiết lập hạn mức nghỉ cho loại nghỉ này trong năm " + startDate.getYear() + ".";
 		}
 
 		BigDecimal totalDays = balance.getTotalDays() == null ? BigDecimal.ZERO : balance.getTotalDays();
 		BigDecimal usedDays = balance.getUsedDays() == null ? BigDecimal.ZERO : balance.getUsedDays();
 		BigDecimal remainingDays = totalDays.subtract(usedDays);
 		if (remainingDays.compareTo(BigDecimal.valueOf(requestedDays)) < 0) {
-			return "So ngay nghi vuot qua han muc con lai.";
+			return "Số ngày nghỉ vượt quá hạn mức còn lại.";
 		}
 
 		return null;

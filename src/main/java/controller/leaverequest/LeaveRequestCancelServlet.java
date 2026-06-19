@@ -31,26 +31,26 @@ public class LeaveRequestCancelServlet extends HttpServlet {
 		Long id = parseLong(request.getParameter("id"));
 		LeaveRequest leaveRequest = leaveRequestDAO.getById(id);
 		if (leaveRequest == null) {
-			session.setAttribute("errorMsg", "Khong tim thay don nghi phep.");
+			session.setAttribute("errorMsg", "Không tìm thấy đơn nghỉ phép.");
 			response.sendRedirect(request.getContextPath() + "/leave-request-my");
 			return;
 		}
 		if (authUser.getId() == null || !authUser.getId().equals(leaveRequest.getUserId())) {
-			session.setAttribute("errorMsg", "Chi co the huy don nghi phep cua chinh minh.");
+			session.setAttribute("errorMsg", "Chỉ có thể hủy đơn nghỉ phép của chính mình.");
 			response.sendRedirect(request.getContextPath() + "/leave-request-my");
 			return;
 		}
 		if (!"PENDING".equals(leaveRequest.getStatus()) && !"APPROVED_LEVEL_1".equals(leaveRequest.getStatus())) {
-			session.setAttribute("errorMsg", "Chi co the huy don dang cho duyet.");
+			session.setAttribute("errorMsg", "Chỉ có thể hủy đơn đang chờ duyệt.");
 			response.sendRedirect(request.getContextPath() + "/leave-request-my");
 			return;
 		}
 
 		boolean success = leaveRequestDAO.cancel(id, authUser.getId());
 		if (success) {
-			session.setAttribute("successMsg", "Huy don nghi phep thanh cong.");
+			session.setAttribute("successMsg", "Hủy đơn nghỉ phép thành công.");
 		} else {
-			session.setAttribute("errorMsg", "Khong the huy don nghi phep. Vui long thu lai.");
+			session.setAttribute("errorMsg", "Không thể hủy đơn nghỉ phép. Vui lòng thử lại.");
 		}
 		response.sendRedirect(request.getContextPath() + "/leave-request-my");
 	}

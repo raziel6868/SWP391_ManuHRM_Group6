@@ -34,27 +34,27 @@ public class LeaveRequestRejectServlet extends HttpServlet {
 		Long id = parseLong(request.getParameter("id"));
 		LeaveRequest leaveRequest = leaveRequestDAO.getById(id);
 		if (leaveRequest == null) {
-			session.setAttribute("errorMsg", "Khong tim thay don nghi phep.");
+			session.setAttribute("errorMsg", "Không tìm thấy đơn nghỉ phép.");
 			response.sendRedirect(redirectUrl);
 			return;
 		}
 		if (!"PENDING".equals(leaveRequest.getStatus()) && !"APPROVED_LEVEL_1".equals(leaveRequest.getStatus())) {
-			session.setAttribute("errorMsg", "Chi co the tu choi don dang cho duyet.");
+			session.setAttribute("errorMsg", "Chỉ có thể từ chối đơn đang chờ duyệt.");
 			response.sendRedirect(redirectUrl);
 			return;
 		}
 		if (shouldLimitToManagedEmployees(session)
 				&& !leaveRequestDAO.isRequesterManagedBy(leaveRequest.getId(), authUser.getId())) {
-			session.setAttribute("errorMsg", "Chi co the tu choi don cua nhan vien duoi quyen.");
+			session.setAttribute("errorMsg", "Chỉ có thể từ chối đơn của nhân viên dưới quyền.");
 			response.sendRedirect(redirectUrl);
 			return;
 		}
 
 		boolean success = leaveRequestDAO.reject(id, authUser.getId());
 		if (success) {
-			session.setAttribute("successMsg", "Tu choi don nghi phep thanh cong.");
+			session.setAttribute("successMsg", "Từ chối đơn nghỉ phép thành công.");
 		} else {
-			session.setAttribute("errorMsg", "Khong the tu choi don nghi phep. Vui long thu lai.");
+			session.setAttribute("errorMsg", "Không thể từ chối đơn nghỉ phép. Vui lòng thử lại.");
 		}
 		response.sendRedirect(redirectUrl);
 	}

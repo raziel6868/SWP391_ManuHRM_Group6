@@ -6,7 +6,7 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Quan ly don nghi - ManuHRM</title>
+    <title>Quản lý đơn nghỉ - ManuHRM</title>
     <link href="${pageContext.request.contextPath}/assets/css/main.css" rel="stylesheet">
 </head>
 <body class="bg-background text-on-surface">
@@ -20,9 +20,9 @@
 
                 <div class="d-flex justify-content-between align-items-end mb-4 flex-wrap gap-3">
                     <div>
-                        <h2 class="h3 text-on-surface fw-bold mb-1">Quan ly don nghi</h2>
+                        <h2 class="h3 text-on-surface fw-bold mb-1">Quản lý đơn nghỉ</h2>
                         <p class="body-md text-on-surface-variant mb-0">
-                            Theo doi trang thai don nghi va xu ly buoc duyet cuoi theo quy trinh.
+                            Theo dõi trạng thái đơn nghỉ và xử lý bước duyệt cuối theo quy trình.
                         </p>
                     </div>
                 </div>
@@ -32,26 +32,26 @@
                         <form action="${pageContext.request.contextPath}/leave-request-list" method="GET"
                               class="row g-3 align-items-end">
                             <div class="col-md-3">
-                                <label class="form-label text-on-surface fw-medium mb-1">Tu khoa</label>
+                                <label class="form-label text-on-surface fw-medium mb-1">Từ khóa</label>
                                 <input type="text" name="keyword" value="${keyword}"
                                        class="form-control input-premium"
-                                       placeholder="Ma NV, ten NV, loai nghi" />
+                                       placeholder="Mã NV, tên NV, loại nghỉ" />
                             </div>
                             <div class="col-md-3">
-                                <label class="form-label text-on-surface fw-medium mb-1">Trang thai</label>
+                                <label class="form-label text-on-surface fw-medium mb-1">Trạng thái</label>
                                 <select name="status" class="form-select input-premium">
-                                    <option value="" ${empty selectedStatus ? 'selected' : ''}>Tat ca trang thai</option>
-                                    <option value="PENDING" ${selectedStatus == 'PENDING' ? 'selected' : ''}>Cho duyet</option>
-                                    <option value="APPROVED_LEVEL_1" ${selectedStatus == 'APPROVED_LEVEL_1' ? 'selected' : ''}>Da duyet cap 1</option>
-                                    <option value="APPROVED" ${selectedStatus == 'APPROVED' ? 'selected' : ''}>Da duyet</option>
-                                    <option value="REJECTED" ${selectedStatus == 'REJECTED' ? 'selected' : ''}>Tu choi</option>
-                                    <option value="CANCELLED" ${selectedStatus == 'CANCELLED' ? 'selected' : ''}>Da huy</option>
+                                    <option value="" ${empty selectedStatus ? 'selected' : ''}>Tất cả trạng thái</option>
+                                    <option value="PENDING" ${selectedStatus == 'PENDING' ? 'selected' : ''}>Chờ duyệt</option>
+                                    <option value="APPROVED_LEVEL_1" ${selectedStatus == 'APPROVED_LEVEL_1' ? 'selected' : ''}>Đã duyệt cấp 1</option>
+                                    <option value="APPROVED" ${selectedStatus == 'APPROVED' ? 'selected' : ''}>Đã duyệt</option>
+                                    <option value="REJECTED" ${selectedStatus == 'REJECTED' ? 'selected' : ''}>Từ chối</option>
+                                    <option value="CANCELLED" ${selectedStatus == 'CANCELLED' ? 'selected' : ''}>Đã hủy</option>
                                 </select>
                             </div>
                             <div class="col-md-3">
-                                <label class="form-label text-on-surface fw-medium mb-1">Phong ban</label>
+                                <label class="form-label text-on-surface fw-medium mb-1">Phòng ban</label>
                                 <select name="departmentId" class="form-select input-premium">
-                                    <option value="" ${empty selectedDepartmentId ? 'selected' : ''}>Tat ca phong ban</option>
+                                    <option value="" ${empty selectedDepartmentId ? 'selected' : ''}>Tất cả phòng ban</option>
                                     <c:forEach var="department" items="${departments}">
                                         <option value="${department.id}" ${selectedDepartmentId == department.id ? 'selected' : ''}>
                                             <c:out value="${department.name}" />
@@ -62,12 +62,12 @@
                             <div class="col-md-2">
                                 <button type="submit" class="btn btn-primary w-100">
                                     <span class="material-symbols-outlined align-middle" style="font-size: 1rem;">filter_list</span>
-                                    Loc
+                                    Lọc
                                 </button>
                             </div>
                             <div class="col-md-1">
                                 <a href="${pageContext.request.contextPath}/leave-request-list"
-                                   class="btn btn-light border w-100">Xoa</a>
+                                   class="btn btn-light border w-100">Xóa</a>
                             </div>
                         </form>
                     </div>
@@ -76,16 +76,16 @@
                         <table class="table table-premium mb-0 w-100">
                             <thead>
                                 <tr>
-                                    <th>Ma don</th>
-                                    <th>Nhan vien</th>
-                                    <th>Phong ban</th>
-                                    <th>Loai nghi</th>
+                                    <th>Mã đơn</th>
+                                    <th>Nhân viên</th>
+                                    <th>Phòng ban</th>
+                                    <th>Loại nghỉ</th>
                                     <th>Thoi gian</th>
-                                    <th class="text-end">So ngay</th>
-                                    <th>Trang thai</th>
-                                    <th>Duyet cap 1</th>
-                                    <th>Duyet cuoi</th>
-                                    <th class="text-end">Thao tac</th>
+                                    <th class="text-end">Số ngày</th>
+                                    <th>Trạng thái</th>
+                                    <th>Duyệt cấp 1</th>
+                                    <th>Duyệt cuối</th>
+                                    <th class="text-end">Thao tác</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -109,7 +109,7 @@
                                         </td>
                                         <td>
                                             <div><c:out value="${leaveRequest.startDate}" /></div>
-                                            <div class="body-sm text-on-surface-variant">den <c:out value="${leaveRequest.endDate}" /></div>
+                                            <div class="body-sm text-on-surface-variant">đến <c:out value="${leaveRequest.endDate}" /></div>
                                         </td>
                                         <td class="text-end fw-medium">
                                             <fmt:formatNumber value="${leaveRequest.days}" minFractionDigits="0" maxFractionDigits="2" />
@@ -117,19 +117,19 @@
                                         <td>
                                             <c:choose>
                                                 <c:when test="${leaveRequest.status == 'PENDING'}">
-                                                    <span class="badge" style="background-color: #fef3c7; color: #92400e;">Cho duyet</span>
+                                                    <span class="badge" style="background-color: #fef3c7; color: #92400e;">Chờ duyệt</span>
                                                 </c:when>
                                                 <c:when test="${leaveRequest.status == 'APPROVED_LEVEL_1'}">
-                                                    <span class="badge" style="background-color: #dbeafe; color: #1d4ed8;">Da duyet cap 1</span>
+                                                    <span class="badge" style="background-color: #dbeafe; color: #1d4ed8;">Đã duyệt cấp 1</span>
                                                 </c:when>
                                                 <c:when test="${leaveRequest.status == 'APPROVED'}">
-                                                    <span class="badge" style="background-color: #d1fae5; color: #065f46;">Da duyet</span>
+                                                    <span class="badge" style="background-color: #d1fae5; color: #065f46;">Đã duyệt</span>
                                                 </c:when>
                                                 <c:when test="${leaveRequest.status == 'REJECTED'}">
-                                                    <span class="badge" style="background-color: #fee2e2; color: #991b1b;">Tu choi</span>
+                                                    <span class="badge" style="background-color: #fee2e2; color: #991b1b;">Từ chối</span>
                                                 </c:when>
                                                 <c:when test="${leaveRequest.status == 'CANCELLED'}">
-                                                    <span class="badge" style="background-color: var(--surface-container-high); color: var(--on-surface-variant);">Da huy</span>
+                                                    <span class="badge" style="background-color: var(--surface-container-high); color: var(--on-surface-variant);">Đã hủy</span>
                                                 </c:when>
                                                 <c:otherwise>
                                                     <span class="badge" style="background-color: var(--surface-container-high); color: var(--on-surface-variant);">
@@ -147,8 +147,8 @@
                                                         <input type="hidden" name="id" value="${leaveRequest.id}" />
                                                         <button type="submit"
                                                                 class="btn btn-sm btn-icon text-success"
-                                                                title="Duyet cuoi"
-                                                                onclick="return confirm('Xac nhan duyet cuoi don nghi nay?');">
+                                                                title="Duyệt cuối"
+                                                                onclick="return confirm('Xác nhận duyệt cuối đơn nghỉ này?');">
                                                             <span class="material-symbols-outlined" style="font-size: 1.25rem;">task_alt</span>
                                                         </button>
                                                     </form>
@@ -158,8 +158,8 @@
                                                         <input type="hidden" name="id" value="${leaveRequest.id}" />
                                                         <button type="submit"
                                                                 class="btn btn-sm btn-icon text-danger"
-                                                                title="Tu choi"
-                                                                onclick="return confirm('Xac nhan tu choi don nghi nay?');">
+                                                                title="Từ chối"
+                                                                onclick="return confirm('Xác nhận từ chối đơn nghỉ này?');">
                                                             <span class="material-symbols-outlined" style="font-size: 1.25rem;">block</span>
                                                         </button>
                                                     </form>
@@ -171,7 +171,7 @@
                                 <c:if test="${empty leaveRequests}">
                                     <tr>
                                         <td colspan="10" class="text-center py-4 text-on-surface-variant">
-                                            Chua co don nghi nao phu hop voi bo loc hien tai.
+                                            Chưa có đơn nghỉ nào phù hợp với bộ lọc hiện tại.
                                         </td>
                                     </tr>
                                 </c:if>
@@ -182,7 +182,7 @@
                     <c:if test="${totalPages > 1}">
                         <div class="p-3 bg-surface border-top border-outline-variant d-flex align-items-center justify-content-between flex-wrap gap-3">
                             <div class="body-sm text-on-surface-variant">
-                                Tong so don: ${totalRecords}
+                                Tổng số đơn: ${totalRecords}
                             </div>
                             <div class="d-flex gap-1 flex-wrap">
                                 <c:forEach begin="1" end="${totalPages}" var="i">

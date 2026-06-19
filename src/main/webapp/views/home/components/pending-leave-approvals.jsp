@@ -5,7 +5,7 @@
 <c:if test="${canApproveLeaveLevel1}">
     <article class="card-premium p-4 mb-4">
         <div class="d-flex align-items-center justify-content-between mb-3">
-            <h2 class="h4 text-on-surface fw-bold mb-0">Don nghi cho duyet</h2>
+            <h2 class="h4 text-on-surface fw-bold mb-0">Đơn nghỉ chờ duyệt</h2>
             <span class="material-symbols-outlined text-on-surface-variant">approval</span>
         </div>
 
@@ -37,7 +37,7 @@
                                 <c:out value="${leaveRequest.endDate}" />
                                 -
                                 <fmt:formatNumber value="${leaveRequest.days}" minFractionDigits="0" maxFractionDigits="2" />
-                                ngay
+                                ngày
                             </div>
 
                             <div class="d-flex gap-2 flex-wrap">
@@ -46,9 +46,9 @@
                                     <input type="hidden" name="returnUrl" value="${pageContext.request.contextPath}/home" />
                                     <button type="submit"
                                             class="btn btn-sm btn-primary d-inline-flex align-items-center gap-1"
-                                            onclick="return confirm('Xac nhan duyet cap 1 don nghi nay?');">
+                                            onclick="return confirm('Xác nhận duyệt cấp 1 đơn nghỉ này?');">
                                         <span class="material-symbols-outlined" style="font-size: 1rem;">task_alt</span>
-                                        Duyet
+                                        Duyệt
                                     </button>
                                 </form>
 
@@ -58,9 +58,9 @@
                                         <input type="hidden" name="returnUrl" value="${pageContext.request.contextPath}/home" />
                                         <button type="submit"
                                                 class="btn btn-sm btn-light border text-danger d-inline-flex align-items-center gap-1"
-                                                onclick="return confirm('Xac nhan tu choi don nghi nay?');">
+                                                onclick="return confirm('Xác nhận từ chối đơn nghỉ này?');">
                                             <span class="material-symbols-outlined" style="font-size: 1rem;">block</span>
-                                            Tu choi
+                                            Từ chối
                                         </button>
                                     </form>
                                 </c:if>
@@ -71,7 +71,7 @@
             </c:when>
             <c:otherwise>
                 <div class="text-on-surface-variant body-sm">
-                    Khong co don nghi nao dang cho duyet.
+                    Không có đơn nghỉ nào đang chờ duyệt.
                 </div>
             </c:otherwise>
         </c:choose>

@@ -44,9 +44,9 @@ public class LeaveRequestFinalApproveServlet extends HttpServlet {
 
 		boolean success = finalApprove(leaveRequest, authUser.getId());
 		if (success) {
-			session.setAttribute("successMsg", "Duyet cuoi don nghi phep thanh cong.");
+			session.setAttribute("successMsg", "Duyệt cuối đơn nghỉ phép thành công.");
 		} else {
-			session.setAttribute("errorMsg", "Khong the duyet cuoi don nghi phep. Vui long kiem tra han muc con lai.");
+			session.setAttribute("errorMsg", "Không thể duyệt cuối đơn nghỉ phép. Vui lòng kiểm tra hạn mức còn lại.");
 		}
 		response.sendRedirect(request.getContextPath() + "/leave-request-list");
 	}
@@ -84,13 +84,13 @@ public class LeaveRequestFinalApproveServlet extends HttpServlet {
 
 	private String validate(LeaveRequest leaveRequest) {
 		if (leaveRequest == null) {
-			return "Khong tim thay don nghi phep.";
+			return "Không tìm thấy đơn nghỉ phép.";
 		}
 		if (!"APPROVED_LEVEL_1".equals(leaveRequest.getStatus())) {
-			return "Chi co the duyet cuoi don da duoc duyet cap 1.";
+			return "Chỉ có thể duyệt cuối đơn đã được duyệt cấp 1.";
 		}
 		if (leaveRequest.getStartDate() == null || leaveRequest.getDays() == null) {
-			return "Du lieu don nghi phep khong hop le.";
+			return "Dữ liệu đơn nghỉ phép không hợp lệ.";
 		}
 		return null;
 	}

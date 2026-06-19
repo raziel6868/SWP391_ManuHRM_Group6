@@ -34,32 +34,32 @@ public class LeaveRequestApproveServlet extends HttpServlet {
 		Long id = parseLong(request.getParameter("id"));
 		LeaveRequest leaveRequest = leaveRequestDAO.getById(id);
 		if (leaveRequest == null) {
-			session.setAttribute("errorMsg", "Khong tim thay don nghi phep.");
+			session.setAttribute("errorMsg", "Không tìm thấy đơn nghỉ phép.");
 			response.sendRedirect(redirectUrl);
 			return;
 		}
 		if (authUser.getId() != null && authUser.getId().equals(leaveRequest.getUserId())) {
-			session.setAttribute("errorMsg", "Khong the tu duyet don nghi phep cua chinh minh.");
+			session.setAttribute("errorMsg", "Không thể tự duyệt đơn nghỉ phép của chính mình.");
 			response.sendRedirect(redirectUrl);
 			return;
 		}
 		if (!"PENDING".equals(leaveRequest.getStatus())) {
-			session.setAttribute("errorMsg", "Chi co the duyet cap 1 cho don dang cho duyet.");
+			session.setAttribute("errorMsg", "Chỉ có thể duyệt cấp 1 cho đơn đang chờ duyệt.");
 			response.sendRedirect(redirectUrl);
 			return;
 		}
 		if (shouldLimitToManagedEmployees(session)
 				&& !leaveRequestDAO.isRequesterManagedBy(leaveRequest.getId(), authUser.getId())) {
-			session.setAttribute("errorMsg", "Chi co the duyet don cua nhan vien duoi quyen.");
+			session.setAttribute("errorMsg", "Chỉ có thể duyệt đơn của nhân viên dưới quyền.");
 			response.sendRedirect(redirectUrl);
 			return;
 		}
 
 		boolean success = leaveRequestDAO.approveLevel1(id, authUser.getId());
 		if (success) {
-			session.setAttribute("successMsg", "Duyet cap 1 don nghi phep thanh cong.");
+			session.setAttribute("successMsg", "Duyệt cấp 1 đơn nghỉ phép thành công.");
 		} else {
-			session.setAttribute("errorMsg", "Khong the duyet don nghi phep. Vui long thu lai.");
+			session.setAttribute("errorMsg", "Không thể duyệt đơn nghỉ phép. Vui lòng thử lại.");
 		}
 		response.sendRedirect(redirectUrl);
 	}

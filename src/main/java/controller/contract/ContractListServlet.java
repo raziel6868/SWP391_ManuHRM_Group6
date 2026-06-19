@@ -65,11 +65,11 @@ public class ContractListServlet extends HttpServlet {
 		}
 
 		// Expose per-action permissions so the JSP can decide which buttons to render.
-		request.setAttribute("hasContractDetailPerm", hasPerm(session, "CONTRACT_DETAIL"));
+		request.setAttribute("hasContractDetailPerm", hasPerm(session, "CONTRACT_VIEW"));
 		request.setAttribute("hasContractUpdatePerm", hasPerm(session, "CONTRACT_UPDATE"));
 		request.setAttribute("hasContractUploadPerm", hasPerm(session, "CONTRACT_UPLOAD"));
 		request.setAttribute("hasContractRenewPerm", hasPerm(session, "CONTRACT_RENEW"));
-		request.setAttribute("hasContractTerminatePerm", hasPerm(session, "CONTRACT_TERMINATE"));
+		request.setAttribute("hasContractTerminatePerm", hasPerm(session, "CONTRACT_UPDATE"));
 
 		// Quick counts for the small KPI strip on top of the list.
 		request.setAttribute("activeCount", contractDAO.countContracts(null, Contract.Status.ACTIVE.name()));

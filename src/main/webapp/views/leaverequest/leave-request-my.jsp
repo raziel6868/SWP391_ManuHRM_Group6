@@ -47,6 +47,9 @@
                                     <th>Trạng thái</th>
                                     <th>Người duyệt cấp 1</th>
                                     <th>Người duyệt cuối</th>
+                                    <c:if test="${canCancel}">
+                                        <th class="text-end">Thao tac</th>
+                                    </c:if>
                                 </tr>
                             </thead>
                             <tbody>
@@ -90,11 +93,26 @@
                                         </td>
                                         <td><c:out value="${empty leaveRequest.level1ApproverName ? '-' : leaveRequest.level1ApproverName}" /></td>
                                         <td><c:out value="${empty leaveRequest.approverName ? '-' : leaveRequest.approverName}" /></td>
+                                        <c:if test="${canCancel}">
+                                            <td class="text-end">
+                                                <c:if test="${leaveRequest.status == 'PENDING' or leaveRequest.status == 'APPROVED_LEVEL_1'}">
+                                                    <form action="${pageContext.request.contextPath}/leave-request-cancel" method="POST" class="d-inline">
+                                                        <input type="hidden" name="id" value="${leaveRequest.id}" />
+                                                        <button type="submit"
+                                                                class="btn btn-sm btn-icon text-danger"
+                                                                title="Huy don nghi"
+                                                                onclick="return confirm('Ban co chac muon huy don nghi nay?');">
+                                                            <span class="material-symbols-outlined" style="font-size: 1.25rem;">cancel</span>
+                                                        </button>
+                                                    </form>
+                                                </c:if>
+                                            </td>
+                                        </c:if>
                                     </tr>
                                 </c:forEach>
                                 <c:if test="${empty leaveRequests}">
                                     <tr>
-                                        <td colspan="8" class="text-center py-4 text-on-surface-variant">
+                                        <td colspan="${canCancel ? 9 : 8}" class="text-center py-4 text-on-surface-variant">
                                             Bạn chưa có đơn nghỉ nào.
                                         </td>
                                     </tr>

@@ -55,6 +55,48 @@ public class LeaveRequestDAO {
 		return false;
 	}
 
+	public List<LeaveRequest> searchRequests(String keyword, String status, Long departmentId, int offset, int limit) {
+		List<LeaveRequest> requests = new ArrayList<>();
+		StringBuilder sql = new StringBuilder("SELECT " + SELECT_COLUMNS + BASE_FROM + " WHERE 1 = 1");
+		List<Object> params = new ArrayList<>();
+		appendFilters(sql, params, keyword, status, departmentId);
+		sql.append(" ORDER BY lr.created_at DESC, lr.id DESC LIMIT ? OFFSET ?");
+		params.add(limit);
+		params.add(offset);
+
+		try (Connection conn = DBContext.getConnection();
+				PreparedStatement ps = conn.prepareStatement(sql.toString())) {
+			setParams(ps, params);
+			try (ResultSet rs = ps.executeQuery()) {
+				while (rs.next()) {
+					requests.add(mapRow(rs));
+				}
+			}
+		} catch (SQLException e) {
+			System.err.println("LeaveRequestDAO.searchRequests() ERROR: " + e.getMessage());
+		}
+		return requests;
+	}
+
+	public int countRequests(String keyword, String status, Long departmentId) {
+		StringBuilder sql = new StringBuilder("SELECT COUNT(*) " + BASE_FROM + " WHERE 1 = 1");
+		List<Object> params = new ArrayList<>();
+		appendFilters(sql, params, keyword, status, departmentId);
+
+		try (Connection conn = DBContext.getConnection();
+				PreparedStatement ps = conn.prepareStatement(sql.toString())) {
+			setParams(ps, params);
+			try (ResultSet rs = ps.executeQuery()) {
+				if (rs.next()) {
+					return rs.getInt(1);
+				}
+			}
+		} catch (SQLException e) {
+			System.err.println("LeaveRequestDAO.countRequests() ERROR: " + e.getMessage());
+		}
+		return 0;
+	}
+
 	public List<LeaveRequest> searchByUser(Long userId, int offset, int limit) {
 		List<LeaveRequest> requests = new ArrayList<>();
 		if (userId == null) {
@@ -115,6 +157,165 @@ public class LeaveRequestDAO {
 			System.err.println("LeaveRequestDAO.getById() ERROR: " + e.getMessage());
 		}
 		return null;
+	}
+
+	public boolean approveLevel1(Long id, Long approverId) {
+		if (id == null || approverId == null) {
+			return false;
+		}
+
+		String sql = """
+				UPDATE leave_requests
+				SET status = 'APPROVED_LEVEL_1',
+				    level_1_approver_id = ?,
+				    level_1_approved_at = CURRENT_TIMESTAMP,
+				    updated_at = CURRENT_TIMESTAMP
+				WHERE id = ?
+				  AND status = 'PENDING'
+				""";
+
+		try (Connection conn = DBContext.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+			ps.setLong(1, approverId);
+			ps.setLong(2, id);
+			return ps.executeUpdate() == 1;
+		} catch (SQLException e) {
+			System.err.println("LeaveRequestDAO.approveLevel1() ERROR: " + e.getMessage());
+		}
+		return false;
+	}
+
+	public boolean finalApprove(Connection conn, Long id, Long approverId) throws SQLException {
+		if (conn == null || id == null || approverId == null) {
+			return false;
+		}
+
+		String sql = """
+				UPDATE leave_requests
+				SET status = 'APPROVED',
+				    approver_id = ?,
+				    approved_at = CURRENT_TIMESTAMP,
+				    updated_at = CURRENT_TIMESTAMP
+				WHERE id = ?
+				  AND status = 'APPROVED_LEVEL_1'
+				""";
+
+		try (PreparedStatement ps = conn.prepareStatement(sql)) {
+			ps.setLong(1, approverId);
+			ps.setLong(2, id);
+			return ps.executeUpdate() == 1;
+		}
+	}
+
+	public boolean reject(Long id, Long approverId) {
+		try (Connection conn = DBContext.getConnection()) {
+			return reject(conn, id, approverId);
+		} catch (SQLException e) {
+			System.err.println("LeaveRequestDAO.reject() ERROR: " + e.getMessage());
+		}
+		return false;
+	}
+
+	public boolean reject(Connection conn, Long id, Long approverId) throws SQLException {
+		if (conn == null || id == null || approverId == null) {
+			return false;
+		}
+
+		String sql = """
+				UPDATE leave_requests
+				SET status = 'REJECTED',
+				    approver_id = ?,
+				    updated_at = CURRENT_TIMESTAMP
+				WHERE id = ?
+				  AND status IN ('PENDING', 'APPROVED_LEVEL_1')
+				""";
+
+		try (PreparedStatement ps = conn.prepareStatement(sql)) {
+			ps.setLong(1, approverId);
+			ps.setLong(2, id);
+			return ps.executeUpdate() == 1;
+		}
+	}
+
+	public boolean cancel(Long id, Long userId) {
+		if (id == null || userId == null) {
+			return false;
+		}
+
+		String sql = """
+				UPDATE leave_requests
+				SET status = 'CANCELLED',
+				    updated_at = CURRENT_TIMESTAMP
+				WHERE id = ?
+				  AND user_id = ?
+				  AND status IN ('PENDING', 'APPROVED_LEVEL_1')
+				""";
+
+		try (Connection conn = DBContext.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+			ps.setLong(1, id);
+			ps.setLong(2, userId);
+			return ps.executeUpdate() == 1;
+		} catch (SQLException e) {
+			System.err.println("LeaveRequestDAO.cancel() ERROR: " + e.getMessage());
+		}
+		return false;
+	}
+
+	public boolean isRequesterManagedBy(Long requestId, Long managerId) {
+		if (requestId == null || managerId == null) {
+			return false;
+		}
+
+		String sql = """
+				SELECT COUNT(*)
+				FROM leave_requests lr
+				INNER JOIN users u ON u.id = lr.user_id
+				WHERE lr.id = ?
+				  AND u.manager_id = ?
+				""";
+
+		try (Connection conn = DBContext.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+			ps.setLong(1, requestId);
+			ps.setLong(2, managerId);
+			try (ResultSet rs = ps.executeQuery()) {
+				if (rs.next()) {
+					return rs.getInt(1) > 0;
+				}
+			}
+		} catch (SQLException e) {
+			System.err.println("LeaveRequestDAO.isRequesterManagedBy() ERROR: " + e.getMessage());
+		}
+		return false;
+	}
+
+	private void appendFilters(StringBuilder sql, List<Object> params, String keyword, String status,
+			Long departmentId) {
+		if (keyword != null && !keyword.trim().isEmpty()) {
+			String likeKeyword = "%" + keyword.trim() + "%";
+			sql.append("""
+					 AND (u.employee_code LIKE ?
+					      OR u.full_name LIKE ?
+					      OR lt.code LIKE ?
+					      OR lt.name LIKE ?)
+					""");
+			params.add(likeKeyword);
+			params.add(likeKeyword);
+			params.add(likeKeyword);
+			params.add(likeKeyword);
+		}
+		if (status != null && !status.trim().isEmpty()) {
+			sql.append(" AND lr.status = ?");
+			params.add(status.trim().toUpperCase());
+		}
+		if (departmentId != null) {
+			sql.append(" AND u.department_id = ?");
+			params.add(departmentId);
+		}
+	}
+
+	private void setParams(PreparedStatement ps, List<Object> params) throws SQLException {
+		for (int i = 0; i < params.size(); i++) {
+			ps.setObject(i + 1, params.get(i));
+		}
 	}
 
 	private LeaveRequest mapRow(ResultSet rs) throws SQLException {

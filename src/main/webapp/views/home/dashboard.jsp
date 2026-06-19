@@ -18,6 +18,8 @@
         <jsp:include page="/components/header.jsp" />
 
         <main class="page-container">
+            <jsp:include page="/components/alert.jsp" />
+
             <section class="mb-4">
                 <div class="d-flex flex-column flex-md-row justify-content-between gap-3">
                     <div>
@@ -183,6 +185,8 @@
                 </div>
 
                 <div class="col-lg-4">
+                    <jsp:include page="/views/home/components/pending-leave-approvals.jsp" />
+
                     <article class="card-premium p-4 mb-4">
                         <h2 class="h4 text-on-surface fw-bold mb-3">Thông báo nội bộ</h2>
                         <div class="d-flex flex-column gap-3">

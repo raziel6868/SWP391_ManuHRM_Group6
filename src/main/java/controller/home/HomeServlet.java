@@ -13,6 +13,7 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
+import model.Permission;
 import model.User;
 
 /**
@@ -21,6 +22,8 @@ import model.User;
  */
 @WebServlet(name = "HomeServlet", urlPatterns = {"/home", "/dashboard"})
 public class HomeServlet extends HttpServlet {
+	private static final int SUPERVISOR_PENDING_LEAVE_LIMIT = 5;
+
 	private final DashboardDAO dashboardDAO = new DashboardDAO();
 	private final PermissionDAO permissionDAO = new PermissionDAO();
 
@@ -38,12 +41,42 @@ public class HomeServlet extends HttpServlet {
 			return;
 		}
 
+		moveFlashMessage(session, request, "successMsg");
+		moveFlashMessage(session, request, "errorMsg");
+
+		List<Permission> permissions = permissionDAO.getPermissionsByRoleId(authUser.getRoleId());
 		request.setAttribute("stats", dashboardDAO.getDashboardStats());
-		request.setAttribute("permissions", permissionDAO.getPermissionsByRoleId(authUser.getRoleId()));
+		request.setAttribute("permissions", permissions);
 		request.setAttribute("currentDate", LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh")));
 		request.setAttribute("announcements", buildAnnouncements());
+		request.setAttribute("canApproveLeaveLevel1", hasPermission(permissions, "LEAVE_REQUEST_APPROVE_L1"));
+		request.setAttribute("canRejectLeaveRequest", hasPermission(permissions, "LEAVE_REQUEST_REJECT"));
+		if (hasPermission(permissions, "LEAVE_REQUEST_APPROVE_L1")) {
+			request.setAttribute("pendingSupervisorLeaveRequests", dashboardDAO
+					.getPendingLeaveRequestsForSupervisor(authUser.getId(), SUPERVISOR_PENDING_LEAVE_LIMIT));
+		}
 
 		request.getRequestDispatcher("/views/home/dashboard.jsp").forward(request, response);
+	}
+
+	private boolean hasPermission(List<Permission> permissions, String code) {
+		if (permissions == null) {
+			return false;
+		}
+		for (Permission permission : permissions) {
+			if (code.equals(permission.getCode())) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	private void moveFlashMessage(HttpSession session, HttpServletRequest request, String key) {
+		String value = (String) session.getAttribute(key);
+		if (value != null) {
+			request.setAttribute(key, value);
+			session.removeAttribute(key);
+		}
 	}
 
 	private List<String> buildAnnouncements() {

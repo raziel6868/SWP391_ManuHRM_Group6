@@ -44,6 +44,11 @@ public class ContractTypeDAO {
 		String sql = "SELECT " + SELECT_COLUMNS + " FROM contract_types WHERE id = ?";
 		return queryOne(sql, List.of(id));
 	}
+
+	public List<ContractType> getActiveContractTypes() {
+		String sql = "SELECT " + SELECT_COLUMNS + " FROM contract_types WHERE is_active = TRUE ORDER BY name ASC";
+		return queryList(sql, null);
+	}
 	// === QUERY: Kiem tra ton tai ===
 	public boolean existsByCode(String code) {
 		if (code == null || code.isBlank()) {

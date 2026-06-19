@@ -62,10 +62,10 @@ public class ContractDetailServlet extends HttpServlet {
 			return;
 		}
 
-		request.setAttribute("hasContractUpdatePerm", hasPerm(session, "CONTRACT_UPDATE"));
 		request.setAttribute("hasContractUploadPerm", hasPerm(session, "CONTRACT_UPLOAD"));
+		request.setAttribute("hasContractUpdatePerm", hasPerm(session, "CONTRACT_UPDATE"));
 		request.setAttribute("hasContractRenewPerm", hasPerm(session, "CONTRACT_RENEW"));
-		request.setAttribute("hasContractTerminatePerm", hasPerm(session, "CONTRACT_UPDATE"));
+		request.setAttribute("hasContractTerminatePerm", hasPerm(session, "CONTRACT_TERMINATE"));
 		request.setAttribute("hasContractStatusPerm", hasPerm(session, "CONTRACT_STATUS"));
 
 		request.setAttribute("contract", contract);

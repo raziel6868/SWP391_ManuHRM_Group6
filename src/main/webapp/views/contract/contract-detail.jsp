@@ -40,7 +40,7 @@
                         <c:if test="${hasContractUpdatePerm and contract.status == 'ACTIVE'}">
                             <a href="${ctx}/contract-update?id=${contract.id}" class="btn btn-light border d-flex align-items-center gap-2">
                                 <span class="material-symbols-outlined" style="font-size: 1.125rem;">edit</span>
-                                Sửa
+                                Chỉnh sửa
                             </a>
                         </c:if>
                         <c:if test="${hasContractUploadPerm and contract.status == 'ACTIVE'}">

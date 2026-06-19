@@ -27,10 +27,10 @@
 
                 <h2 class="h3 text-on-surface fw-bold mb-1">Tạo hợp đồng lao động</h2>
                 <p class="body-md text-on-surface-variant mb-4">
-                    Hợp đồng mới sẽ ở trạng thái <strong>Đang hiệu lực</strong>. Bạn có thể tải lên file PDF ở bước tiếp theo.
+                    Hợp đồng mới sẽ ở trạng thái <strong>Đang hiệu lực</strong>.
                 </p>
 
-                <form action="${ctx}/contract-create" method="POST" class="card-premium p-4">
+                <form action="${ctx}/contract-create" method="POST" enctype="multipart/form-data" class="card-premium p-4">
                     <div class="mb-3">
                         <label for="userId" class="form-label fw-medium">Nhân viên <span class="text-danger">*</span></label>
                         <select id="userId" name="userId" class="form-select" required>
@@ -75,6 +75,13 @@
                         <input type="number" id="salary" name="salary" value="${salary}" min="0" step="1000"
                             class="input-premium w-100" placeholder="Ví dụ: 8000000" />
                         <div class="form-text">Không bắt buộc. Có thể cập nhật sau.</div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="contractFile" class="form-label fw-medium">File hợp đồng (PDF)</label>
+                        <input type="file" id="contractFile" name="contractFile" accept=".pdf,application/pdf"
+                            class="input-premium w-100" style="padding: 0.375rem 0.75rem;" />
+                        <div class="form-text">Không bắt buộc. Chấp nhận file PDF, tối đa 5MB. Nếu chưa có bản ký, có thể tải lên sau từ trang chi tiết hợp đồng.</div>
                     </div>
 
                     <div class="d-flex justify-content-end gap-2">

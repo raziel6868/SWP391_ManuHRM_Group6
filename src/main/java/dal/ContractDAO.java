@@ -187,6 +187,59 @@ public class ContractDAO {
 		}
 	}
 
+	/**
+	 * Like {@link #insert(Contract)} but also returns the auto-generated primary
+	 * key of the newly inserted row. Returns null on failure.
+	 */
+	public Long insertReturningId(Contract c) {
+		if (c == null || c.getUserId() == null || c.getContractTypeId() == null || c.getStartDate() == null) {
+			return null;
+		}
+		String sql = """
+				INSERT INTO contracts
+				  (user_id, contract_type_id, start_date, end_date, salary, file_path, status,
+				   terminated_at, terminated_by, terminate_reason, renewal_of_id)
+				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""";
+		try (Connection conn = DBContext.getConnection();
+				PreparedStatement ps = conn.prepareStatement(sql, PreparedStatement.RETURN_GENERATED_KEYS)) {
+			ps.setLong(1, c.getUserId());
+			ps.setLong(2, c.getContractTypeId());
+			ps.setDate(3, c.getStartDate());
+			ps.setDate(4, c.getEndDate());
+			if (c.getSalary() != null) {
+				ps.setBigDecimal(5, c.getSalary());
+			} else {
+				ps.setNull(5, java.sql.Types.DECIMAL);
+			}
+			ps.setString(6, c.getFilePath());
+			ps.setString(7, c.getStatus() == null ? Contract.Status.ACTIVE.name() : c.getStatus().name());
+			ps.setDate(8, c.getTerminatedAt());
+			if (c.getTerminatedBy() != null) {
+				ps.setLong(9, c.getTerminatedBy());
+			} else {
+				ps.setNull(9, java.sql.Types.BIGINT);
+			}
+			ps.setString(10, c.getTerminateReason());
+			if (c.getRenewalOfId() != null) {
+				ps.setLong(11, c.getRenewalOfId());
+			} else {
+				ps.setNull(11, java.sql.Types.BIGINT);
+			}
+			int rows = ps.executeUpdate();
+			if (rows > 0) {
+				try (ResultSet rs = ps.getGeneratedKeys()) {
+					if (rs.next()) {
+						return rs.getLong(1);
+					}
+				}
+			}
+			return null;
+		} catch (SQLException e) {
+			System.err.println("ContractDAO.insertReturningId() ERROR: " + e.getMessage());
+			return null;
+		}
+	}
+
 	public boolean update(Contract c) {
 		if (c == null || c.getId() == null) {
 			return false;

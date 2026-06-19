@@ -26,7 +26,7 @@
                             Theo dõi hợp đồng lao động của nhân viên: tạo mới, gia hạn, tải PDF và chấm dứt.
                         </p>
                     </div>
-                    <c:if test="${hasContractUpdatePerm}">
+                    <c:if test="${hasContractCreatePerm}">
                         <a href="${ctx}/contract-create"
                             class="btn-primary-gradient text-decoration-none px-3 py-2 d-flex align-items-center gap-2 shadow-sm">
                             <span class="material-symbols-outlined" style="font-size: 1.125rem;">add</span>

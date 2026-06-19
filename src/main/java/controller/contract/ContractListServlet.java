@@ -66,7 +66,7 @@ public class ContractListServlet extends HttpServlet {
 
 		// Expose per-action permissions so the JSP can decide which buttons to render.
 		request.setAttribute("hasContractDetailPerm", hasPerm(session, "CONTRACT_VIEW"));
-		request.setAttribute("hasContractUpdatePerm", hasPerm(session, "CONTRACT_UPDATE"));
+		request.setAttribute("hasContractCreatePerm", hasPerm(session, "CONTRACT_CREATE"));
 		request.setAttribute("hasContractUploadPerm", hasPerm(session, "CONTRACT_UPLOAD"));
 		request.setAttribute("hasContractRenewPerm", hasPerm(session, "CONTRACT_RENEW"));
 		request.setAttribute("hasContractTerminatePerm", hasPerm(session, "CONTRACT_UPDATE"));

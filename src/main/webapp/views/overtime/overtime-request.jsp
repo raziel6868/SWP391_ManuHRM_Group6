@@ -58,9 +58,8 @@
                                        max="${maxOtDate}"
                                        required />
                                 <div class="form-text mt-1 text-on-surface-variant">
-                                    Đăng ký OT từ <c:out value="${minOtDate}" /> đến <c:out value="${maxOtDate}" />
-                                    (bao gồm ngày trong tương lai trong kỳ công mở).
-                                    Không chọn tháng đã chốt công.
+                                    Chỉ chọn từ hôm nay (<c:out value="${minOtDate}" />)
+                                    đến <c:out value="${maxOtDate}" /> — không chọn ngày quá khứ hoặc tháng đã chốt công.
                                 </div>
                             </div>
 

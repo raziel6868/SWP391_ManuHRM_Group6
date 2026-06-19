@@ -160,18 +160,16 @@ public class OvertimeRequestServlet extends HttpServlet {
 	}
 
 	private LocalDate resolveMinOtDate(LocalDate today) {
-		LocalDate minDate = today.withDayOfMonth(1);
-		LocalDate previousMonthStart = minDate.minusMonths(1);
-		if (!monthlySheetDAO.isPeriodClosed(previousMonthStart.getYear(), previousMonthStart.getMonthValue())) {
-			minDate = previousMonthStart;
+		if (!monthlySheetDAO.isPeriodClosed(today.getYear(), today.getMonthValue())) {
+			return today;
 		}
-		return minDate;
+		LocalDate nextMonth = today.plusMonths(1);
+		return nextMonth.withDayOfMonth(1);
 	}
 
 	private LocalDate resolveMaxOtDate(LocalDate today) {
-		LocalDate monthEnd = today.withDayOfMonth(today.lengthOfMonth());
 		if (!monthlySheetDAO.isPeriodClosed(today.getYear(), today.getMonthValue())) {
-			return monthEnd;
+			return today.withDayOfMonth(today.lengthOfMonth());
 		}
 		LocalDate nextMonth = today.plusMonths(1);
 		return nextMonth.withDayOfMonth(nextMonth.lengthOfMonth());
@@ -182,11 +180,11 @@ public class OvertimeRequestServlet extends HttpServlet {
 		LocalDate minDate = resolveMinOtDate(today);
 		LocalDate maxDate = resolveMaxOtDate(today);
 
-		if (otDate.isBefore(minDate)) {
-			return "Ngày OT phải từ " + minDate + " trở đi (không chọn tháng đã chốt công).";
+		if (otDate.isBefore(today)) {
+			return "Ngày OT không được là ngày trong quá khứ.";
 		}
-		if (otDate.isAfter(maxDate)) {
-			return "Ngày OT không được sau " + maxDate + ". Chỉ đăng ký trong kỳ công đang mở.";
+		if (otDate.isBefore(minDate) || otDate.isAfter(maxDate)) {
+			return "Ngày OT phải từ " + minDate + " đến " + maxDate + ".";
 		}
 		if (monthlySheetDAO.isPeriodClosed(otDate.getYear(), otDate.getMonthValue())) {
 			return "Tháng " + otDate.getMonthValue() + "/" + otDate.getYear()

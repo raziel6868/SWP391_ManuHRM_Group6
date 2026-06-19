@@ -110,15 +110,20 @@
                                             <c:out value="${ot.approverName}" default="—" />
                                         </td>
                                         <td class="text-end">
-                                            <c:if test="${ot.status == 'PENDING'}">
-                                                <div class="d-flex justify-content-end gap-1">
-                                                    <c:if test="${canApprove}">
+                                            <c:if test="${ot.status == 'PENDING' && (canApprove || canReject)}">
+                                                <div class="d-flex justify-content-end align-items-center gap-1 flex-wrap">
+                                                    <c:if test="${canApprove && ot.userId != sessionScope.authUser.id}">
                                                         <form method="post"
                                                               action="${pageContext.request.contextPath}/overtime-approve"
-                                                              class="d-inline m-0"
+                                                              class="d-inline-flex align-items-center gap-1 m-0"
                                                               onsubmit="return confirm('Duyệt yêu cầu OT của ${ot.employeeName}?')">
                                                             <input type="hidden" name="id" value="${ot.id}" />
-                                                            <input type="hidden" name="approvedHours" value="${ot.requestedHours}" />
+                                                            <input type="number" name="approvedHours"
+                                                                   class="form-control form-control-sm input-premium"
+                                                                   style="width: 72px;"
+                                                                   value="${ot.requestedHours}"
+                                                                   min="0.5" max="24" step="0.5"
+                                                                   title="Giờ duyệt" required />
                                                             <button type="submit"
                                                                     class="btn btn-sm btn-icon text-on-surface-variant hover-primary"
                                                                     title="Duyệt">
@@ -126,7 +131,7 @@
                                                             </button>
                                                         </form>
                                                     </c:if>
-                                                    <c:if test="${canReject}">
+                                                    <c:if test="${canReject && ot.userId != sessionScope.authUser.id}">
                                                         <form method="post"
                                                               action="${pageContext.request.contextPath}/overtime-reject"
                                                               class="d-inline m-0"
@@ -140,6 +145,9 @@
                                                         </form>
                                                     </c:if>
                                                 </div>
+                                            </c:if>
+                                            <c:if test="${ot.status == 'PENDING' && !canApprove && !canReject}">
+                                                <span class="text-on-surface-variant body-sm">—</span>
                                             </c:if>
                                             <c:if test="${ot.status != 'PENDING'}">
                                                 <span class="text-on-surface-variant body-sm">—</span>

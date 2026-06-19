@@ -5,6 +5,7 @@ import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Time;
 import java.util.ArrayList;
 import java.util.List;
 import model.AttendanceRecord;
@@ -141,6 +142,107 @@ public class AttendanceDAO {
 		}
 
 		return 0;
+	}
+
+	public List<AttendanceRecord> searchByUserAndMonth(Long userId, int year, int month) {
+		List<AttendanceRecord> records = new ArrayList<>();
+		if (userId == null) {
+			return records;
+		}
+
+		String sql = """
+				SELECT ar.id, ar.user_id, u.employee_code, u.full_name AS employee_name,
+				       ar.date, ar.shift_id, s.name AS shift_name,
+				       ar.check_in, ar.check_out, ar.working_hours, ar.status,
+				       ar.import_batch_id, ar.created_at, ar.updated_at
+				FROM attendance_records ar
+				JOIN users u ON ar.user_id = u.id
+				LEFT JOIN shifts s ON ar.shift_id = s.id
+				WHERE ar.user_id = ? AND YEAR(ar.date) = ? AND MONTH(ar.date) = ?
+				ORDER BY ar.date DESC
+				""";
+
+		try (Connection conn = DBContext.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+			ps.setLong(1, userId);
+			ps.setInt(2, year);
+			ps.setInt(3, month);
+			try (ResultSet rs = ps.executeQuery()) {
+				while (rs.next()) {
+					records.add(mapRecord(rs));
+				}
+			}
+		} catch (SQLException e) {
+			System.err.println("AttendanceDAO.searchByUserAndMonth() ERROR: " + e.getMessage());
+		}
+
+		return records;
+	}
+
+	public AttendanceRecord getById(Long id) {
+		if (id == null) {
+			return null;
+		}
+
+		String sql = """
+				SELECT ar.id, ar.user_id, u.employee_code, u.full_name AS employee_name,
+				       ar.date, ar.shift_id, s.name AS shift_name,
+				       ar.check_in, ar.check_out, ar.working_hours, ar.status,
+				       ar.import_batch_id, ar.created_at, ar.updated_at
+				FROM attendance_records ar
+				JOIN users u ON ar.user_id = u.id
+				LEFT JOIN shifts s ON ar.shift_id = s.id
+				WHERE ar.id = ?
+				""";
+
+		try (Connection conn = DBContext.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+			ps.setLong(1, id);
+			try (ResultSet rs = ps.executeQuery()) {
+				if (rs.next()) {
+					return mapRecord(rs);
+				}
+			}
+		} catch (SQLException e) {
+			System.err.println("AttendanceDAO.getById() ERROR: " + e.getMessage());
+		}
+
+		return null;
+	}
+
+	public boolean updateAfterCorrection(Connection conn, Long recordId, Time newCheckIn, Time newCheckOut)
+			throws SQLException {
+		if (conn == null || recordId == null || newCheckIn == null || newCheckOut == null) {
+			return false;
+		}
+
+		String sql = """
+				UPDATE attendance_records ar
+				LEFT JOIN shifts s ON ar.shift_id = s.id
+				SET ar.check_in = ?,
+				    ar.check_out = ?,
+				    ar.working_hours = ROUND(
+				        GREATEST(
+				            0,
+				            (TIME_TO_SEC(TIMEDIFF(?, ?)) / 60) - COALESCE(s.break_minutes, 0)
+				        ) / 60,
+				        2
+				    ),
+				    ar.status = CASE
+				        WHEN ? > ADDTIME(COALESCE(s.start_time, ?), '00:15:00') THEN 'LATE'
+				        ELSE 'NORMAL'
+				    END
+				WHERE ar.id = ?
+				""";
+
+		try (PreparedStatement ps = conn.prepareStatement(sql)) {
+			ps.setTime(1, newCheckIn);
+			ps.setTime(2, newCheckOut);
+			ps.setTime(3, newCheckOut);
+			ps.setTime(4, newCheckIn);
+			ps.setTime(5, newCheckIn);
+			ps.setTime(6, newCheckIn);
+			ps.setLong(7, recordId);
+			return ps.executeUpdate() > 0;
+		}
 	}
 
 	public Long findActiveUserIdByEmployeeCode(String employeeCode) {

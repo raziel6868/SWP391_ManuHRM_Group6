@@ -1,6 +1,5 @@
 package controller.leaverequest;
 
-import dal.DBContext;
 import dal.LeaveRequestDAO;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
@@ -8,108 +7,62 @@ import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
-import model.LeaveRequest;
-import model.Permission;
-import model.User;
 import java.io.IOException;
-import java.sql.Connection;
-import java.sql.SQLException;
-import java.util.List;
+import model.LeaveRequest;
+import model.User;
 
 @WebServlet(name = "LeaveRequestCancelServlet", urlPatterns = {"/leave-request-cancel"})
 public class LeaveRequestCancelServlet extends HttpServlet {
 
-	private final LeaveRequestDAO requestDAO = new LeaveRequestDAO();
+	private final LeaveRequestDAO leaveRequestDAO = new LeaveRequestDAO();
 
 	@Override
 	protected void doPost(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
 		request.setCharacterEncoding("UTF-8");
-		HttpSession session = request.getSession();
-		User authUser = (User) session.getAttribute("authUser");
-		@SuppressWarnings("unchecked")
-		List<Permission> permissions = (List<Permission>) session.getAttribute("permissions");
 
-		if (authUser == null || !hasPermission(permissions, "LEAVE_MY_CANCEL")) {
-			response.sendError(HttpServletResponse.SC_FORBIDDEN);
+		HttpSession session = request.getSession(false);
+		User authUser = session == null ? null : (User) session.getAttribute("authUser");
+		if (authUser == null) {
+			response.sendRedirect(request.getContextPath() + "/login");
 			return;
 		}
 
-		String idStr = request.getParameter("id");
-		if (idStr == null || idStr.trim().isEmpty()) {
-			session.setAttribute("errorMsg", "Không tìm thấy yêu cầu.");
+		Long id = parseLong(request.getParameter("id"));
+		LeaveRequest leaveRequest = leaveRequestDAO.getById(id);
+		if (leaveRequest == null) {
+			session.setAttribute("errorMsg", "Không tìm thấy đơn nghỉ phép.");
+			response.sendRedirect(request.getContextPath() + "/leave-request-my");
+			return;
+		}
+		if (authUser.getId() == null || !authUser.getId().equals(leaveRequest.getUserId())) {
+			session.setAttribute("errorMsg", "Chỉ có thể hủy đơn nghỉ phép của chính mình.");
+			response.sendRedirect(request.getContextPath() + "/leave-request-my");
+			return;
+		}
+		if (!"PENDING".equals(leaveRequest.getStatus()) && !"APPROVED_LEVEL_1".equals(leaveRequest.getStatus())) {
+			session.setAttribute("errorMsg", "Chỉ có thể hủy đơn đang chờ duyệt.");
 			response.sendRedirect(request.getContextPath() + "/leave-request-my");
 			return;
 		}
 
-		Connection conn = null;
-		try {
-			Long id = Long.parseLong(idStr.trim());
-			LeaveRequest leaveRequest = requestDAO.getById(id);
-
-			if (leaveRequest == null) {
-				session.setAttribute("errorMsg", "Không tìm thấy yêu cầu.");
-				response.sendRedirect(request.getContextPath() + "/leave-request-my");
-				return;
-			}
-
-			if (!authUser.getId().equals(leaveRequest.getUserId())) {
-				session.setAttribute("errorMsg", "Bạn không có quyền hủy yêu cầu này.");
-				response.sendRedirect(request.getContextPath() + "/leave-request-my");
-				return;
-			}
-
-			String currentStatus = leaveRequest.getStatus();
-			if (!"PENDING".equals(currentStatus) && !"APPROVED_LEVEL_1".equals(currentStatus)) {
-				session.setAttribute("errorMsg", "Yêu cầu không ở trạng thái có thể hủy.");
-				response.sendRedirect(request.getContextPath() + "/leave-request-my");
-				return;
-			}
-
-			conn = DBContext.getConnection();
-			conn.setAutoCommit(false);
-
-			boolean success = requestDAO.cancel(conn, id, authUser.getId());
-			if (success) {
-				conn.commit();
-				session.setAttribute("successMsg", "Đã hủy yêu cầu nghỉ phép.");
-			} else {
-				conn.rollback();
-				session.setAttribute("errorMsg", "Không thể hủy yêu cầu. Trạng thái có thể đã thay đổi.");
-			}
-
-		} catch (NumberFormatException e) {
-			session.setAttribute("errorMsg", "ID yêu cầu không hợp lệ.");
-		} catch (SQLException e) {
-			if (conn != null) {
-				try {
-					conn.rollback();
-				} catch (SQLException ignored) {
-				}
-			}
-			session.setAttribute("errorMsg", "Lỗi cơ sở dữ liệu: " + e.getMessage());
-		} finally {
-			if (conn != null) {
-				try {
-					conn.setAutoCommit(true);
-					conn.close();
-				} catch (SQLException ignored) {
-				}
-			}
+		boolean success = leaveRequestDAO.cancel(id, authUser.getId());
+		if (success) {
+			session.setAttribute("successMsg", "Hủy đơn nghỉ phép thành công.");
+		} else {
+			session.setAttribute("errorMsg", "Không thể hủy đơn nghỉ phép. Vui lòng thử lại.");
 		}
-
 		response.sendRedirect(request.getContextPath() + "/leave-request-my");
 	}
 
-	private boolean hasPermission(List<Permission> permissions, String code) {
-		if (permissions == null) {
-			return false;
+	private Long parseLong(String value) {
+		if (value == null || value.isBlank()) {
+			return null;
 		}
-		for (Permission p : permissions) {
-			if (code.equals(p.getCode())) {
-				return true;
-			}
+		try {
+			return Long.valueOf(value.trim());
+		} catch (NumberFormatException e) {
+			return null;
 		}
-		return false;
 	}
 }

@@ -1,164 +1,128 @@
 package controller.attendancecorrection;
 
-import java.io.IOException;
-import java.math.BigDecimal;
-import java.sql.Time;
-import java.time.temporal.ChronoUnit;
-import java.util.Calendar;
 import dal.AttendanceCorrectionDAO;
 import dal.AttendanceDAO;
 import dal.DBContext;
-import dal.MonthlySheetDAO;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
-import model.AttendanceCorrection;
-import model.AttendanceRecord;
-import model.Permission;
-import model.User;
+import java.io.IOException;
 import java.sql.Connection;
 import java.sql.SQLException;
-import java.util.List;
+import model.AttendanceCorrection;
+import model.User;
 
 @WebServlet(name = "AttendanceCorrectionApproveServlet", urlPatterns = {"/attendance-correction-approve"})
 public class AttendanceCorrectionApproveServlet extends HttpServlet {
 
 	private final AttendanceCorrectionDAO correctionDAO = new AttendanceCorrectionDAO();
 	private final AttendanceDAO attendanceDAO = new AttendanceDAO();
-	private final MonthlySheetDAO monthlySheetDAO = new MonthlySheetDAO();
 
 	@Override
 	protected void doPost(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
 		request.setCharacterEncoding("UTF-8");
+
 		HttpSession session = request.getSession();
 		User authUser = (User) session.getAttribute("authUser");
-		@SuppressWarnings("unchecked")
-		List<Permission> permissions = (List<Permission>) session.getAttribute("permissions");
-
-		if (authUser == null || !hasPermission(permissions, "ATTENDANCE_CORRECTION_APPROVE")) {
-			response.sendError(HttpServletResponse.SC_FORBIDDEN);
+		if (authUser == null || authUser.getId() == null) {
+			response.sendRedirect(request.getContextPath() + "/login");
 			return;
 		}
 
-		String idStr = request.getParameter("id");
-		if (idStr == null || idStr.trim().isEmpty()) {
-			session.setAttribute("errorMsg", "Không tìm thấy yêu cầu sửa.");
-			response.sendRedirect(request.getContextPath() + "/attendance-correction-list");
+		Long id = parseLong(request.getParameter("id"));
+		String redirectUrl = request.getContextPath() + "/attendance-correction-list";
+
+		if (id == null) {
+			session.setAttribute("errorMsg", "Yêu cầu điều chỉnh không hợp lệ.");
+			response.sendRedirect(redirectUrl);
 			return;
 		}
 
-		Long correctionId;
-		try {
-			correctionId = Long.parseLong(idStr.trim());
-		} catch (NumberFormatException e) {
-			session.setAttribute("errorMsg", "ID không hợp lệ.");
-			response.sendRedirect(request.getContextPath() + "/attendance-correction-list");
-			return;
-		}
-
-		AttendanceCorrection correction = correctionDAO.getById(correctionId);
+		AttendanceCorrection correction = correctionDAO.getById(id);
 		if (correction == null) {
-			session.setAttribute("errorMsg", "Yêu cầu sửa không tồn tại.");
-			response.sendRedirect(request.getContextPath() + "/attendance-correction-list");
+			session.setAttribute("errorMsg", "Không tìm thấy yêu cầu điều chỉnh.");
+			response.sendRedirect(redirectUrl);
 			return;
 		}
-
 		if (!"PENDING".equals(correction.getStatus())) {
-			session.setAttribute("errorMsg", "Yêu cầu này đã được xử lý.");
-			response.sendRedirect(request.getContextPath() + "/attendance-correction-list");
+			session.setAttribute("errorMsg", "Yêu cầu này đã được xử lý trước đó.");
+			response.sendRedirect(redirectUrl);
 			return;
 		}
-
-		AttendanceRecord record = attendanceDAO.getById(correction.getAttendanceRecordId());
-		if (record == null) {
-			session.setAttribute("errorMsg", "Bản ghi chấm công không tồn tại.");
-			response.sendRedirect(request.getContextPath() + "/attendance-correction-list");
-			return;
-		}
-
-		Calendar cal = Calendar.getInstance();
-		cal.setTime(record.getDate());
-		int year = cal.get(Calendar.YEAR);
-		int month = cal.get(Calendar.MONTH) + 1;
-
-		if (monthlySheetDAO.isPeriodClosed(year, month)) {
-			session.setAttribute("errorMsg",
-					"Không thể duyệt sửa chấm công cho tháng đã đóng. Vui lòng mở lại bảng lương trước.");
-			response.sendRedirect(request.getContextPath() + "/attendance-correction-list");
-			return;
-		}
-
-		Time newCheckIn = correction.getNewCheckIn() != null ? correction.getNewCheckIn() : record.getCheckIn();
-		Time newCheckOut = correction.getNewCheckOut() != null ? correction.getNewCheckOut() : record.getCheckOut();
-		BigDecimal workingHours = calculateWorkingHours(newCheckIn, newCheckOut);
 
 		Connection conn = null;
 		try {
 			conn = DBContext.getConnection();
+			if (conn == null) {
+				throw new SQLException("Không thể kết nối database.");
+			}
 			conn.setAutoCommit(false);
 
-			boolean updated = correctionDAO.approve(conn, correctionId, authUser.getId());
-			if (!updated) {
+			boolean approved = correctionDAO.approve(conn, id, authUser.getId());
+			if (!approved) {
 				conn.rollback();
-				session.setAttribute("errorMsg", "Không thể duyệt yêu cầu. Trạng thái đã thay đổi.");
-				response.sendRedirect(request.getContextPath() + "/attendance-correction-list");
+				session.setAttribute("errorMsg", "Không thể duyệt yêu cầu (có thể đã được xử lý bởi người khác).");
+				response.sendRedirect(redirectUrl);
 				return;
 			}
 
-			attendanceDAO.updateAfterCorrection(conn, record.getId(), newCheckIn, newCheckOut, workingHours);
+			boolean updated = attendanceDAO.updateAfterCorrection(conn, correction.getAttendanceRecordId(),
+					correction.getNewCheckIn(), correction.getNewCheckOut());
+			if (!updated) {
+				conn.rollback();
+				session.setAttribute("errorMsg", "Không thể cập nhật bản ghi chấm công.");
+				response.sendRedirect(redirectUrl);
+				return;
+			}
 
 			conn.commit();
-			session.setAttribute("successMsg", "Duyệt sửa chấm công thành công.");
+			session.setAttribute("successMsg",
+					"Đã duyệt yêu cầu điều chỉnh công cho " + correction.getEmployeeName() + ".");
 
-		} catch (Exception e) {
-			System.err.println("Error approving correction: " + e.getMessage());
-			if (conn != null) {
-				try {
-					conn.rollback();
-				} catch (SQLException ignored) {
-				}
-			}
-			session.setAttribute("errorMsg", "Đã xảy ra lỗi khi duyệt.");
+		} catch (SQLException e) {
+			rollback(conn);
+			System.err.println("AttendanceCorrectionApproveServlet.doPost() ERROR: " + e.getMessage());
+			session.setAttribute("errorMsg", "Lỗi hệ thống khi duyệt yêu cầu điều chỉnh.");
 		} finally {
-			if (conn != null) {
-				try {
-					conn.setAutoCommit(true);
-					conn.close();
-				} catch (SQLException ignored) {
-				}
-			}
+			close(conn);
 		}
 
-		response.sendRedirect(request.getContextPath() + "/attendance-correction-list");
+		response.sendRedirect(redirectUrl);
 	}
 
-	private BigDecimal calculateWorkingHours(Time checkIn, Time checkOut) {
-		if (checkIn == null || checkOut == null) {
-			return BigDecimal.ZERO;
+	private Long parseLong(String value) {
+		if (value == null || value.isBlank()) {
+			return null;
 		}
-		long totalMinutes = ChronoUnit.MINUTES.between(checkIn.toLocalTime(), checkOut.toLocalTime());
-		if (totalMinutes < 0) {
-			totalMinutes += 24 * 60;
+		try {
+			return Long.parseLong(value.trim());
+		} catch (NumberFormatException e) {
+			return null;
 		}
-		if (totalMinutes < 0) {
-			totalMinutes = 0;
-		}
-		return BigDecimal.valueOf(totalMinutes).divide(BigDecimal.valueOf(60), 2, java.math.RoundingMode.HALF_UP);
 	}
 
-	private boolean hasPermission(List<Permission> permissions, String code) {
-		if (permissions == null) {
-			return false;
-		}
-		for (Permission p : permissions) {
-			if (code.equals(p.getCode())) {
-				return true;
+	private void rollback(Connection conn) {
+		if (conn != null) {
+			try {
+				conn.rollback();
+			} catch (SQLException e) {
+				System.err.println("AttendanceCorrectionApproveServlet.rollback() ERROR: " + e.getMessage());
 			}
 		}
-		return false;
+	}
+
+	private void close(Connection conn) {
+		if (conn != null) {
+			try {
+				conn.setAutoCommit(true);
+				conn.close();
+			} catch (SQLException e) {
+				System.err.println("AttendanceCorrectionApproveServlet.close() ERROR: " + e.getMessage());
+			}
+		}
 	}
 }

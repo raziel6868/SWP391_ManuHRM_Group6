@@ -130,6 +130,14 @@
                         <span>Quản lý Phòng ban</span>
                     </a>
                 </c:when>
+                <c:when test="${permission.code == 'HOLIDAY_VIEW'}">
+                    <c:url var="menuUrl" value="${permission.urlPattern}" />
+                    <a class="${currentPath == permission.urlPattern ? 'sidebar-nav-item active text-decoration-none' : 'sidebar-nav-item text-decoration-none'}"
+                       href="${menuUrl}">
+                        <span class="material-symbols-outlined">celebration</span>
+                        <span>Quản lý Ngày lễ</span>
+                    </a>
+                </c:when>
                 <c:when test="${permission.code == 'ATTENDANCE_VIEW'}">
                     <c:url var="menuUrl" value="${permission.urlPattern}" />
                     <a class="${currentPath == permission.urlPattern ? 'sidebar-nav-item active text-decoration-none' : 'sidebar-nav-item text-decoration-none'}"

@@ -16,10 +16,15 @@ public class OvertimeRecord {
 	private Long approverId;
 	private Timestamp approvedAt;
 	private Timestamp createdAt;
-	private String userFullName;
+	private Timestamp updatedAt;
+
 	private String employeeCode;
-	private String departmentName;
+	private String employeeName;
+	private Long requesterId;
 	private String approverName;
+
+	public OvertimeRecord() {
+	}
 
 	public Long getId() {
 		return id;
@@ -101,12 +106,12 @@ public class OvertimeRecord {
 		this.createdAt = createdAt;
 	}
 
-	public String getUserFullName() {
-		return userFullName;
+	public Timestamp getUpdatedAt() {
+		return updatedAt;
 	}
 
-	public void setUserFullName(String userFullName) {
-		this.userFullName = userFullName;
+	public void setUpdatedAt(Timestamp updatedAt) {
+		this.updatedAt = updatedAt;
 	}
 
 	public String getEmployeeCode() {
@@ -117,12 +122,20 @@ public class OvertimeRecord {
 		this.employeeCode = employeeCode;
 	}
 
-	public String getDepartmentName() {
-		return departmentName;
+	public String getEmployeeName() {
+		return employeeName;
 	}
 
-	public void setDepartmentName(String departmentName) {
-		this.departmentName = departmentName;
+	public void setEmployeeName(String employeeName) {
+		this.employeeName = employeeName;
+	}
+
+	public Long getRequesterId() {
+		return requesterId;
+	}
+
+	public void setRequesterId(Long requesterId) {
+		this.requesterId = requesterId;
 	}
 
 	public String getApproverName() {

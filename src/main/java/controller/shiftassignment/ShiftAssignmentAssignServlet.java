@@ -1,65 +1,43 @@
 package controller.shiftassignment;
 
-import java.io.IOException;
-import java.sql.Date;
-import java.util.List;
-import dal.DepartmentDAO;
 import dal.ShiftAssignmentDAO;
-import dal.ShiftDAO;
 import dal.UserDAO;
+import dal.ShiftDAO;
+import dal.DepartmentDAO;
+import model.ShiftAssignment;
+import model.Shift;
+import model.Department;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
-import model.Department;
-import model.Permission;
-import model.Shift;
-import model.ShiftAssignment;
-import model.User;
+import java.io.IOException;
+import java.sql.Date;
+import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
+import java.util.List;
+import util.ValidationUtil;
 
 @WebServlet(name = "ShiftAssignmentAssignServlet", urlPatterns = {"/shift-assignment-assign"})
 public class ShiftAssignmentAssignServlet extends HttpServlet {
 
 	private final ShiftAssignmentDAO shiftAssignmentDAO = new ShiftAssignmentDAO();
 	private final UserDAO userDAO = new UserDAO();
-	private final DepartmentDAO departmentDAO = new DepartmentDAO();
 	private final ShiftDAO shiftDAO = new ShiftDAO();
+	private final DepartmentDAO departmentDAO = new DepartmentDAO();
 
 	@Override
 	protected void doGet(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
-		HttpSession session = request.getSession();
-
-		if (!hasPermission(session, "SHIFT_ASSIGNMENT_ASSIGN")) {
-			session.setAttribute("errorMsg", "Bạn không có quyền thực hiện thao tác này.");
-			response.sendRedirect(request.getContextPath() + "/home");
-			return;
-		}
-
-		moveFlashMessage(session, request, "successMsg");
-		moveFlashMessage(session, request, "errorMsg");
-
-		String editId = request.getParameter("edit");
-		ShiftAssignment assignment = null;
-
-		if (editId != null && !editId.trim().isEmpty()) {
-			try {
-				Long id = Long.parseLong(editId.trim());
-				assignment = shiftAssignmentDAO.getById(id);
-			} catch (NumberFormatException e) {
-			}
-		}
-
-		List<User> users = userDAO.searchUsers(null, null, null, true, null, 0, 100);
 		List<Department> departments = departmentDAO.getActiveDepartments();
 		List<Shift> shifts = shiftDAO.searchShifts(null, null, true, 0, 100);
 
-		request.setAttribute("assignment", assignment);
-		request.setAttribute("users", users);
 		request.setAttribute("departments", departments);
 		request.setAttribute("shifts", shifts);
+
+		moveFlashMessage(request);
 
 		request.getRequestDispatcher("/views/shiftassignment/shift-assignment-assign.jsp").forward(request, response);
 	}
@@ -70,62 +48,74 @@ public class ShiftAssignmentAssignServlet extends HttpServlet {
 		request.setCharacterEncoding("UTF-8");
 		HttpSession session = request.getSession();
 
-		if (!hasPermission(session, "SHIFT_ASSIGNMENT_ASSIGN")) {
-			response.sendError(HttpServletResponse.SC_FORBIDDEN);
-			return;
-		}
-
 		String userIdParam = request.getParameter("userId");
 		String shiftIdParam = request.getParameter("shiftId");
-		String dateParam = request.getParameter("date");
+		String dateStr = request.getParameter("date");
 
-		if (userIdParam == null || userIdParam.trim().isEmpty() || shiftIdParam == null || shiftIdParam.trim().isEmpty()
-				|| dateParam == null || dateParam.trim().isEmpty()) {
-			session.setAttribute("errorMsg", "Vui lòng điền đầy đủ thông tin bắt buộc.");
+		StringBuilder errorMsg = new StringBuilder();
+
+		if (ValidationUtil.isBlank(userIdParam)) {
+			errorMsg.append("Nhan vien la truong bat buoc.<br>");
+		}
+		if (ValidationUtil.isBlank(shiftIdParam)) {
+			errorMsg.append("Ca lam viec la truong bat buoc.<br>");
+		}
+		if (ValidationUtil.isBlank(dateStr)) {
+			errorMsg.append("Ngay la truong bat buoc.<br>");
+		}
+
+		if (errorMsg.length() > 0) {
+			request.setAttribute("errorMsg", errorMsg.toString());
+			List<Department> departments = departmentDAO.getActiveDepartments();
+			List<Shift> shifts = shiftDAO.searchShifts(null, null, true, 0, 100);
+			request.setAttribute("departments", departments);
+			request.setAttribute("shifts", shifts);
+			request.setAttribute("selectedUserId", userIdParam);
+			request.setAttribute("selectedShiftId", shiftIdParam);
+			request.setAttribute("selectedDate", dateStr);
+			request.getRequestDispatcher("/views/shiftassignment/shift-assignment-assign.jsp").forward(request,
+					response);
+			return;
+		}
+
+		Long userId = Long.parseLong(userIdParam);
+		Long shiftId = Long.parseLong(shiftIdParam);
+		LocalDate date;
+		try {
+			date = LocalDate.parse(dateStr);
+		} catch (DateTimeParseException e) {
+			session.setAttribute("errorMsg", "Dinh dang ngay khong hop le. Su dung YYYY-MM-DD.");
 			response.sendRedirect(request.getContextPath() + "/shift-assignment-assign");
 			return;
 		}
 
-		try {
-			Long userId = Long.parseLong(userIdParam.trim());
-			Long shiftId = Long.parseLong(shiftIdParam.trim());
-			Date date = Date.valueOf(dateParam.trim());
+		ShiftAssignment existing = shiftAssignmentDAO.getByUserAndDate(userId, Date.valueOf(date));
+		boolean isUpdate = existing != null;
 
-			boolean success = shiftAssignmentDAO.upsert(userId, shiftId, date);
-
-			if (success) {
-				session.setAttribute("successMsg", "Phân ca thành công.");
-				response.sendRedirect(request.getContextPath() + "/shift-assignment-list");
+		if (shiftAssignmentDAO.upsert(userId, shiftId, Date.valueOf(date))) {
+			if (isUpdate) {
+				session.setAttribute("successMsg", "Cap nhat lich phan ca thanh cong!");
 			} else {
-				session.setAttribute("errorMsg", "Không thể phân ca. Vui lòng thử lại.");
-				response.sendRedirect(request.getContextPath() + "/shift-assignment-assign");
+				session.setAttribute("successMsg", "Phan ca thanh cong!");
 			}
-
-		} catch (IllegalArgumentException e) {
-			session.setAttribute("errorMsg", "Ngày không hợp lệ (định dạng: YYYY-MM-DD).");
-			response.sendRedirect(request.getContextPath() + "/shift-assignment-assign");
+		} else {
+			session.setAttribute("errorMsg", "Khong the phan ca. Vui long thu lai.");
 		}
+
+		response.sendRedirect(request.getContextPath() + "/shift-assignment-list");
 	}
 
-	@SuppressWarnings("unchecked")
-	private boolean hasPermission(HttpSession session, String code) {
-		List<Permission> permissions = (List<Permission>) session.getAttribute("permissions");
-		if (permissions == null) {
-			return false;
+	private void moveFlashMessage(HttpServletRequest request) {
+		jakarta.servlet.http.HttpSession session = request.getSession();
+		String successMsg = (String) session.getAttribute("successMsg");
+		if (successMsg != null) {
+			request.setAttribute("successMsg", successMsg);
+			session.removeAttribute("successMsg");
 		}
-		for (Permission p : permissions) {
-			if (code.equals(p.getCode())) {
-				return true;
-			}
-		}
-		return false;
-	}
-
-	private void moveFlashMessage(HttpSession session, HttpServletRequest request, String key) {
-		String value = (String) session.getAttribute(key);
-		if (value != null) {
-			request.setAttribute(key, value);
-			session.removeAttribute(key);
+		String errorMsg = (String) session.getAttribute("errorMsg");
+		if (errorMsg != null) {
+			request.setAttribute("errorMsg", errorMsg);
+			session.removeAttribute("errorMsg");
 		}
 	}
 }

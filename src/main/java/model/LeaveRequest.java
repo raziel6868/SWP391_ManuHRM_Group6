@@ -20,8 +20,11 @@ public class LeaveRequest {
 	private Timestamp approvedAt;
 	private Timestamp createdAt;
 	private Timestamp updatedAt;
-	private String userFullName;
+
 	private String employeeCode;
+	private String employeeName;
+	private String departmentName;
+	private String leaveTypeCode;
 	private String leaveTypeName;
 	private String level1ApproverName;
 	private String approverName;
@@ -138,20 +141,36 @@ public class LeaveRequest {
 		this.updatedAt = updatedAt;
 	}
 
-	public String getUserFullName() {
-		return userFullName;
-	}
-
-	public void setUserFullName(String userFullName) {
-		this.userFullName = userFullName;
-	}
-
 	public String getEmployeeCode() {
 		return employeeCode;
 	}
 
 	public void setEmployeeCode(String employeeCode) {
 		this.employeeCode = employeeCode;
+	}
+
+	public String getEmployeeName() {
+		return employeeName;
+	}
+
+	public void setEmployeeName(String employeeName) {
+		this.employeeName = employeeName;
+	}
+
+	public String getDepartmentName() {
+		return departmentName;
+	}
+
+	public void setDepartmentName(String departmentName) {
+		this.departmentName = departmentName;
+	}
+
+	public String getLeaveTypeCode() {
+		return leaveTypeCode;
+	}
+
+	public void setLeaveTypeCode(String leaveTypeCode) {
+		this.leaveTypeCode = leaveTypeCode;
 	}
 
 	public String getLeaveTypeName() {

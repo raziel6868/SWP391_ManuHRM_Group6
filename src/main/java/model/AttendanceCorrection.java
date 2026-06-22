@@ -1,5 +1,6 @@
 package model;
 
+import java.sql.Date;
 import java.sql.Time;
 import java.sql.Timestamp;
 
@@ -15,10 +16,16 @@ public class AttendanceCorrection {
 	private Long approverId;
 	private Timestamp approvedAt;
 	private Timestamp createdAt;
-	private String requestedByName;
+	private Timestamp updatedAt;
+
+	private Long attendanceUserId;
+	private String employeeCode;
+	private String employeeName;
+	private Date attendanceDate;
+	private Time currentCheckIn;
+	private Time currentCheckOut;
 	private String approverName;
-	private String attendanceUserName;
-	private String attendanceDate;
+	private String requesterName;
 
 	public Long getId() {
 		return id;
@@ -100,12 +107,60 @@ public class AttendanceCorrection {
 		this.createdAt = createdAt;
 	}
 
-	public String getRequestedByName() {
-		return requestedByName;
+	public Timestamp getUpdatedAt() {
+		return updatedAt;
 	}
 
-	public void setRequestedByName(String requestedByName) {
-		this.requestedByName = requestedByName;
+	public void setUpdatedAt(Timestamp updatedAt) {
+		this.updatedAt = updatedAt;
+	}
+
+	public Long getAttendanceUserId() {
+		return attendanceUserId;
+	}
+
+	public void setAttendanceUserId(Long attendanceUserId) {
+		this.attendanceUserId = attendanceUserId;
+	}
+
+	public String getEmployeeCode() {
+		return employeeCode;
+	}
+
+	public void setEmployeeCode(String employeeCode) {
+		this.employeeCode = employeeCode;
+	}
+
+	public String getEmployeeName() {
+		return employeeName;
+	}
+
+	public void setEmployeeName(String employeeName) {
+		this.employeeName = employeeName;
+	}
+
+	public Date getAttendanceDate() {
+		return attendanceDate;
+	}
+
+	public void setAttendanceDate(Date attendanceDate) {
+		this.attendanceDate = attendanceDate;
+	}
+
+	public Time getCurrentCheckIn() {
+		return currentCheckIn;
+	}
+
+	public void setCurrentCheckIn(Time currentCheckIn) {
+		this.currentCheckIn = currentCheckIn;
+	}
+
+	public Time getCurrentCheckOut() {
+		return currentCheckOut;
+	}
+
+	public void setCurrentCheckOut(Time currentCheckOut) {
+		this.currentCheckOut = currentCheckOut;
 	}
 
 	public String getApproverName() {
@@ -116,19 +171,11 @@ public class AttendanceCorrection {
 		this.approverName = approverName;
 	}
 
-	public String getAttendanceUserName() {
-		return attendanceUserName;
+	public String getRequesterName() {
+		return requesterName;
 	}
 
-	public void setAttendanceUserName(String attendanceUserName) {
-		this.attendanceUserName = attendanceUserName;
-	}
-
-	public String getAttendanceDate() {
-		return attendanceDate;
-	}
-
-	public void setAttendanceDate(String attendanceDate) {
-		this.attendanceDate = attendanceDate;
+	public void setRequesterName(String requesterName) {
+		this.requesterName = requesterName;
 	}
 }

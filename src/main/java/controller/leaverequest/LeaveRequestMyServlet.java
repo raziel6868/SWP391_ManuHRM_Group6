@@ -1,6 +1,5 @@
 package controller.leaverequest;
 
-import dal.LeaveBalanceDAO;
 import dal.LeaveRequestDAO;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
@@ -10,7 +9,6 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
 import java.util.List;
-import model.LeaveBalance;
 import model.LeaveRequest;
 import model.Permission;
 import model.User;
@@ -18,19 +16,16 @@ import model.User;
 @WebServlet(name = "LeaveRequestMyServlet", urlPatterns = {"/leave-request-my"})
 public class LeaveRequestMyServlet extends HttpServlet {
 
-	private final LeaveRequestDAO requestDAO = new LeaveRequestDAO();
-	private final LeaveBalanceDAO balanceDAO = new LeaveBalanceDAO();
+	private static final int PAGE_SIZE = 10;
+
+	private final LeaveRequestDAO leaveRequestDAO = new LeaveRequestDAO();
 
 	@Override
 	protected void doGet(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
-		request.setCharacterEncoding("UTF-8");
-		HttpSession session = request.getSession();
-		User authUser = (User) session.getAttribute("authUser");
-		@SuppressWarnings("unchecked")
-		List<Permission> permissions = (List<Permission>) session.getAttribute("permissions");
-
-		if (authUser == null || permissions == null || !hasPermission(permissions, "LEAVE_MY_VIEW")) {
+		HttpSession session = request.getSession(false);
+		User authUser = session == null ? null : (User) session.getAttribute("authUser");
+		if (authUser == null) {
 			response.sendRedirect(request.getContextPath() + "/login");
 			return;
 		}
@@ -38,15 +33,46 @@ public class LeaveRequestMyServlet extends HttpServlet {
 		moveFlashMessage(session, request, "successMsg");
 		moveFlashMessage(session, request, "errorMsg");
 
-		int currentYear = java.time.Year.now().getValue();
-		List<LeaveBalance> balances = balanceDAO.getByUserAndYear(authUser.getId(), currentYear);
-		List<LeaveRequest> requests = requestDAO.searchByUser(authUser.getId(), 0, 100);
+		int currentPage = parsePage(request.getParameter("page"));
+		int offset = (currentPage - 1) * PAGE_SIZE;
 
-		request.setAttribute("balances", balances);
-		request.setAttribute("requests", requests);
-		request.setAttribute("currentYear", currentYear);
+		List<LeaveRequest> leaveRequests = leaveRequestDAO.searchByUser(authUser.getId(), offset, PAGE_SIZE);
+		int totalRecords = leaveRequestDAO.countByUser(authUser.getId());
+		int totalPages = totalRecords / PAGE_SIZE;
+		if (totalRecords % PAGE_SIZE != 0) {
+			totalPages++;
+		}
+		if (totalPages == 0) {
+			totalPages = 1;
+		}
 
+		if (currentPage > totalPages) {
+			currentPage = totalPages;
+			offset = (currentPage - 1) * PAGE_SIZE;
+			leaveRequests = leaveRequestDAO.searchByUser(authUser.getId(), offset, PAGE_SIZE);
+		}
+
+		request.setAttribute("leaveRequests", leaveRequests);
+		request.setAttribute("currentPage", currentPage);
+		request.setAttribute("totalPages", totalPages);
+		request.setAttribute("totalRecords", totalRecords);
+		request.setAttribute("canCreate", hasPermission(session, "LEAVE_MY_CREATE"));
+		request.setAttribute("canCancel", hasPermission(session, "LEAVE_MY_CANCEL"));
 		request.getRequestDispatcher("/views/leaverequest/leave-request-my.jsp").forward(request, response);
+	}
+
+	@SuppressWarnings("unchecked")
+	private boolean hasPermission(HttpSession session, String permissionCode) {
+		List<Permission> permissions = (List<Permission>) session.getAttribute("permissions");
+		if (permissions == null) {
+			return false;
+		}
+		for (Permission permission : permissions) {
+			if (permissionCode.equals(permission.getCode())) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	private void moveFlashMessage(HttpSession session, HttpServletRequest request, String key) {
@@ -57,15 +83,14 @@ public class LeaveRequestMyServlet extends HttpServlet {
 		}
 	}
 
-	private boolean hasPermission(List<Permission> permissions, String code) {
-		if (permissions == null) {
-			return false;
+	private int parsePage(String pageParam) {
+		if (pageParam == null || pageParam.isBlank()) {
+			return 1;
 		}
-		for (Permission p : permissions) {
-			if (p.getCode().equals(code)) {
-				return true;
-			}
+		try {
+			return Math.max(1, Integer.parseInt(pageParam));
+		} catch (NumberFormatException e) {
+			return 1;
 		}
-		return false;
 	}
 }

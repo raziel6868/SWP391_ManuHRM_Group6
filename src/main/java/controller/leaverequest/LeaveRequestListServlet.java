@@ -17,36 +17,33 @@ import model.Permission;
 @WebServlet(name = "LeaveRequestListServlet", urlPatterns = {"/leave-request-list"})
 public class LeaveRequestListServlet extends HttpServlet {
 
-	private static final int PAGE_SIZE = 20;
+	private static final int PAGE_SIZE = 10;
 
-	private final LeaveRequestDAO requestDAO = new LeaveRequestDAO();
 	private final DepartmentDAO departmentDAO = new DepartmentDAO();
+	private final LeaveRequestDAO leaveRequestDAO = new LeaveRequestDAO();
 
 	@Override
 	protected void doGet(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
-		HttpSession session = request.getSession();
-		moveFlashMessage(session, request, "successMsg");
-		moveFlashMessage(session, request, "errorMsg");
-
-		if (!hasPermission(session, "LEAVE_REQUEST_VIEW")) {
-			session.setAttribute("errorMsg", "Bạn không có quyền truy cập trang này.");
-			response.sendRedirect(request.getContextPath() + "/home");
+		HttpSession session = request.getSession(false);
+		if (session == null || session.getAttribute("authUser") == null) {
+			response.sendRedirect(request.getContextPath() + "/login");
 			return;
 		}
 
-		String keyword = request.getParameter("keyword");
-		String status = request.getParameter("status");
-		String departmentIdStr = request.getParameter("departmentId");
-		String pageStr = request.getParameter("page");
+		moveFlashMessage(session, request, "successMsg");
+		moveFlashMessage(session, request, "errorMsg");
 
-		Long departmentId = parseId(departmentIdStr);
+		String keyword = normalizeText(request.getParameter("keyword"));
+		String selectedStatus = normalizeText(request.getParameter("status"));
+		Long selectedDepartmentId = parseLong(normalizeText(request.getParameter("departmentId")));
 
-		int currentPage = parsePage(pageStr);
+		int currentPage = parsePage(request.getParameter("page"));
 		int offset = (currentPage - 1) * PAGE_SIZE;
 
-		List<LeaveRequest> requests = requestDAO.searchRequests(keyword, status, departmentId, offset, PAGE_SIZE);
-		int totalRecords = requestDAO.countRequests(keyword, status, departmentId);
+		List<LeaveRequest> leaveRequests = leaveRequestDAO.searchRequests(keyword, selectedStatus, selectedDepartmentId,
+				offset, PAGE_SIZE);
+		int totalRecords = leaveRequestDAO.countRequests(keyword, selectedStatus, selectedDepartmentId);
 		int totalPages = totalRecords / PAGE_SIZE;
 		if (totalRecords % PAGE_SIZE != 0) {
 			totalPages++;
@@ -55,19 +52,23 @@ public class LeaveRequestListServlet extends HttpServlet {
 			totalPages = 1;
 		}
 
-		List<Department> departments = departmentDAO.getActiveDepartments();
+		if (currentPage > totalPages) {
+			currentPage = totalPages;
+			offset = (currentPage - 1) * PAGE_SIZE;
+			leaveRequests = leaveRequestDAO.searchRequests(keyword, selectedStatus, selectedDepartmentId, offset,
+					PAGE_SIZE);
+		}
 
-		request.setAttribute("requests", requests);
-		request.setAttribute("keyword", keyword != null ? keyword : "");
-		request.setAttribute("selectedStatus", status != null ? status : "");
-		request.setAttribute("selectedDepartmentId", departmentIdStr != null ? departmentIdStr : "");
+		List<Department> departments = departmentDAO.getActiveDepartments();
+		request.setAttribute("leaveRequests", leaveRequests);
+		request.setAttribute("departments", departments);
+		request.setAttribute("keyword", keyword);
+		request.setAttribute("selectedStatus", selectedStatus);
+		request.setAttribute("selectedDepartmentId", selectedDepartmentId);
 		request.setAttribute("currentPage", currentPage);
 		request.setAttribute("totalPages", totalPages);
 		request.setAttribute("totalRecords", totalRecords);
-		request.setAttribute("departments", departments);
-
-		request.setAttribute("canApproveL1", hasPermission(session, "LEAVE_REQUEST_APPROVE_L1"));
-		request.setAttribute("canApproveL2", hasPermission(session, "LEAVE_REQUEST_APPROVE_L2"));
+		request.setAttribute("canFinalApprove", hasPermission(session, "LEAVE_REQUEST_APPROVE_L2"));
 		request.setAttribute("canReject", hasPermission(session, "LEAVE_REQUEST_REJECT"));
 
 		request.getRequestDispatcher("/views/leaverequest/leave-request-list.jsp").forward(request, response);
@@ -95,23 +96,31 @@ public class LeaveRequestListServlet extends HttpServlet {
 		}
 	}
 
-	private Long parseId(String value) {
-		if (value == null || value.trim().isEmpty()) {
+	private String normalizeText(String value) {
+		if (value == null) {
+			return null;
+		}
+		String trimmed = value.trim();
+		return trimmed.isEmpty() ? null : trimmed;
+	}
+
+	private Long parseLong(String value) {
+		if (value == null) {
 			return null;
 		}
 		try {
-			return Long.parseLong(value.trim());
+			return Long.valueOf(value);
 		} catch (NumberFormatException e) {
 			return null;
 		}
 	}
 
-	private int parsePage(String pageStr) {
-		if (pageStr == null || pageStr.trim().isEmpty()) {
+	private int parsePage(String pageParam) {
+		if (pageParam == null || pageParam.isBlank()) {
 			return 1;
 		}
 		try {
-			return Math.max(1, Integer.parseInt(pageStr.trim()));
+			return Math.max(1, Integer.parseInt(pageParam));
 		} catch (NumberFormatException e) {
 			return 1;
 		}

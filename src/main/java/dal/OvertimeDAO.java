@@ -1,5 +1,6 @@
 package dal;
 
+import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -10,29 +11,50 @@ import model.OvertimeRecord;
 
 public class OvertimeDAO {
 
-	public List<OvertimeRecord> searchOvertime(String status, Long departmentId, int offset, int limit) {
-		List<OvertimeRecord> records = new ArrayList<>();
-		StringBuilder sql = new StringBuilder("""
-				SELECT ot.id, ot.user_id, ot.date, ot.requested_hours, ot.approved_hours, ot.reason,
-				       ot.status, ot.approver_id, ot.approved_at, ot.created_at,
-				       u.full_name AS user_full_name, u.employee_code, d.name AS department_name,
-				       u2.full_name AS approver_name
-				FROM overtime_records ot
-				JOIN users u ON ot.user_id = u.id
-				LEFT JOIN departments d ON u.department_id = d.id
-				LEFT JOIN users u2 ON ot.approver_id = u2.id
-				WHERE 1 = 1
-				""");
-		List<Object> params = new ArrayList<>();
+	private static final String SELECT_BASE = """
+			SELECT ot.id, ot.user_id, ot.date, ot.requested_hours, ot.approved_hours,
+			       ot.reason, ot.status, ot.approver_id, ot.approved_at,
+			       ot.created_at, ot.updated_at,
+			       u.employee_code, u.full_name AS employee_name,
+			       approver.full_name AS approver_name
+			FROM overtime_records ot
+			JOIN users u ON ot.user_id = u.id
+			LEFT JOIN users approver ON ot.approver_id = approver.id
+			""";
 
-		if (status != null && !status.isEmpty()) {
-			sql.append(" AND ot.status = ?");
-			params.add(status);
+	public boolean insert(OvertimeRecord record) {
+		if (record == null || record.getUserId() == null || record.getDate() == null
+				|| record.getRequestedHours() == null) {
+			return false;
 		}
 
-		if (departmentId != null) {
-			sql.append(" AND u.department_id = ?");
-			params.add(departmentId);
+		String sql = """
+				INSERT INTO overtime_records
+				    (user_id, date, requested_hours, reason, status)
+				VALUES (?, ?, ?, ?, 'PENDING')
+				""";
+
+		try (Connection conn = DBContext.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+			ps.setLong(1, record.getUserId());
+			ps.setDate(2, record.getDate());
+			ps.setBigDecimal(3, record.getRequestedHours());
+			ps.setString(4, record.getReason());
+			return ps.executeUpdate() > 0;
+		} catch (SQLException e) {
+			System.err.println("OvertimeDAO.insert() ERROR: " + e.getMessage());
+		}
+
+		return false;
+	}
+
+	public List<OvertimeRecord> search(String status, int offset, int limit) {
+		List<OvertimeRecord> list = new ArrayList<>();
+		StringBuilder sql = new StringBuilder(SELECT_BASE + " WHERE 1=1");
+		List<Object> params = new ArrayList<>();
+
+		if (status != null && !status.isBlank()) {
+			sql.append(" AND ot.status = ?");
+			params.add(status.trim().toUpperCase());
 		}
 
 		sql.append(" ORDER BY ot.created_at DESC LIMIT ? OFFSET ?");
@@ -44,32 +66,23 @@ public class OvertimeDAO {
 			setParams(ps, params);
 			try (ResultSet rs = ps.executeQuery()) {
 				while (rs.next()) {
-					records.add(mapRow(rs));
+					list.add(mapRow(rs));
 				}
 			}
 		} catch (SQLException e) {
-			System.err.println("Error searching overtime records: " + e.getMessage());
+			System.err.println("OvertimeDAO.search() ERROR: " + e.getMessage());
 		}
 
-		return records;
+		return list;
 	}
 
-	public int countOvertime(String status, Long departmentId) {
-		StringBuilder sql = new StringBuilder("""
-				SELECT COUNT(*) FROM overtime_records ot
-				JOIN users u ON ot.user_id = u.id
-				WHERE 1 = 1
-				""");
+	public int count(String status) {
+		StringBuilder sql = new StringBuilder("SELECT COUNT(*) FROM overtime_records WHERE 1=1");
 		List<Object> params = new ArrayList<>();
 
-		if (status != null && !status.isEmpty()) {
-			sql.append(" AND ot.status = ?");
-			params.add(status);
-		}
-
-		if (departmentId != null) {
-			sql.append(" AND u.department_id = ?");
-			params.add(departmentId);
+		if (status != null && !status.isBlank()) {
+			sql.append(" AND status = ?");
+			params.add(status.trim().toUpperCase());
 		}
 
 		try (Connection conn = DBContext.getConnection();
@@ -81,24 +94,18 @@ public class OvertimeDAO {
 				}
 			}
 		} catch (SQLException e) {
-			System.err.println("Error counting overtime records: " + e.getMessage());
+			System.err.println("OvertimeDAO.count() ERROR: " + e.getMessage());
 		}
 
 		return 0;
 	}
 
 	public OvertimeRecord getById(Long id) {
-		String sql = """
-				SELECT ot.id, ot.user_id, ot.date, ot.requested_hours, ot.approved_hours, ot.reason,
-				       ot.status, ot.approver_id, ot.approved_at, ot.created_at,
-				       u.full_name AS user_full_name, u.employee_code, d.name AS department_name,
-				       u2.full_name AS approver_name
-				FROM overtime_records ot
-				JOIN users u ON ot.user_id = u.id
-				LEFT JOIN departments d ON u.department_id = d.id
-				LEFT JOIN users u2 ON ot.approver_id = u2.id
-				WHERE ot.id = ?
-				""";
+		if (id == null) {
+			return null;
+		}
+
+		String sql = SELECT_BASE + " WHERE ot.id = ?";
 
 		try (Connection conn = DBContext.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
 			ps.setLong(1, id);
@@ -108,66 +115,86 @@ public class OvertimeDAO {
 				}
 			}
 		} catch (SQLException e) {
-			System.err.println("Error getting overtime record: " + e.getMessage());
+			System.err.println("OvertimeDAO.getById() ERROR: " + e.getMessage());
 		}
 
 		return null;
 	}
 
-	public boolean insert(OvertimeRecord record) {
+	public boolean hasPendingByUserAndDate(Long userId, java.sql.Date date) {
+		if (userId == null || date == null) {
+			return false;
+		}
+
 		String sql = """
-				INSERT INTO overtime_records (user_id, date, requested_hours, reason, status)
-				VALUES (?, ?, ?, ?, 'PENDING')
+				SELECT COUNT(*) FROM overtime_records
+				WHERE user_id = ? AND date = ? AND status = 'PENDING'
 				""";
 
 		try (Connection conn = DBContext.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
-			ps.setLong(1, record.getUserId());
-			ps.setDate(2, record.getDate());
-			ps.setBigDecimal(3, record.getRequestedHours());
-			ps.setString(4, record.getReason());
-			int affected = ps.executeUpdate();
-			return affected > 0;
+			ps.setLong(1, userId);
+			ps.setDate(2, date);
+			try (ResultSet rs = ps.executeQuery()) {
+				if (rs.next()) {
+					return rs.getInt(1) > 0;
+				}
+			}
 		} catch (SQLException e) {
-			System.err.println("Error inserting overtime record: " + e.getMessage());
-			return false;
+			System.err.println("OvertimeDAO.hasPendingByUserAndDate() ERROR: " + e.getMessage());
 		}
+
+		return false;
 	}
 
-	public boolean approve(Long id, Long approverId, java.math.BigDecimal approvedHours) {
+	public boolean approve(Long id, Long approverId, BigDecimal approvedHours) {
+		if (id == null || approverId == null || approvedHours == null) {
+			return false;
+		}
+
 		String sql = """
 				UPDATE overtime_records
-				SET status = 'APPROVED', approver_id = ?, approved_hours = ?, approved_at = CURRENT_TIMESTAMP
+				SET status       = 'APPROVED',
+				    approved_hours = ?,
+				    approver_id  = ?,
+				    approved_at  = CURRENT_TIMESTAMP,
+				    updated_at   = CURRENT_TIMESTAMP
 				WHERE id = ? AND status = 'PENDING'
 				""";
 
 		try (Connection conn = DBContext.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
-			ps.setLong(1, approverId);
-			ps.setBigDecimal(2, approvedHours);
+			ps.setBigDecimal(1, approvedHours);
+			ps.setLong(2, approverId);
 			ps.setLong(3, id);
-			int affected = ps.executeUpdate();
-			return affected > 0;
+			return ps.executeUpdate() > 0;
 		} catch (SQLException e) {
-			System.err.println("Error approving overtime record: " + e.getMessage());
-			return false;
+			System.err.println("OvertimeDAO.approve() ERROR: " + e.getMessage());
 		}
+
+		return false;
 	}
 
 	public boolean reject(Long id, Long approverId) {
+		if (id == null || approverId == null) {
+			return false;
+		}
+
 		String sql = """
 				UPDATE overtime_records
-				SET status = 'REJECTED', approver_id = ?, approved_at = CURRENT_TIMESTAMP
+				SET status      = 'REJECTED',
+				    approver_id = ?,
+				    updated_at  = CURRENT_TIMESTAMP
 				WHERE id = ? AND status = 'PENDING'
 				""";
 
 		try (Connection conn = DBContext.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
 			ps.setLong(1, approverId);
 			ps.setLong(2, id);
-			int affected = ps.executeUpdate();
-			return affected > 0;
+			return ps.executeUpdate() > 0;
 		} catch (SQLException e) {
-			System.err.println("Error rejecting overtime record: " + e.getMessage());
-			return false;
+			System.err.println("OvertimeDAO.reject() ERROR: " + e.getMessage());
 		}
+
+		return false;
 	}
 
 	private void setParams(PreparedStatement ps, List<Object> params) throws SQLException {
@@ -177,21 +204,25 @@ public class OvertimeDAO {
 	}
 
 	private OvertimeRecord mapRow(ResultSet rs) throws SQLException {
-		OvertimeRecord ot = new OvertimeRecord();
-		ot.setId(rs.getLong("id"));
-		ot.setUserId(rs.getLong("user_id"));
-		ot.setDate(rs.getDate("date"));
-		ot.setRequestedHours(rs.getBigDecimal("requested_hours"));
-		ot.setApprovedHours(rs.getBigDecimal("approved_hours"));
-		ot.setReason(rs.getString("reason"));
-		ot.setStatus(rs.getString("status"));
-		ot.setApproverId(rs.getObject("approver_id") != null ? rs.getLong("approver_id") : null);
-		ot.setApprovedAt(rs.getTimestamp("approved_at"));
-		ot.setCreatedAt(rs.getTimestamp("created_at"));
-		ot.setUserFullName(rs.getString("user_full_name"));
-		ot.setEmployeeCode(rs.getString("employee_code"));
-		ot.setDepartmentName(rs.getString("department_name"));
-		ot.setApproverName(rs.getString("approver_name"));
-		return ot;
+		OvertimeRecord r = new OvertimeRecord();
+		r.setId(rs.getLong("id"));
+		r.setUserId(rs.getLong("user_id"));
+		r.setRequesterId(rs.getLong("user_id")); // same as userId, used for self-approval guard
+		r.setDate(rs.getDate("date"));
+		r.setRequestedHours(rs.getBigDecimal("requested_hours"));
+		r.setApprovedHours(rs.getBigDecimal("approved_hours")); // null if not yet approved
+		r.setReason(rs.getString("reason"));
+		r.setStatus(rs.getString("status"));
+		long approverId = rs.getLong("approver_id");
+		if (!rs.wasNull()) {
+			r.setApproverId(approverId);
+		}
+		r.setApprovedAt(rs.getTimestamp("approved_at"));
+		r.setCreatedAt(rs.getTimestamp("created_at"));
+		r.setUpdatedAt(rs.getTimestamp("updated_at"));
+		r.setEmployeeCode(rs.getString("employee_code"));
+		r.setEmployeeName(rs.getString("employee_name"));
+		r.setApproverName(rs.getString("approver_name"));
+		return r;
 	}
 }

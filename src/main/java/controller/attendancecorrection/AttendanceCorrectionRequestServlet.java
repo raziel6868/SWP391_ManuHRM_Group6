@@ -1,9 +1,5 @@
 package controller.attendancecorrection;
 
-import java.io.IOException;
-import java.sql.Time;
-import java.time.LocalTime;
-import java.time.format.DateTimeFormatter;
 import dal.AttendanceCorrectionDAO;
 import dal.AttendanceDAO;
 import jakarta.servlet.ServletException;
@@ -12,124 +8,108 @@ import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
+import java.io.IOException;
+import java.sql.Time;
+import java.time.LocalTime;
+import java.time.format.DateTimeParseException;
 import model.AttendanceCorrection;
 import model.AttendanceRecord;
-import model.Permission;
 import model.User;
-import java.util.List;
+import util.ValidationUtil;
 
 @WebServlet(name = "AttendanceCorrectionRequestServlet", urlPatterns = {"/attendance-correction-request"})
 public class AttendanceCorrectionRequestServlet extends HttpServlet {
 
-	private static final DateTimeFormatter TIME_FORMAT = DateTimeFormatter.ofPattern("HH:mm");
-
-	private final AttendanceCorrectionDAO correctionDAO = new AttendanceCorrectionDAO();
 	private final AttendanceDAO attendanceDAO = new AttendanceDAO();
+	private final AttendanceCorrectionDAO correctionDAO = new AttendanceCorrectionDAO();
 
 	@Override
 	protected void doPost(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
 		request.setCharacterEncoding("UTF-8");
+
 		HttpSession session = request.getSession();
 		User authUser = (User) session.getAttribute("authUser");
-
-		if (authUser == null || !hasPermission(session, "ATTENDANCE_CORRECTION_REQUEST")) {
-			response.sendError(HttpServletResponse.SC_FORBIDDEN);
+		if (authUser == null || authUser.getId() == null) {
+			response.sendRedirect(request.getContextPath() + "/login");
 			return;
 		}
 
-		String recordIdStr = request.getParameter("attendanceRecordId");
-		String newCheckInStr = request.getParameter("newCheckIn");
-		String newCheckOutStr = request.getParameter("newCheckOut");
+		if (!"EMPLOYEE".equals(authUser.getRoleName())) {
+			response.sendRedirect(request.getContextPath() + "/views/error/403.jsp");
+			return;
+		}
+
+		Long attendanceRecordId = parseLong(request.getParameter("attendanceRecordId"));
+		Time newCheckIn = parseTime(request.getParameter("newCheckIn"));
+		Time newCheckOut = parseTime(request.getParameter("newCheckOut"));
 		String reason = request.getParameter("reason");
 
-		if (recordIdStr == null || recordIdStr.trim().isEmpty()) {
-			session.setAttribute("errorMsg", "Không tìm thấy bản ghi chấm công.");
-			response.sendRedirect(request.getContextPath() + "/attendance-my");
+		AttendanceRecord record = attendanceDAO.getById(attendanceRecordId);
+		if (record == null || !authUser.getId().equals(record.getUserId())) {
+			response.sendRedirect(request.getContextPath() + "/views/error/403.jsp");
 			return;
 		}
 
-		Long recordId;
-		try {
-			recordId = Long.parseLong(recordIdStr.trim());
-		} catch (NumberFormatException e) {
-			session.setAttribute("errorMsg", "ID bản ghi không hợp lệ.");
-			response.sendRedirect(request.getContextPath() + "/attendance-my");
+		String redirectUrl = request.getContextPath() + "/attendance-my?year="
+				+ record.getDate().toLocalDate().getYear() + "&month=" + record.getDate().toLocalDate().getMonthValue();
+
+		if (newCheckIn == null || newCheckOut == null) {
+			session.setAttribute("errorMsg", "Giờ điều chỉnh không hợp lệ.");
+			response.sendRedirect(redirectUrl);
 			return;
 		}
-
-		AttendanceRecord record = attendanceDAO.getById(recordId);
-		if (record == null) {
-			session.setAttribute("errorMsg", "Bản ghi chấm công không tồn tại.");
-			response.sendRedirect(request.getContextPath() + "/attendance-my");
+		if (!newCheckOut.toLocalTime().isAfter(newCheckIn.toLocalTime())) {
+			session.setAttribute("errorMsg", "Giờ ra mới phải lớn hơn giờ vào mới.");
+			response.sendRedirect(redirectUrl);
 			return;
 		}
-
-		if (!authUser.getId().equals(record.getUserId())) {
-			session.setAttribute("errorMsg", "Bạn không có quyền yêu cầu sửa bản ghi này.");
-			response.sendRedirect(request.getContextPath() + "/attendance-my");
+		if (ValidationUtil.isBlank(reason)) {
+			session.setAttribute("errorMsg", "Vui lòng nhập lý do điều chỉnh công.");
+			response.sendRedirect(redirectUrl);
 			return;
 		}
-
-		if (correctionDAO.hasPendingCorrection(recordId)) {
-			session.setAttribute("errorMsg", "Đã có yêu cầu sửa đang chờ duyệt cho bản ghi này.");
-			response.sendRedirect(request.getContextPath() + "/attendance-my");
+		if (correctionDAO.hasPendingByRecordId(attendanceRecordId)) {
+			session.setAttribute("errorMsg", "Bản ghi này đã có yêu cầu điều chỉnh đang chờ xử lý.");
+			response.sendRedirect(redirectUrl);
 			return;
-		}
-
-		Time newCheckIn = null;
-		Time newCheckOut = null;
-
-		if (newCheckInStr != null && !newCheckInStr.trim().isEmpty()) {
-			try {
-				LocalTime lt = LocalTime.parse(newCheckInStr.trim(), TIME_FORMAT);
-				newCheckIn = Time.valueOf(lt);
-			} catch (Exception e) {
-				session.setAttribute("errorMsg", "Định dạng giờ vào không hợp lệ (HH:mm).");
-				response.sendRedirect(request.getContextPath() + "/attendance-my");
-				return;
-			}
-		}
-
-		if (newCheckOutStr != null && !newCheckOutStr.trim().isEmpty()) {
-			try {
-				LocalTime lt = LocalTime.parse(newCheckOutStr.trim(), TIME_FORMAT);
-				newCheckOut = Time.valueOf(lt);
-			} catch (Exception e) {
-				session.setAttribute("errorMsg", "Định dạng giờ ra không hợp lệ (HH:mm).");
-				response.sendRedirect(request.getContextPath() + "/attendance-my");
-				return;
-			}
 		}
 
 		AttendanceCorrection correction = new AttendanceCorrection();
-		correction.setAttendanceRecordId(recordId);
+		correction.setAttendanceRecordId(attendanceRecordId);
 		correction.setRequestedBy(authUser.getId());
 		correction.setNewCheckIn(newCheckIn);
 		correction.setNewCheckOut(newCheckOut);
-		correction.setReason(reason);
+		correction.setReason(reason.trim());
 
 		boolean success = correctionDAO.insert(correction);
 		if (success) {
-			session.setAttribute("successMsg", "Đã gửi yêu cầu sửa chấm công thành công.");
+			session.setAttribute("successMsg", "Gửi yêu cầu điều chỉnh công thành công.");
 		} else {
-			session.setAttribute("errorMsg", "Không thể gửi yêu cầu. Vui lòng thử lại.");
+			session.setAttribute("errorMsg", "Không thể gửi yêu cầu điều chỉnh công. Vui lòng thử lại.");
 		}
-
-		response.sendRedirect(request.getContextPath() + "/attendance-my");
+		response.sendRedirect(redirectUrl);
 	}
 
-	@SuppressWarnings("unchecked")
-	private boolean hasPermission(HttpSession session, String code) {
-		List<Permission> permissions = (List<Permission>) session.getAttribute("permissions");
-		if (permissions == null) {
-			return false;
+	private Long parseLong(String value) {
+		if (value == null || value.isBlank()) {
+			return null;
 		}
-		for (Permission p : permissions) {
-			if (code.equals(p.getCode())) {
-				return true;
-			}
+		try {
+			return Long.parseLong(value.trim());
+		} catch (NumberFormatException e) {
+			return null;
 		}
-		return false;
+	}
+
+	private Time parseTime(String value) {
+		if (value == null || value.isBlank()) {
+			return null;
+		}
+		try {
+			return Time.valueOf(LocalTime.parse(value.trim()));
+		} catch (DateTimeParseException e) {
+			return null;
+		}
 	}
 }

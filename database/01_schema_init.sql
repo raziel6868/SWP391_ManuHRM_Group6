@@ -11,6 +11,7 @@ USE manufacturing_hrm;
 
 SET FOREIGN_KEY_CHECKS = 0;
 DROP TABLE IF EXISTS password_resets;
+DROP TABLE IF EXISTS holidays;
 DROP TABLE IF EXISTS monthly_salaries;
 DROP TABLE IF EXISTS monthly_sheets;
 DROP TABLE IF EXISTS salary_bases;
@@ -184,7 +185,21 @@ CREATE TABLE contract_types (
 );
 
 -- =========================================================
--- 6. Iter 2 + Iter 3 transaction tables
+-- 6. Holiday management
+-- =========================================================
+
+CREATE TABLE holidays (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    date DATE NOT NULL UNIQUE,
+    name VARCHAR(100) NOT NULL,
+    is_recurring BOOLEAN NOT NULL DEFAULT FALSE,
+    description TEXT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- =========================================================
+-- 7. Iter 2 + Iter 3 transaction tables
 -- =========================================================
 
 CREATE TABLE contracts (

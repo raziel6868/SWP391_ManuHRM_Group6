@@ -7,16 +7,15 @@ public class ShiftAssignment {
 
 	private Long id;
 	private Long userId;
-	private Long shiftId;
-	private Date date;
-	private Timestamp createdAt;
-	private Timestamp updatedAt;
 	private String userFullName;
 	private String employeeCode;
 	private String departmentName;
+	private Long shiftId;
 	private String shiftName;
-	private String shiftStartTime;
-	private String shiftEndTime;
+	private String shiftCode;
+	private Date date;
+	private Timestamp createdAt;
+	private Timestamp updatedAt;
 
 	public Long getId() {
 		return id;
@@ -32,38 +31,6 @@ public class ShiftAssignment {
 
 	public void setUserId(Long userId) {
 		this.userId = userId;
-	}
-
-	public Long getShiftId() {
-		return shiftId;
-	}
-
-	public void setShiftId(Long shiftId) {
-		this.shiftId = shiftId;
-	}
-
-	public Date getDate() {
-		return date;
-	}
-
-	public void setDate(Date date) {
-		this.date = date;
-	}
-
-	public Timestamp getCreatedAt() {
-		return createdAt;
-	}
-
-	public void setCreatedAt(Timestamp createdAt) {
-		this.createdAt = createdAt;
-	}
-
-	public Timestamp getUpdatedAt() {
-		return updatedAt;
-	}
-
-	public void setUpdatedAt(Timestamp updatedAt) {
-		this.updatedAt = updatedAt;
 	}
 
 	public String getUserFullName() {
@@ -90,6 +57,14 @@ public class ShiftAssignment {
 		this.departmentName = departmentName;
 	}
 
+	public Long getShiftId() {
+		return shiftId;
+	}
+
+	public void setShiftId(Long shiftId) {
+		this.shiftId = shiftId;
+	}
+
 	public String getShiftName() {
 		return shiftName;
 	}
@@ -98,19 +73,35 @@ public class ShiftAssignment {
 		this.shiftName = shiftName;
 	}
 
-	public String getShiftStartTime() {
-		return shiftStartTime;
+	public String getShiftCode() {
+		return shiftCode;
 	}
 
-	public void setShiftStartTime(String shiftStartTime) {
-		this.shiftStartTime = shiftStartTime;
+	public void setShiftCode(String shiftCode) {
+		this.shiftCode = shiftCode;
 	}
 
-	public String getShiftEndTime() {
-		return shiftEndTime;
+	public Date getDate() {
+		return date;
 	}
 
-	public void setShiftEndTime(String shiftEndTime) {
-		this.shiftEndTime = shiftEndTime;
+	public void setDate(Date date) {
+		this.date = date;
+	}
+
+	public Timestamp getCreatedAt() {
+		return createdAt;
+	}
+
+	public void setCreatedAt(Timestamp createdAt) {
+		this.createdAt = createdAt;
+	}
+
+	public Timestamp getUpdatedAt() {
+		return updatedAt;
+	}
+
+	public void setUpdatedAt(Timestamp updatedAt) {
+		this.updatedAt = updatedAt;
 	}
 }

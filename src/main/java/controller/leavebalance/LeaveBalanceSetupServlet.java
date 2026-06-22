@@ -1,6 +1,5 @@
 package controller.leavebalance;
 
-import dal.DepartmentDAO;
 import dal.LeaveBalanceDAO;
 import dal.LeaveTypeDAO;
 import dal.UserDAO;
@@ -9,51 +8,45 @@ import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.time.Year;
 import java.util.List;
-import model.Department;
+import model.LeaveBalance;
 import model.LeaveType;
-import model.Permission;
 import model.User;
 
 @WebServlet(name = "LeaveBalanceSetupServlet", urlPatterns = {"/leave-balance-setup"})
 public class LeaveBalanceSetupServlet extends HttpServlet {
 
-	private final LeaveBalanceDAO balanceDAO = new LeaveBalanceDAO();
-	private final UserDAO userDAO = new UserDAO();
-	private final DepartmentDAO departmentDAO = new DepartmentDAO();
+	private static final int FORM_LIST_LIMIT = 1000;
+	private static final BigDecimal MAX_TOTAL_DAYS = new BigDecimal("999.99");
+
+	private final LeaveBalanceDAO leaveBalanceDAO = new LeaveBalanceDAO();
 	private final LeaveTypeDAO leaveTypeDAO = new LeaveTypeDAO();
+	private final UserDAO userDAO = new UserDAO();
 
 	@Override
 	protected void doGet(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
-		HttpSession session = request.getSession();
-
-		if (!hasPermission(session, "LEAVE_BALANCE_SETUP")) {
-			session.setAttribute("errorMsg", "Bạn không có quyền truy cập trang này.");
-			response.sendRedirect(request.getContextPath() + "/home");
-			return;
+		Long selectedUserId = parseLong(normalizeText(request.getParameter("userId")));
+		Long selectedLeaveTypeId = parseLong(normalizeText(request.getParameter("leaveTypeId")));
+		Integer selectedYear = parseInteger(normalizeText(request.getParameter("year")));
+		if (selectedYear == null) {
+			selectedYear = Year.now().getValue();
 		}
 
-		String yearStr = request.getParameter("year");
-		Integer year = java.time.Year.now().getValue();
-		if (yearStr != null && !yearStr.trim().isEmpty()) {
-			try {
-				year = Integer.parseInt(yearStr.trim());
-			} catch (NumberFormatException e) {
-			}
+		LeaveBalance existingBalance = null;
+		if (selectedUserId != null && selectedLeaveTypeId != null) {
+			existingBalance = leaveBalanceDAO.getByUserAndTypeAndYear(selectedUserId, selectedLeaveTypeId,
+					selectedYear);
 		}
 
-		List<User> users = userDAO.searchUsers(null, null, null, true, null, 0, 1000);
-		List<Department> departments = departmentDAO.getActiveDepartments();
-		List<LeaveType> leaveTypes = leaveTypeDAO.searchLeaveTypes(null, null, true, 0, 100);
-
-		request.setAttribute("users", users);
-		request.setAttribute("leaveTypes", leaveTypes);
-		request.setAttribute("selectedYear", year);
-		request.setAttribute("departments", departments);
+		request.setAttribute("selectedUserId", selectedUserId);
+		request.setAttribute("selectedLeaveTypeId", selectedLeaveTypeId);
+		request.setAttribute("selectedYear", selectedYear);
+		request.setAttribute("existingBalance", existingBalance);
+		populateFormData(request);
 		request.getRequestDispatcher("/views/leavebalance/leave-balance-setup.jsp").forward(request, response);
 	}
 
@@ -61,61 +54,126 @@ public class LeaveBalanceSetupServlet extends HttpServlet {
 	protected void doPost(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
 		request.setCharacterEncoding("UTF-8");
-		HttpSession session = request.getSession();
 
-		if (!hasPermission(session, "LEAVE_BALANCE_SETUP")) {
-			session.setAttribute("errorMsg", "Bạn không có quyền thực hiện thao tác này.");
-			response.sendRedirect(request.getContextPath() + "/home");
+		Long userId = parseLong(normalizeText(request.getParameter("userId")));
+		Long leaveTypeId = parseLong(normalizeText(request.getParameter("leaveTypeId")));
+		Integer year = parseInteger(normalizeText(request.getParameter("year")));
+		String totalDaysText = normalizeText(request.getParameter("totalDays"));
+		BigDecimal totalDays = parseBigDecimal(totalDaysText);
+
+		request.setAttribute("selectedUserId", userId);
+		request.setAttribute("selectedLeaveTypeId", leaveTypeId);
+		request.setAttribute("selectedYear", year);
+		request.setAttribute("totalDays", totalDaysText);
+
+		String validationError = validate(userId, leaveTypeId, year, totalDays);
+		if (validationError != null) {
+			request.setAttribute("errorMsg", validationError);
+			populateFormData(request);
+			request.getRequestDispatcher("/views/leavebalance/leave-balance-setup.jsp").forward(request, response);
 			return;
 		}
 
-		String userIdStr = request.getParameter("userId");
-		String leaveTypeIdStr = request.getParameter("leaveTypeId");
-		String yearStr = request.getParameter("year");
-		String totalDaysStr = request.getParameter("totalDays");
-
-		if (userIdStr == null || userIdStr.trim().isEmpty() || leaveTypeIdStr == null || leaveTypeIdStr.trim().isEmpty()
-				|| yearStr == null || yearStr.trim().isEmpty() || totalDaysStr == null
-				|| totalDaysStr.trim().isEmpty()) {
-			session.setAttribute("errorMsg", "Vui lòng điền đầy đủ thông tin.");
-			response.sendRedirect(request.getContextPath() + "/leave-balance-setup");
+		boolean success = leaveBalanceDAO.upsert(userId, leaveTypeId, year, totalDays);
+		if (success) {
+			request.getSession().setAttribute("successMsg", "Thiết lập hạn mức nghỉ phép thành công.");
+			response.sendRedirect(request.getContextPath() + "/leave-balance-list?year=" + year);
 			return;
 		}
 
+		request.setAttribute("errorMsg", "Không thể thiết lập hạn mức nghỉ phép. Vui lòng thử lại.");
+		populateFormData(request);
+		request.getRequestDispatcher("/views/leavebalance/leave-balance-setup.jsp").forward(request, response);
+	}
+
+	private String validate(Long userId, Long leaveTypeId, Integer year, BigDecimal totalDays) {
+		if (userId == null) {
+			return "Vui lòng chọn nhân viên.";
+		}
+		if (leaveTypeId == null) {
+			return "Vui lòng chọn loại nghỉ.";
+		}
+		if (year == null) {
+			return "Năm áp dụng không được để trống.";
+		}
+		if (year < 2000 || year > 2100) {
+			return "Năm áp dụng không hợp lệ.";
+		}
+		if (totalDays == null) {
+			return "Tổng số ngày phép không hợp lệ.";
+		}
+		if (totalDays.compareTo(BigDecimal.ZERO) < 0) {
+			return "Tổng số ngày phép không được nhỏ hơn 0.";
+		}
+		if (totalDays.compareTo(MAX_TOTAL_DAYS) > 0) {
+			return "Tổng số ngày phép không được vượt quá 999.99.";
+		}
+
+		User user = userDAO.getById(userId);
+		if (user == null || user.getIsActive() == null || !user.getIsActive()) {
+			return "Nhân viên không tồn tại hoặc đã bị khóa.";
+		}
+
+		LeaveType leaveType = leaveTypeDAO.getById(leaveTypeId);
+		if (leaveType == null || leaveType.getIsActive() == null || !leaveType.getIsActive()) {
+			return "Loại nghỉ không tồn tại hoặc đã bị vô hiệu hóa.";
+		}
+
+		LeaveBalance existingBalance = leaveBalanceDAO.getByUserAndTypeAndYear(userId, leaveTypeId, year);
+		if (existingBalance != null && existingBalance.getUsedDays() != null
+				&& totalDays.compareTo(existingBalance.getUsedDays()) < 0) {
+			return "Tổng số ngày phép không được nhỏ hơn số ngày đã sử dụng.";
+		}
+
+		return null;
+	}
+
+	private void populateFormData(HttpServletRequest request) {
+		List<User> users = userDAO.searchUsers(null, null, null, true, null, 0, FORM_LIST_LIMIT);
+		List<LeaveType> leaveTypes = leaveTypeDAO.searchLeaveTypes(null, null, true, 0, FORM_LIST_LIMIT);
+		request.setAttribute("users", users);
+		request.setAttribute("leaveTypes", leaveTypes);
+		request.setAttribute("currentYear", Year.now().getValue());
+	}
+
+	private String normalizeText(String value) {
+		if (value == null) {
+			return null;
+		}
+		String trimmed = value.trim();
+		return trimmed.isEmpty() ? null : trimmed;
+	}
+
+	private Integer parseInteger(String value) {
+		if (value == null) {
+			return null;
+		}
 		try {
-			Long userId = Long.parseLong(userIdStr.trim());
-			Long leaveTypeId = Long.parseLong(leaveTypeIdStr.trim());
-			Integer year = Integer.parseInt(yearStr.trim());
-			BigDecimal totalDays = new BigDecimal(totalDaysStr.trim());
-
-			if (totalDays.compareTo(BigDecimal.ZERO) < 0) {
-				session.setAttribute("errorMsg", "Số ngày nghỉ không được âm.");
-				response.sendRedirect(request.getContextPath() + "/leave-balance-setup");
-				return;
-			}
-
-			balanceDAO.upsert(userId, leaveTypeId, year, totalDays);
-
-			session.setAttribute("successMsg", "Đã cập nhật ngày nghỉ phép thành công.");
-			response.sendRedirect(request.getContextPath() + "/leave-balance-setup?year=" + year);
-
+			return Integer.valueOf(value);
 		} catch (NumberFormatException e) {
-			session.setAttribute("errorMsg", "Dữ liệu không hợp lệ.");
-			response.sendRedirect(request.getContextPath() + "/leave-balance-setup");
+			return null;
 		}
 	}
 
-	@SuppressWarnings("unchecked")
-	private boolean hasPermission(HttpSession session, String permissionCode) {
-		List<Permission> permissions = (List<Permission>) session.getAttribute("permissions");
-		if (permissions == null) {
-			return false;
+	private Long parseLong(String value) {
+		if (value == null) {
+			return null;
 		}
-		for (Permission permission : permissions) {
-			if (permissionCode.equals(permission.getCode())) {
-				return true;
-			}
+		try {
+			return Long.valueOf(value);
+		} catch (NumberFormatException e) {
+			return null;
 		}
-		return false;
+	}
+
+	private BigDecimal parseBigDecimal(String value) {
+		if (value == null) {
+			return null;
+		}
+		try {
+			return new BigDecimal(value);
+		} catch (NumberFormatException e) {
+			return null;
+		}
 	}
 }

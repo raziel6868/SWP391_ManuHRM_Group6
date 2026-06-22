@@ -18,39 +18,37 @@
                 <c:if test="${not empty successMsg}">
                     <div class="alert alert-success d-flex align-items-center gap-2 mb-3" role="alert">
                         <span class="material-symbols-outlined">check_circle</span>
-                        ${successMsg}
+                        <c:out value="${successMsg}" />
                     </div>
                 </c:if>
                 <c:if test="${not empty errorMsg}">
-                    <div class="alert alert-error d-flex align-items-center gap-2 mb-3" role="alert">
+                    <div class="alert alert-danger d-flex align-items-center gap-2 mb-3" role="alert">
                         <span class="material-symbols-outlined">error</span>
-                        ${errorMsg}
+                        <c:out value="${errorMsg}" />
                     </div>
                 </c:if>
 
                 <div class="d-flex justify-content-between align-items-end mb-4 flex-wrap gap-3">
                     <div>
                         <h2 class="h3 text-on-surface fw-bold mb-1">Chấm công của tôi</h2>
-                        <p class="body-md text-on-surface-variant mb-0">Xem lịch sử chấm công và yêu cầu sửa nếu có lỗi.</p>
+                        <p class="body-md text-on-surface-variant mb-0">Xem lịch sử chấm công và gửi yêu cầu điều chỉnh nếu có sai sót.</p>
                     </div>
                 </div>
 
                 <div class="card-premium overflow-hidden d-flex flex-column mb-4 w-100">
                     <div class="p-3 bg-surface border-bottom border-outline-variant">
-                        <form action="${pageContext.request.contextPath}/attendance-my" method="GET" class="row g-3 align-items-end">
-                            <div class="col-md-4">
+                        <form action="${pageContext.request.contextPath}/attendance-my" method="GET"
+                              class="row g-3 align-items-end">
+                            <div class="col-md-3">
                                 <label class="form-label text-on-surface fw-medium mb-1">Năm</label>
-                                <select name="year" class="form-select input-premium">
-                                    <c:forEach var="y" begin="2020" end="2030">
-                                        <option value="${y}" ${selectedYear == y ? 'selected' : ''}>${y}</option>
-                                    </c:forEach>
-                                </select>
+                                <input type="number" name="year" min="2000" max="2100"
+                                       value="${selectedYear}" class="form-control input-premium" />
                             </div>
-                            <div class="col-md-4">
+                            <div class="col-md-3">
                                 <label class="form-label text-on-surface fw-medium mb-1">Tháng</label>
                                 <select name="month" class="form-select input-premium">
-                                    <c:forEach var="m" begin="1" end="12">
-                                        <option value="${m}" ${selectedMonth == m ? 'selected' : ''}>${m}</option>
+                                    <c:forEach begin="1" end="12" var="m">
+                                        <option value="${m}" ${m == selectedMonth ? 'selected' : ''}>Tháng ${m}</option>
                                     </c:forEach>
                                 </select>
                             </div>
@@ -65,94 +63,61 @@
                             <thead>
                                 <tr>
                                     <th>Ngày</th>
-                                    <th>Ca</th>
-                                    <th>Check-in</th>
-                                    <th>Check-out</th>
-                                    <th>Giờ làm</th>
+                                    <th>Ca làm</th>
+                                    <th>Giờ vào</th>
+                                    <th>Giờ ra</th>
+                                    <th>Giờ công</th>
                                     <th>Trạng thái</th>
                                     <th class="text-end">Thao tác</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                <c:choose>
-                                    <c:when test="${empty records}">
-                                        <tr>
-                                            <td colspan="7" class="text-center py-4 text-on-surface-variant">
-                                                Không có dữ liệu chấm công.
-                                            </td>
-                                        </tr>
-                                    </c:when>
-                                    <c:otherwise>
-                                        <c:forEach var="record" items="${records}">
-                                            <tr>
-                                                <td>${record.date}</td>
-                                                <td>${record.shiftName}</td>
-                                                <td>${record.checkIn}</td>
-                                                <td>${record.checkOut}</td>
-                                                <td>${record.workingHours}</td>
-                                                <td>
-                                                    <c:choose>
-                                                        <c:when test="${record.status == 'NORMAL'}">
-                                                            <span class="badge" style="background-color: #d1fae5; color: #065f46;">Bình thường</span>
-                                                        </c:when>
-                                                        <c:when test="${record.status == 'LATE'}">
-                                                            <span class="badge" style="background-color: #fef3c7; color: #92400e;">Đi trễ</span>
-                                                        </c:when>
-                                                        <c:when test="${record.status == 'ABSENT'}">
-                                                            <span class="badge" style="background-color: #fee2e2; color: #991b1b;">Vắng mặt</span>
-                                                        </c:when>
-                                                        <c:otherwise>
-                                                            <span class="badge" style="background-color: var(--surface-container-high); color: var(--on-surface-variant);">${record.status}</span>
-                                                        </c:otherwise>
-                                                    </c:choose>
-                                                </td>
-                                                <td class="text-end">
-                                                    <button type="button" class="btn btn-sm btn-outline-primary"
-                                                            data-bs-toggle="modal" data-bs-target="#correctionModal${record.id}">
-                                                        Sửa chấm công
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td colspan="7" class="p-0 border-0">
-                                                    <div class="modal fade" id="correctionModal${record.id}" tabindex="-1">
-                                                        <div class="modal-dialog">
-                                                            <div class="modal-content">
-                                                                <div class="modal-header">
-                                                                    <h5 class="modal-title">Yêu cầu sửa chấm công</h5>
-                                                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                                                                </div>
-                                                                <form action="${pageContext.request.contextPath}/attendance-correction-request" method="POST">
-                                                                    <div class="modal-body">
-                                                                        <p class="mb-3"><strong>Ngày:</strong> ${record.date} | <strong>Ca:</strong> ${record.shiftName}</p>
-                                                                        <p class="mb-3"><strong>Check-in cũ:</strong> ${record.checkIn} | <strong>Check-out cũ:</strong> ${record.checkOut}</p>
-                                                                        <input type="hidden" name="attendanceRecordId" value="${record.id}">
-                                                                        <div class="mb-3">
-                                                                            <label class="form-label text-on-surface fw-medium mb-1">Check-in mới (HH:mm)</label>
-                                                                            <input type="time" name="newCheckIn" class="form-control input-premium" value="${record.checkIn}">
-                                                                        </div>
-                                                                        <div class="mb-3">
-                                                                            <label class="form-label text-on-surface fw-medium mb-1">Check-out mới (HH:mm)</label>
-                                                                            <input type="time" name="newCheckOut" class="form-control input-premium" value="${record.checkOut}">
-                                                                        </div>
-                                                                        <div class="mb-3">
-                                                                            <label class="form-label text-on-surface fw-medium mb-1">Lý do</label>
-                                                                            <textarea name="reason" class="form-control input-premium" rows="3" placeholder="Nhập lý do yêu cầu sửa..."></textarea>
-                                                                        </div>
-                                                                    </div>
-                                                                    <div class="modal-footer">
-                                                                        <button type="button" class="btn btn-light border" data-bs-dismiss="modal">Hủy</button>
-                                                                        <button type="submit" class="btn btn-primary-gradient">Gửi yêu cầu</button>
-                                                                    </div>
-                                                                </form>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        </c:forEach>
-                                    </c:otherwise>
-                                </c:choose>
+                                <c:forEach var="record" items="${records}">
+                                    <tr>
+                                        <td>${record.date}</td>
+                                        <td><c:out value="${record.shiftName}" default="—" /></td>
+                                        <td>${record.checkIn}</td>
+                                        <td>${record.checkOut}</td>
+                                        <td>${record.workingHours}</td>
+                                        <td>
+                                            <c:choose>
+                                                <c:when test="${record.status == 'NORMAL'}">
+                                                    <span class="badge" style="background-color: #d1fae5; color: #065f46;">Bình thường</span>
+                                                </c:when>
+                                                <c:when test="${record.status == 'LATE'}">
+                                                    <span class="badge" style="background-color: #fef3c7; color: #92400e;">Đi muộn</span>
+                                                </c:when>
+                                                <c:when test="${record.status == 'ABSENT'}">
+                                                    <span class="badge" style="background-color: #fee2e2; color: #991b1b;">Vắng</span>
+                                                </c:when>
+                                                <c:otherwise>
+                                                    <span class="badge" style="background-color: var(--surface-container-high); color: var(--on-surface-variant);">
+                                                        <c:out value="${record.status}" />
+                                                    </span>
+                                                </c:otherwise>
+                                            </c:choose>
+                                        </td>
+                                        <td class="text-end">
+                                            <button type="button" class="btn btn-sm btn-light border text-on-surface-variant"
+                                                    title="Yêu cầu điều chỉnh"
+                                                    data-record-id="${record.id}"
+                                                    data-date="<c:out value="${record.date}" />"
+                                                    data-checkin="<c:out value="${record.checkIn}" />"
+                                                    data-checkout="<c:out value="${record.checkOut}" />"
+                                                    onclick="openCorrectionModal(this)">
+                                                <span class="material-symbols-outlined" style="font-size: 1.125rem; vertical-align: middle;">edit_calendar</span>
+                                                Điều chỉnh
+                                            </button>
+                                        </td>
+                                    </tr>
+                                </c:forEach>
+                                <c:if test="${empty records}">
+                                    <tr>
+                                        <td colspan="7" class="text-center py-4 text-on-surface-variant">
+                                            Không có dữ liệu chấm công trong tháng đã chọn.
+                                        </td>
+                                    </tr>
+                                </c:if>
                             </tbody>
                         </table>
                     </div>
@@ -162,6 +127,74 @@
             <jsp:include page="/components/footer.jsp" />
         </div>
     </div>
+
+    <%-- Modal: Yêu cầu điều chỉnh công --%>
+    <div id="correctionModalOverlay"
+         style="display:none; position:fixed; inset:0; background:rgba(11,28,48,0.45); z-index:1050; align-items:center; justify-content:center;">
+        <div class="card-premium" style="max-width: 480px; width: 92%; padding: 1.5rem;">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="fw-bold text-on-surface mb-0">Yêu cầu điều chỉnh công</h5>
+                <button type="button" onclick="closeCorrectionModal()" class="btn btn-sm btn-icon text-on-surface-variant" aria-label="Đóng">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+
+            <form action="${pageContext.request.contextPath}/attendance-correction-request" method="POST">
+                <input type="hidden" name="attendanceRecordId" id="modalRecordId" />
+
+                <div class="mb-3">
+                    <label class="form-label text-on-surface fw-medium mb-1">Ngày chấm công</label>
+                    <input type="text" id="modalDateDisplay" class="form-control input-premium" disabled />
+                </div>
+
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label text-on-surface fw-medium mb-1">Giờ vào hiện tại</label>
+                        <input type="text" id="modalCurrentCheckIn" class="form-control input-premium" disabled />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-on-surface fw-medium mb-1">Giờ ra hiện tại</label>
+                        <input type="text" id="modalCurrentCheckOut" class="form-control input-premium" disabled />
+                    </div>
+                </div>
+
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label text-on-surface fw-medium mb-1">Giờ vào mới <span class="text-danger">*</span></label>
+                        <input type="time" name="newCheckIn" class="form-control input-premium" required />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-on-surface fw-medium mb-1">Giờ ra mới <span class="text-danger">*</span></label>
+                        <input type="time" name="newCheckOut" class="form-control input-premium" required />
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label text-on-surface fw-medium mb-1">Lý do điều chỉnh <span class="text-danger">*</span></label>
+                    <textarea name="reason" rows="3" class="form-control input-premium"
+                              placeholder="Ví dụ: Quên chấm công ra do quên mang thẻ..." required></textarea>
+                </div>
+
+                <div class="d-flex justify-content-end gap-2">
+                    <button type="button" onclick="closeCorrectionModal()" class="btn btn-light border">Hủy</button>
+                    <button type="submit" class="btn btn-primary">Gửi yêu cầu</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        function openCorrectionModal(btn) {
+            document.getElementById('modalRecordId').value = btn.getAttribute('data-record-id');
+            document.getElementById('modalDateDisplay').value = btn.getAttribute('data-date');
+            document.getElementById('modalCurrentCheckIn').value = btn.getAttribute('data-checkin') || '—';
+            document.getElementById('modalCurrentCheckOut').value = btn.getAttribute('data-checkout') || '—';
+            document.getElementById('correctionModalOverlay').style.display = 'flex';
+        }
+        function closeCorrectionModal() {
+            document.getElementById('correctionModalOverlay').style.display = 'none';
+        }
+    </script>
 
     <jsp:include page="/components/foot.jsp" />
 </body>

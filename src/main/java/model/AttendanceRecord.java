@@ -9,8 +9,11 @@ public class AttendanceRecord {
 
 	private Long id;
 	private Long userId;
+	private String employeeCode;
+	private String employeeName;
 	private Date date;
 	private Long shiftId;
+	private String shiftName;
 	private Time checkIn;
 	private Time checkOut;
 	private BigDecimal workingHours;
@@ -18,12 +21,6 @@ public class AttendanceRecord {
 	private String importBatchId;
 	private Timestamp createdAt;
 	private Timestamp updatedAt;
-	private String userFullName;
-	private String employeeCode;
-	private String departmentName;
-	private String shiftName;
-	private String shiftStartTime;
-	private String shiftEndTime;
 
 	public Long getId() {
 		return id;
@@ -41,6 +38,22 @@ public class AttendanceRecord {
 		this.userId = userId;
 	}
 
+	public String getEmployeeCode() {
+		return employeeCode;
+	}
+
+	public void setEmployeeCode(String employeeCode) {
+		this.employeeCode = employeeCode;
+	}
+
+	public String getEmployeeName() {
+		return employeeName;
+	}
+
+	public void setEmployeeName(String employeeName) {
+		this.employeeName = employeeName;
+	}
+
 	public Date getDate() {
 		return date;
 	}
@@ -55,6 +68,14 @@ public class AttendanceRecord {
 
 	public void setShiftId(Long shiftId) {
 		this.shiftId = shiftId;
+	}
+
+	public String getShiftName() {
+		return shiftName;
+	}
+
+	public void setShiftName(String shiftName) {
+		this.shiftName = shiftName;
 	}
 
 	public Time getCheckIn() {
@@ -111,53 +132,5 @@ public class AttendanceRecord {
 
 	public void setUpdatedAt(Timestamp updatedAt) {
 		this.updatedAt = updatedAt;
-	}
-
-	public String getUserFullName() {
-		return userFullName;
-	}
-
-	public void setUserFullName(String userFullName) {
-		this.userFullName = userFullName;
-	}
-
-	public String getEmployeeCode() {
-		return employeeCode;
-	}
-
-	public void setEmployeeCode(String employeeCode) {
-		this.employeeCode = employeeCode;
-	}
-
-	public String getDepartmentName() {
-		return departmentName;
-	}
-
-	public void setDepartmentName(String departmentName) {
-		this.departmentName = departmentName;
-	}
-
-	public String getShiftName() {
-		return shiftName;
-	}
-
-	public void setShiftName(String shiftName) {
-		this.shiftName = shiftName;
-	}
-
-	public String getShiftStartTime() {
-		return shiftStartTime;
-	}
-
-	public void setShiftStartTime(String shiftStartTime) {
-		this.shiftStartTime = shiftStartTime;
-	}
-
-	public String getShiftEndTime() {
-		return shiftEndTime;
-	}
-
-	public void setShiftEndTime(String shiftEndTime) {
-		this.shiftEndTime = shiftEndTime;
 	}
 }

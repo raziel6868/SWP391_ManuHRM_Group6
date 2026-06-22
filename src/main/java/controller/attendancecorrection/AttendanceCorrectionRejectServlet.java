@@ -1,20 +1,15 @@
 package controller.attendancecorrection;
 
-import java.io.IOException;
 import dal.AttendanceCorrectionDAO;
-import dal.DBContext;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
+import java.io.IOException;
 import model.AttendanceCorrection;
-import model.Permission;
 import model.User;
-import java.sql.Connection;
-import java.sql.SQLException;
-import java.util.List;
 
 @WebServlet(name = "AttendanceCorrectionRejectServlet", urlPatterns = {"/attendance-correction-reject"})
 public class AttendanceCorrectionRejectServlet extends HttpServlet {
@@ -25,84 +20,54 @@ public class AttendanceCorrectionRejectServlet extends HttpServlet {
 	protected void doPost(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
 		request.setCharacterEncoding("UTF-8");
+
 		HttpSession session = request.getSession();
 		User authUser = (User) session.getAttribute("authUser");
-		@SuppressWarnings("unchecked")
-		List<Permission> permissions = (List<Permission>) session.getAttribute("permissions");
-
-		if (authUser == null || !hasPermission(permissions, "ATTENDANCE_CORRECTION_REJECT")) {
-			response.sendError(HttpServletResponse.SC_FORBIDDEN);
+		if (authUser == null || authUser.getId() == null) {
+			response.sendRedirect(request.getContextPath() + "/login");
 			return;
 		}
 
-		String idStr = request.getParameter("id");
-		if (idStr == null || idStr.trim().isEmpty()) {
-			session.setAttribute("errorMsg", "Không tìm thấy yêu cầu sửa.");
-			response.sendRedirect(request.getContextPath() + "/attendance-correction-list");
+		Long id = parseLong(request.getParameter("id"));
+		String redirectUrl = request.getContextPath() + "/attendance-correction-list";
+
+		if (id == null) {
+			session.setAttribute("errorMsg", "Yêu cầu điều chỉnh không hợp lệ.");
+			response.sendRedirect(redirectUrl);
 			return;
 		}
 
-		Connection conn = null;
-		try {
-			Long id = Long.parseLong(idStr.trim());
-			AttendanceCorrection correction = correctionDAO.getById(id);
-
-			if (correction == null) {
-				session.setAttribute("errorMsg", "Yêu cầu sửa không tồn tại.");
-				response.sendRedirect(request.getContextPath() + "/attendance-correction-list");
-				return;
-			}
-
-			if (!"PENDING".equals(correction.getStatus())) {
-				session.setAttribute("errorMsg", "Yêu cầu này đã được xử lý.");
-				response.sendRedirect(request.getContextPath() + "/attendance-correction-list");
-				return;
-			}
-
-			conn = DBContext.getConnection();
-			conn.setAutoCommit(false);
-
-			boolean success = correctionDAO.reject(conn, id, authUser.getId());
-			if (success) {
-				conn.commit();
-				session.setAttribute("successMsg", "Đã từ chối yêu cầu sửa chấm công.");
-			} else {
-				conn.rollback();
-				session.setAttribute("errorMsg", "Không thể từ chối yêu cầu. Trạng thái đã thay đổi.");
-			}
-
-		} catch (NumberFormatException e) {
-			session.setAttribute("errorMsg", "ID không hợp lệ.");
-		} catch (SQLException e) {
-			if (conn != null) {
-				try {
-					conn.rollback();
-				} catch (SQLException ignored) {
-				}
-			}
-			session.setAttribute("errorMsg", "Lỗi cơ sở dữ liệu: " + e.getMessage());
-		} finally {
-			if (conn != null) {
-				try {
-					conn.setAutoCommit(true);
-					conn.close();
-				} catch (SQLException ignored) {
-				}
-			}
+		AttendanceCorrection correction = correctionDAO.getById(id);
+		if (correction == null) {
+			session.setAttribute("errorMsg", "Không tìm thấy yêu cầu điều chỉnh.");
+			response.sendRedirect(redirectUrl);
+			return;
+		}
+		if (!"PENDING".equals(correction.getStatus())) {
+			session.setAttribute("errorMsg", "Yêu cầu này đã được xử lý trước đó.");
+			response.sendRedirect(redirectUrl);
+			return;
 		}
 
-		response.sendRedirect(request.getContextPath() + "/attendance-correction-list");
+		boolean rejected = correctionDAO.reject(id, authUser.getId());
+		if (rejected) {
+			session.setAttribute("successMsg",
+					"Đã từ chối yêu cầu điều chỉnh công của " + correction.getEmployeeName() + ".");
+		} else {
+			session.setAttribute("errorMsg", "Không thể từ chối yêu cầu (có thể đã được xử lý bởi người khác).");
+		}
+
+		response.sendRedirect(redirectUrl);
 	}
 
-	private boolean hasPermission(List<Permission> permissions, String code) {
-		if (permissions == null) {
-			return false;
+	private Long parseLong(String value) {
+		if (value == null || value.isBlank()) {
+			return null;
 		}
-		for (Permission p : permissions) {
-			if (code.equals(p.getCode())) {
-				return true;
-			}
+		try {
+			return Long.parseLong(value.trim());
+		} catch (NumberFormatException e) {
+			return null;
 		}
-		return false;
 	}
 }

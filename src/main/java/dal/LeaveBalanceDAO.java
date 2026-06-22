@@ -16,26 +16,18 @@ public class LeaveBalanceDAO {
 		StringBuilder sql = new StringBuilder("""
 				SELECT lb.id, lb.user_id, lb.leave_type_id, lb.year, lb.total_days, lb.used_days,
 				       lb.created_at, lb.updated_at,
-				       u.full_name AS user_full_name, u.employee_code,
-				       lt.name AS leave_type_name
+				       u.employee_code, u.full_name AS employee_name,
+				       d.name AS department_name,
+				       lt.code AS leave_type_code, lt.name AS leave_type_name
 				FROM leave_balances lb
-				JOIN users u ON lb.user_id = u.id
-				JOIN leave_types lt ON lb.leave_type_id = lt.id
+				INNER JOIN users u ON u.id = lb.user_id
+				LEFT JOIN departments d ON d.id = u.department_id
+				INNER JOIN leave_types lt ON lt.id = lb.leave_type_id
 				WHERE 1 = 1
 				""");
 		List<Object> params = new ArrayList<>();
-
-		if (year != null) {
-			sql.append(" AND lb.year = ?");
-			params.add(year);
-		}
-
-		if (departmentId != null) {
-			sql.append(" AND u.department_id = ?");
-			params.add(departmentId);
-		}
-
-		sql.append(" ORDER BY u.full_name, lt.name LIMIT ? OFFSET ?");
+		appendFilters(sql, params, year, departmentId);
+		sql.append(" ORDER BY lb.year DESC, u.employee_code ASC, lt.code ASC LIMIT ? OFFSET ?");
 		params.add(limit);
 		params.add(offset);
 
@@ -50,7 +42,6 @@ public class LeaveBalanceDAO {
 		} catch (SQLException e) {
 			System.err.println("LeaveBalanceDAO.searchBalances() ERROR: " + e.getMessage());
 		}
-
 		return balances;
 	}
 
@@ -58,20 +49,11 @@ public class LeaveBalanceDAO {
 		StringBuilder sql = new StringBuilder("""
 				SELECT COUNT(*)
 				FROM leave_balances lb
-				JOIN users u ON lb.user_id = u.id
+				INNER JOIN users u ON u.id = lb.user_id
 				WHERE 1 = 1
 				""");
 		List<Object> params = new ArrayList<>();
-
-		if (year != null) {
-			sql.append(" AND lb.year = ?");
-			params.add(year);
-		}
-
-		if (departmentId != null) {
-			sql.append(" AND u.department_id = ?");
-			params.add(departmentId);
-		}
+		appendFilters(sql, params, year, departmentId);
 
 		try (Connection conn = DBContext.getConnection();
 				PreparedStatement ps = conn.prepareStatement(sql.toString())) {
@@ -84,7 +66,6 @@ public class LeaveBalanceDAO {
 		} catch (SQLException e) {
 			System.err.println("LeaveBalanceDAO.countBalances() ERROR: " + e.getMessage());
 		}
-
 		return 0;
 	}
 
@@ -96,11 +77,13 @@ public class LeaveBalanceDAO {
 		String sql = """
 				SELECT lb.id, lb.user_id, lb.leave_type_id, lb.year, lb.total_days, lb.used_days,
 				       lb.created_at, lb.updated_at,
-				       u.full_name AS user_full_name, u.employee_code,
-				       lt.name AS leave_type_name
+				       u.employee_code, u.full_name AS employee_name,
+				       d.name AS department_name,
+				       lt.code AS leave_type_code, lt.name AS leave_type_name
 				FROM leave_balances lb
-				JOIN users u ON lb.user_id = u.id
-				JOIN leave_types lt ON lb.leave_type_id = lt.id
+				INNER JOIN users u ON u.id = lb.user_id
+				LEFT JOIN departments d ON d.id = u.department_id
+				INNER JOIN leave_types lt ON lt.id = lb.leave_type_id
 				WHERE lb.user_id = ? AND lb.leave_type_id = ? AND lb.year = ?
 				""";
 
@@ -116,71 +99,27 @@ public class LeaveBalanceDAO {
 		} catch (SQLException e) {
 			System.err.println("LeaveBalanceDAO.getByUserAndTypeAndYear() ERROR: " + e.getMessage());
 		}
-
 		return null;
 	}
 
-	public boolean upsert(Long userId, Long leaveTypeId, Integer year, BigDecimal totalDays) {
-		if (userId == null || leaveTypeId == null || year == null || totalDays == null) {
-			return false;
-		}
-
-		String sql = """
-				INSERT INTO leave_balances (user_id, leave_type_id, year, total_days, used_days)
-				VALUES (?, ?, ?, ?, 0)
-				ON DUPLICATE KEY UPDATE total_days = VALUES(total_days)
-				""";
-
-		try (Connection conn = DBContext.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
-			ps.setLong(1, userId);
-			ps.setLong(2, leaveTypeId);
-			ps.setInt(3, year);
-			ps.setBigDecimal(4, totalDays);
-			return ps.executeUpdate() > 0;
-		} catch (SQLException e) {
-			System.err.println("LeaveBalanceDAO.upsert() ERROR: " + e.getMessage());
-		}
-
-		return false;
-	}
-
-	public boolean incrementUsedDays(Connection conn, Long userId, Long leaveTypeId, Integer year, BigDecimal days)
-			throws SQLException {
-		if (userId == null || leaveTypeId == null || year == null || days == null) {
-			return false;
-		}
-
-		String sql = """
-				UPDATE leave_balances
-				SET used_days = used_days + ?
-				WHERE user_id = ? AND leave_type_id = ? AND year = ?
-				""";
-
-		try (PreparedStatement ps = conn.prepareStatement(sql)) {
-			ps.setBigDecimal(1, days);
-			ps.setLong(2, userId);
-			ps.setLong(3, leaveTypeId);
-			ps.setInt(4, year);
-			return ps.executeUpdate() > 0;
-		}
-	}
-
-	public List<LeaveBalance> getByUserAndYear(Long userId, Integer year) {
-		if (userId == null || year == null) {
-			return new ArrayList<>();
-		}
-
+	public List<LeaveBalance> searchByUserAndYear(Long userId, Integer year) {
 		List<LeaveBalance> balances = new ArrayList<>();
+		if (userId == null || year == null) {
+			return balances;
+		}
+
 		String sql = """
 				SELECT lb.id, lb.user_id, lb.leave_type_id, lb.year, lb.total_days, lb.used_days,
 				       lb.created_at, lb.updated_at,
-				       u.full_name AS user_full_name, u.employee_code,
-				       lt.name AS leave_type_name
+				       u.employee_code, u.full_name AS employee_name,
+				       d.name AS department_name,
+				       lt.code AS leave_type_code, lt.name AS leave_type_name
 				FROM leave_balances lb
-				JOIN users u ON lb.user_id = u.id
-				JOIN leave_types lt ON lb.leave_type_id = lt.id
+				INNER JOIN users u ON u.id = lb.user_id
+				LEFT JOIN departments d ON d.id = u.department_id
+				INNER JOIN leave_types lt ON lt.id = lb.leave_type_id
 				WHERE lb.user_id = ? AND lb.year = ?
-				ORDER BY lt.name
+				ORDER BY lt.code ASC
 				""";
 
 		try (Connection conn = DBContext.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -192,10 +131,79 @@ public class LeaveBalanceDAO {
 				}
 			}
 		} catch (SQLException e) {
-			System.err.println("LeaveBalanceDAO.getByUserAndYear() ERROR: " + e.getMessage());
+			System.err.println("LeaveBalanceDAO.searchByUserAndYear() ERROR: " + e.getMessage());
+		}
+		return balances;
+	}
+
+	public boolean upsert(Long userId, Long leaveTypeId, Integer year, BigDecimal totalDays) {
+		if (userId == null || leaveTypeId == null || year == null || totalDays == null) {
+			return false;
 		}
 
-		return balances;
+		String sql = """
+				INSERT INTO leave_balances (user_id, leave_type_id, year, total_days, used_days)
+				VALUES (?, ?, ?, ?, 0)
+				ON DUPLICATE KEY UPDATE
+				    total_days = VALUES(total_days),
+				    updated_at = CURRENT_TIMESTAMP
+				""";
+
+		try (Connection conn = DBContext.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+			ps.setLong(1, userId);
+			ps.setLong(2, leaveTypeId);
+			ps.setInt(3, year);
+			ps.setBigDecimal(4, totalDays);
+			return ps.executeUpdate() > 0;
+		} catch (SQLException e) {
+			System.err.println("LeaveBalanceDAO.upsert() ERROR: " + e.getMessage());
+		}
+		return false;
+	}
+
+	public boolean incrementUsedDays(Long userId, Long leaveTypeId, Integer year, BigDecimal days) {
+		try (Connection conn = DBContext.getConnection()) {
+			return incrementUsedDays(conn, userId, leaveTypeId, year, days);
+		} catch (SQLException e) {
+			System.err.println("LeaveBalanceDAO.incrementUsedDays() ERROR: " + e.getMessage());
+		}
+		return false;
+	}
+
+	public boolean incrementUsedDays(Connection conn, Long userId, Long leaveTypeId, Integer year, BigDecimal days)
+			throws SQLException {
+		if (conn == null || userId == null || leaveTypeId == null || year == null || days == null) {
+			return false;
+		}
+
+		String sql = """
+				UPDATE leave_balances
+				SET used_days = used_days + ?
+				WHERE user_id = ?
+				  AND leave_type_id = ?
+				  AND year = ?
+				  AND used_days + ? <= total_days
+				""";
+
+		try (PreparedStatement ps = conn.prepareStatement(sql)) {
+			ps.setBigDecimal(1, days);
+			ps.setLong(2, userId);
+			ps.setLong(3, leaveTypeId);
+			ps.setInt(4, year);
+			ps.setBigDecimal(5, days);
+			return ps.executeUpdate() > 0;
+		}
+	}
+
+	private void appendFilters(StringBuilder sql, List<Object> params, Integer year, Long departmentId) {
+		if (year != null) {
+			sql.append(" AND lb.year = ?");
+			params.add(year);
+		}
+		if (departmentId != null) {
+			sql.append(" AND u.department_id = ?");
+			params.add(departmentId);
+		}
 	}
 
 	private void setParams(PreparedStatement ps, List<Object> params) throws SQLException {
@@ -214,8 +222,10 @@ public class LeaveBalanceDAO {
 		balance.setUsedDays(rs.getBigDecimal("used_days"));
 		balance.setCreatedAt(rs.getTimestamp("created_at"));
 		balance.setUpdatedAt(rs.getTimestamp("updated_at"));
-		balance.setUserFullName(rs.getString("user_full_name"));
 		balance.setEmployeeCode(rs.getString("employee_code"));
+		balance.setEmployeeName(rs.getString("employee_name"));
+		balance.setDepartmentName(rs.getString("department_name"));
+		balance.setLeaveTypeCode(rs.getString("leave_type_code"));
 		balance.setLeaveTypeName(rs.getString("leave_type_name"));
 		return balance;
 	}

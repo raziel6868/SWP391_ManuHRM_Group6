@@ -18,58 +18,52 @@
                 <c:if test="${not empty successMsg}">
                     <div class="alert alert-success d-flex align-items-center gap-2 mb-3" role="alert">
                         <span class="material-symbols-outlined">check_circle</span>
-                        ${successMsg}
+                        <c:out value="${successMsg}" />
                     </div>
                 </c:if>
                 <c:if test="${not empty errorMsg}">
                     <div class="alert alert-error d-flex align-items-center gap-2 mb-3" role="alert">
                         <span class="material-symbols-outlined">error</span>
-                        ${errorMsg}
+                        <c:out value="${errorMsg}" />
                     </div>
                 </c:if>
 
                 <div class="d-flex justify-content-between align-items-end mb-4 flex-wrap gap-3">
                     <div>
                         <h2 class="h3 text-on-surface fw-bold mb-1">Danh sách chấm công</h2>
-                        <p class="body-md text-on-surface-variant mb-0">Xem và quản lý chấm công nhân viên.</p>
+                        <p class="body-md text-on-surface-variant mb-0">Theo dõi dữ liệu chấm công đã import theo tháng.</p>
                     </div>
-                    <a href="${pageContext.request.contextPath}/attendance-import"
-                       class="btn-primary-gradient text-decoration-none px-3 py-2 d-flex align-items-center gap-2 shadow-sm">
-                        <span class="material-symbols-outlined" style="font-size: 1.125rem;">upload</span>
-                        Nhập Excel
-                    </a>
+                    <c:if test="${canImport}">
+                        <a href="${pageContext.request.contextPath}/attendance-import"
+                           class="btn-primary-gradient text-decoration-none px-3 py-2 d-flex align-items-center gap-2 shadow-sm">
+                            <span class="material-symbols-outlined" style="font-size: 1.125rem;">upload_file</span>
+                            Import Excel
+                        </a>
+                    </c:if>
                 </div>
 
                 <div class="card-premium overflow-hidden d-flex flex-column mb-4 w-100">
                     <div class="p-3 bg-surface border-bottom border-outline-variant">
-                        <form action="${pageContext.request.contextPath}/attendance-list" method="GET" class="row g-3 align-items-end">
-                            <div class="col-md-2">
+                        <form action="${pageContext.request.contextPath}/attendance-list" method="GET"
+                              class="row g-3 align-items-end">
+                            <div class="col-md-3">
                                 <label class="form-label text-on-surface fw-medium mb-1">Năm</label>
-                                <select name="year" class="form-select input-premium">
-                                    <c:forEach var="y" begin="2020" end="2030">
-                                        <option value="${y}" ${selectedYear == y ? 'selected' : ''}>${y}</option>
-                                    </c:forEach>
-                                </select>
-                            </div>
-                            <div class="col-md-2">
-                                <label class="form-label text-on-surface fw-medium mb-1">Tháng</label>
-                                <select name="month" class="form-select input-premium">
-                                    <c:forEach var="m" begin="1" end="12">
-                                        <option value="${m}" ${selectedMonth == m ? 'selected' : ''}>${m}</option>
-                                    </c:forEach>
-                                </select>
+                                <input type="number" name="year" min="2000" max="2100"
+                                       value="${selectedYear}" class="form-control input-premium" />
                             </div>
                             <div class="col-md-3">
-                                <label class="form-label text-on-surface fw-medium mb-1">Phòng ban</label>
-                                <select name="departmentId" class="form-select input-premium">
-                                    <option value="">Tất cả</option>
-                                    <c:forEach var="dept" items="${departments}">
-                                        <option value="${dept.id}" ${selectedDepartmentId == dept.id ? 'selected' : ''}>${dept.name}</option>
+                                <label class="form-label text-on-surface fw-medium mb-1">Tháng</label>
+                                <select name="month" class="form-select input-premium">
+                                    <c:forEach begin="1" end="12" var="m">
+                                        <option value="${m}" ${m == selectedMonth ? 'selected' : ''}>Tháng ${m}</option>
                                     </c:forEach>
                                 </select>
                             </div>
-                            <div class="col-md-1">
+                            <div class="col-md-2">
                                 <button type="submit" class="btn btn-primary w-100">Lọc</button>
+                            </div>
+                            <div class="col-md-4 text-md-end text-on-surface-variant body-sm">
+                                Tổng số dòng: <strong>${totalRecords}</strong>
                             </div>
                         </form>
                     </div>
@@ -80,55 +74,51 @@
                                 <tr>
                                     <th>Mã NV</th>
                                     <th>Nhân viên</th>
-                                    <th>Phòng ban</th>
                                     <th>Ngày</th>
-                                    <th>Ca</th>
-                                    <th>Check-in</th>
-                                    <th>Check-out</th>
-                                    <th>Giờ làm</th>
+                                    <th>Ca làm</th>
+                                    <th>Giờ vào</th>
+                                    <th>Giờ ra</th>
+                                    <th>Giờ công</th>
                                     <th>Trạng thái</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                <c:choose>
-                                    <c:when test="${empty records}">
-                                        <tr>
-                                            <td colspan="9" class="text-center py-4 text-on-surface-variant">
-                                                Không có dữ liệu chấm công.
-                                            </td>
-                                        </tr>
-                                    </c:when>
-                                    <c:otherwise>
-                                        <c:forEach var="record" items="${records}">
-                                            <tr>
-                                                <td class="fw-medium text-on-surface">${record.employeeCode}</td>
-                                                <td>${record.userFullName}</td>
-                                                <td>${record.departmentName}</td>
-                                                <td>${record.date}</td>
-                                                <td>${record.shiftName}</td>
-                                                <td>${record.checkIn}</td>
-                                                <td>${record.checkOut}</td>
-                                                <td>${record.workingHours}</td>
-                                                <td>
-                                                    <c:choose>
-                                                        <c:when test="${record.status == 'NORMAL'}">
-                                                            <span class="badge" style="background-color: #d1fae5; color: #065f46;">Bình thường</span>
-                                                        </c:when>
-                                                        <c:when test="${record.status == 'LATE'}">
-                                                            <span class="badge" style="background-color: #fef3c7; color: #92400e;">Đi trễ</span>
-                                                        </c:when>
-                                                        <c:when test="${record.status == 'ABSENT'}">
-                                                            <span class="badge" style="background-color: #fee2e2; color: #991b1b;">Vắng mặt</span>
-                                                        </c:when>
-                                                        <c:otherwise>
-                                                            <span class="badge" style="background-color: var(--surface-container-high); color: var(--on-surface-variant);">${record.status}</span>
-                                                        </c:otherwise>
-                                                    </c:choose>
-                                                </td>
-                                            </tr>
-                                        </c:forEach>
-                                    </c:otherwise>
-                                </c:choose>
+                                <c:forEach var="record" items="${records}">
+                                    <tr>
+                                        <td class="fw-medium text-on-surface"><c:out value="${record.employeeCode}" /></td>
+                                        <td><c:out value="${record.employeeName}" /></td>
+                                        <td>${record.date}</td>
+                                        <td><c:out value="${record.shiftName}" /></td>
+                                        <td>${record.checkIn}</td>
+                                        <td>${record.checkOut}</td>
+                                        <td>${record.workingHours}</td>
+                                        <td>
+                                            <c:choose>
+                                                <c:when test="${record.status == 'NORMAL'}">
+                                                    <span class="badge" style="background-color: #d1fae5; color: #065f46;">Bình thường</span>
+                                                </c:when>
+                                                <c:when test="${record.status == 'LATE'}">
+                                                    <span class="badge" style="background-color: #fef3c7; color: #92400e;">Đi muộn</span>
+                                                </c:when>
+                                                <c:when test="${record.status == 'ABSENT'}">
+                                                    <span class="badge" style="background-color: #fee2e2; color: #991b1b;">Vắng</span>
+                                                </c:when>
+                                                <c:otherwise>
+                                                    <span class="badge" style="background-color: var(--surface-container-high); color: var(--on-surface-variant);">
+                                                        <c:out value="${record.status}" />
+                                                    </span>
+                                                </c:otherwise>
+                                            </c:choose>
+                                        </td>
+                                    </tr>
+                                </c:forEach>
+                                <c:if test="${empty records}">
+                                    <tr>
+                                        <td colspan="8" class="text-center py-4 text-on-surface-variant">
+                                            Không có dữ liệu chấm công trong tháng đã chọn.
+                                        </td>
+                                    </tr>
+                                </c:if>
                             </tbody>
                         </table>
                     </div>
@@ -137,7 +127,7 @@
                         <div class="p-3 bg-surface border-top border-outline-variant d-flex align-items-center justify-content-center">
                             <div class="d-flex gap-1 flex-wrap">
                                 <c:forEach begin="1" end="${totalPages}" var="i">
-                                    <a href="?page=${i}&year=${selectedYear}&month=${selectedMonth}&departmentId=${selectedDepartmentId}"
+                                    <a href="${pageContext.request.contextPath}/attendance-list?page=${i}&year=${selectedYear}&month=${selectedMonth}"
                                        class="btn btn-sm ${i == currentPage ? 'fw-bold' : 'btn-light border text-on-surface-variant'}"
                                        style="${i == currentPage ? 'background-color: var(--primary-fixed); color: var(--on-primary-fixed-variant); border: 1px solid var(--primary);' : 'background-color: var(--surface-container-lowest); border-color: var(--outline-variant) !important;'}">
                                         ${i}

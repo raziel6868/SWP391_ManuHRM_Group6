@@ -1,197 +1,251 @@
 package util;
 
+import dal.AttendanceDAO;
+import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.sql.Date;
 import java.sql.Time;
+import java.time.Duration;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
-import java.time.temporal.ChronoUnit;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.UUID;
+import model.AttendanceRecord;
+import model.Shift;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.CellType;
+import org.apache.poi.ss.usermodel.DataFormatter;
+import org.apache.poi.ss.usermodel.DateUtil;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.ss.usermodel.WorkbookFactory;
-import dal.ShiftAssignmentDAO;
-import dal.UserDAO;
-import dal.ShiftDAO;
-import model.AttendanceRecord;
-import model.Shift;
-import model.User;
 
 public class AttendanceImportUtil {
 
-	private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-	private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
 	private static final int LATE_THRESHOLD_MINUTES = 15;
 
-	private final UserDAO userDAO = new UserDAO();
-	private final ShiftDAO shiftDAO = new ShiftDAO();
-	private final ShiftAssignmentDAO shiftAssignmentDAO = new ShiftAssignmentDAO();
+	private final AttendanceDAO attendanceDAO;
 
-	public List<AttendanceRecord> parseExcel(InputStream inputStream, String batchId) throws Exception {
+	public AttendanceImportUtil() {
+		this(new AttendanceDAO());
+	}
+
+	public AttendanceImportUtil(AttendanceDAO attendanceDAO) {
+		this.attendanceDAO = attendanceDAO;
+	}
+
+	public List<AttendanceRecord> parseExcel(InputStream inputStream) throws AttendanceImportException {
 		List<AttendanceRecord> records = new ArrayList<>();
+		List<String> errors = new ArrayList<>();
+		Set<String> importedKeys = new HashSet<>();
+		String importBatchId = UUID.randomUUID().toString();
 
 		try (Workbook workbook = WorkbookFactory.create(inputStream)) {
 			Sheet sheet = workbook.getSheetAt(0);
+			DataFormatter formatter = new DataFormatter();
 
-			for (int i = 1; i <= sheet.getLastRowNum(); i++) {
-				Row row = sheet.getRow(i);
-				if (row == null) {
+			for (int rowIndex = 1; rowIndex <= sheet.getLastRowNum(); rowIndex++) {
+				Row row = sheet.getRow(rowIndex);
+				if (row == null || isBlankRow(row, formatter)) {
 					continue;
 				}
 
-				String employeeCode = getCellValue(row, 0);
-				String dateStr = getCellValue(row, 1);
-				String checkInStr = getCellValue(row, 2);
-				String checkOutStr = getCellValue(row, 3);
+				int displayRow = rowIndex + 1;
+				String employeeCode = readText(row.getCell(0), formatter);
+				LocalDate date = readDate(row.getCell(1), formatter);
+				LocalTime checkIn = readTime(row.getCell(2), formatter);
+				LocalTime checkOut = readTime(row.getCell(3), formatter);
 
-				if (employeeCode == null || employeeCode.trim().isEmpty()) {
+				// Chỉ bắt buộc employeeCode và date
+				validateRequired(errors, displayRow, employeeCode, date);
+				if (employeeCode == null || date == null) {
 					continue;
 				}
 
-				User user = userDAO.getByEmployeeCode(employeeCode.trim());
-				if (user == null) {
+				// checkIn có giá trị → checkOut bắt buộc phải có và phải sau checkIn
+				// checkIn null → ABSENT, hợp lệ, không báo lỗi
+				if (checkIn != null) {
+					if (checkOut == null) {
+						errors.add("Dòng " + displayRow + ": Có giờ vào nhưng thiếu giờ ra. Định dạng gợi ý: HH:mm.");
+						continue;
+					}
+					if (!checkOut.isAfter(checkIn)) {
+						errors.add("Dòng " + displayRow + ": Giờ ra phải lớn hơn giờ vào.");
+						continue;
+					}
+				}
+
+				String key = employeeCode.toUpperCase() + "|" + date;
+				if (!importedKeys.add(key)) {
+					errors.add("Dòng " + displayRow + ": Trùng dữ liệu nhân viên/ngày trong file.");
 					continue;
 				}
 
-				Date date = parseDate(dateStr);
-				if (date == null) {
+				Long userId = attendanceDAO.findActiveUserIdByEmployeeCode(employeeCode);
+				if (userId == null) {
+					errors.add("Dòng " + displayRow + ": Không tìm thấy nhân viên đang hoạt động có mã " + employeeCode
+							+ ".");
 					continue;
 				}
 
-				Time checkIn = parseTime(checkInStr);
-				Time checkOut = parseTime(checkOutStr);
-
-				Long shiftId = resolveShiftId(user.getId(), date);
-				Shift shift = shiftId != null ? getShift(shiftId) : null;
-
-				String status = deriveStatus(shift, checkIn);
-				BigDecimal workingHours = calculateWorkingHours(checkIn, checkOut, shift);
+				Date sqlDate = Date.valueOf(date);
+				Shift shift = attendanceDAO.findShiftForUserAndDate(userId, sqlDate);
+				if (shift == null) {
+					errors.add("Dòng " + displayRow + ": Chưa có ca làm mặc định để gán dữ liệu chấm công.");
+					continue;
+				}
 
 				AttendanceRecord record = new AttendanceRecord();
-				record.setUserId(user.getId());
-				record.setDate(date);
-				record.setShiftId(shiftId);
-				record.setCheckIn(checkIn);
-				record.setCheckOut(checkOut);
-				record.setWorkingHours(workingHours);
-				record.setStatus(status);
-				record.setImportBatchId(batchId);
-
+				record.setUserId(userId);
+				record.setEmployeeCode(employeeCode);
+				record.setDate(sqlDate);
+				record.setShiftId(shift.getId());
+				record.setCheckIn(checkIn != null ? Time.valueOf(checkIn) : null);
+				record.setCheckOut(checkOut != null ? Time.valueOf(checkOut) : null);
+				record.setWorkingHours(checkIn != null && checkOut != null
+						? calculateWorkingHours(checkIn, checkOut, shift.getBreakMinutes())
+						: null);
+				record.setStatus(resolveStatus(checkIn, shift.getStartTime()));
+				record.setImportBatchId(importBatchId);
 				records.add(record);
 			}
+		} catch (IOException e) {
+			throw new AttendanceImportException(
+					List.of("Không thể đọc file Excel. Vui lòng kiểm tra lại file tải lên."));
+		} catch (Exception e) {
+			throw new AttendanceImportException(List.of("File Excel không hợp lệ hoặc không đúng định dạng .xlsx."));
+		}
+
+		if (!errors.isEmpty()) {
+			throw new AttendanceImportException(errors);
+		}
+		if (records.isEmpty()) {
+			throw new AttendanceImportException(List.of("File không có dòng dữ liệu hợp lệ để import."));
 		}
 
 		return records;
 	}
 
-	private String getCellValue(Row row, int cellIndex) {
-		if (row.getCell(cellIndex) == null) {
-			return null;
+	private void validateRequired(List<String> errors, int rowNumber, String employeeCode, LocalDate date) {
+		if (employeeCode == null) {
+			errors.add("Dòng " + rowNumber + ": Thiếu mã nhân viên.");
 		}
-		return row.getCell(cellIndex).toString().trim();
+		if (date == null) {
+			errors.add("Dòng " + rowNumber + ": Ngày không hợp lệ. Định dạng gợi ý: yyyy-MM-dd.");
+		}
 	}
 
-	private Date parseDate(String dateStr) {
-		if (dateStr == null || dateStr.trim().isEmpty()) {
-			return null;
-		}
-		try {
-			LocalDate localDate = LocalDate.parse(dateStr.trim(), DATE_FORMATTER);
-			return Date.valueOf(localDate);
-		} catch (Exception e) {
-			try {
-				double excelDate = Double.parseDouble(dateStr.trim());
-				java.util.Date utilDate = org.apache.poi.ss.usermodel.DateUtil.getJavaDate(excelDate);
-				return new java.sql.Date(utilDate.getTime());
-			} catch (Exception ex) {
-				return null;
+	private boolean isBlankRow(Row row, DataFormatter formatter) {
+		for (int i = 0; i < 4; i++) {
+			if (readText(row.getCell(i), formatter) != null) {
+				return false;
 			}
 		}
+		return true;
 	}
 
-	private Time parseTime(String timeStr) {
-		if (timeStr == null || timeStr.trim().isEmpty()) {
+	private String readText(Cell cell, DataFormatter formatter) {
+		if (cell == null) {
 			return null;
 		}
-		try {
-			LocalTime localTime = LocalTime.parse(timeStr.trim(), TIME_FORMATTER);
-			return Time.valueOf(localTime);
-		} catch (Exception e) {
-			try {
-				double excelTime = Double.parseDouble(timeStr.trim());
-				java.util.Date utilDate = org.apache.poi.ss.usermodel.DateUtil.getJavaDate(excelTime);
-				return new Time(utilDate.getTime());
-			} catch (Exception ex) {
-				return null;
-			}
+		String value = formatter.formatCellValue(cell);
+		if (value == null || value.trim().isEmpty()) {
+			return null;
 		}
+		return value.trim();
 	}
 
-	private Long resolveShiftId(Long userId, Date date) {
-		var assignments = shiftAssignmentDAO.searchAssignments(null, userId, null, date, date, 0, 1);
-		if (!assignments.isEmpty()) {
-			return assignments.get(0).getShiftId();
+	private LocalDate readDate(Cell cell, DataFormatter formatter) {
+		if (cell == null) {
+			return null;
+		}
+		if (cell.getCellType() == CellType.NUMERIC && DateUtil.isCellDateFormatted(cell)) {
+			return cell.getDateCellValue().toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
 		}
 
-		List<Shift> officeShifts = shiftDAO.searchShifts(null, false, true, 0, 1);
-		if (!officeShifts.isEmpty()) {
-			return officeShifts.get(0).getId();
+		String value = readText(cell, formatter);
+		if (value == null) {
+			return null;
 		}
 
-		List<Shift> allShifts = shiftDAO.searchShifts(null, null, true, 0, 1);
-		if (!allShifts.isEmpty()) {
-			return allShifts.get(0).getId();
+		List<DateTimeFormatter> formatters = List.of(DateTimeFormatter.ISO_LOCAL_DATE,
+				DateTimeFormatter.ofPattern("dd/MM/yyyy"), DateTimeFormatter.ofPattern("d/M/yyyy"));
+		for (DateTimeFormatter dateFormatter : formatters) {
+			try {
+				return LocalDate.parse(value, dateFormatter);
+			} catch (DateTimeParseException ignore) {
+			}
 		}
-
 		return null;
 	}
 
-	private Shift getShift(Long shiftId) {
-		return shiftDAO.getById(shiftId);
+	private LocalTime readTime(Cell cell, DataFormatter formatter) {
+		if (cell == null) {
+			return null;
+		}
+		if (cell.getCellType() == CellType.NUMERIC && DateUtil.isCellDateFormatted(cell)) {
+			LocalDateTime dateTime = cell.getDateCellValue().toInstant().atZone(ZoneId.systemDefault())
+					.toLocalDateTime();
+			return dateTime.toLocalTime().withSecond(0).withNano(0);
+		}
+
+		String value = readText(cell, formatter);
+		if (value == null) {
+			return null;
+		}
+
+		List<DateTimeFormatter> formatters = List.of(DateTimeFormatter.ofPattern("HH:mm"),
+				DateTimeFormatter.ofPattern("H:mm"), DateTimeFormatter.ofPattern("HH:mm:ss"),
+				DateTimeFormatter.ofPattern("H:mm:ss"));
+		for (DateTimeFormatter timeFormatter : formatters) {
+			try {
+				return LocalTime.parse(value, timeFormatter).withSecond(0).withNano(0);
+			} catch (DateTimeParseException ignore) {
+			}
+		}
+		return null;
 	}
 
-	private String deriveStatus(Shift shift, Time checkIn) {
+	private BigDecimal calculateWorkingHours(LocalTime checkIn, LocalTime checkOut, Integer breakMinutes) {
+		long minutes = Duration.between(checkIn, checkOut).toMinutes();
+		minutes -= breakMinutes != null ? breakMinutes : 0;
+		if (minutes < 0) {
+			minutes = 0;
+		}
+		return BigDecimal.valueOf(minutes).divide(BigDecimal.valueOf(60), 2, RoundingMode.HALF_UP);
+	}
+
+	private String resolveStatus(LocalTime checkIn, Time shiftStartTime) {
 		if (checkIn == null) {
 			return "ABSENT";
 		}
-
-		if (shift == null || shift.getStartTime() == null) {
+		if (shiftStartTime == null) {
 			return "NORMAL";
 		}
-
-		LocalTime shiftStart = shift.getStartTime().toLocalTime();
-		LocalTime actualIn = checkIn.toLocalTime();
-
-		long lateMinutes = ChronoUnit.MINUTES.between(shiftStart, actualIn);
-		if (lateMinutes > LATE_THRESHOLD_MINUTES) {
-			return "LATE";
-		}
-
-		return "NORMAL";
+		LocalTime lateTime = shiftStartTime.toLocalTime().plusMinutes(LATE_THRESHOLD_MINUTES);
+		return checkIn.isAfter(lateTime) ? "LATE" : "NORMAL";
 	}
 
-	private BigDecimal calculateWorkingHours(Time checkIn, Time checkOut, Shift shift) {
-		if (checkIn == null || checkOut == null) {
-			return BigDecimal.ZERO;
+	public static class AttendanceImportException extends Exception {
+		private final List<String> errors;
+
+		public AttendanceImportException(List<String> errors) {
+			super("Attendance import validation failed");
+			this.errors = errors;
 		}
 
-		long totalMinutes = ChronoUnit.MINUTES.between(checkIn.toLocalTime(), checkOut.toLocalTime());
-		if (totalMinutes < 0) {
-			totalMinutes += 24 * 60;
+		public List<String> getErrors() {
+			return errors;
 		}
-
-		if (shift != null && shift.getBreakMinutes() != null) {
-			totalMinutes -= shift.getBreakMinutes();
-		}
-
-		if (totalMinutes < 0) {
-			totalMinutes = 0;
-		}
-
-		return BigDecimal.valueOf(totalMinutes).divide(BigDecimal.valueOf(60), 2, java.math.RoundingMode.HALF_UP);
 	}
 }

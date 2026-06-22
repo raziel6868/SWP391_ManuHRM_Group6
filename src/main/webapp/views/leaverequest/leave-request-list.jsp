@@ -1,11 +1,12 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 <%@ taglib prefix="c" uri="jakarta.tags.core" %>
+<%@ taglib prefix="fmt" uri="jakarta.tags.fmt" %>
 <!DOCTYPE html>
 <html lang="vi">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Yêu cầu Nghỉ phép - ManuHRM</title>
+    <title>Quản lý đơn nghỉ - ManuHRM</title>
     <link href="${pageContext.request.contextPath}/assets/css/main.css" rel="stylesheet">
 </head>
 <body class="bg-background text-on-surface">
@@ -15,23 +16,14 @@
             <jsp:include page="/components/header.jsp" />
 
             <div class="page-container">
-                <c:if test="${not empty successMsg}">
-                    <div class="alert alert-success d-flex align-items-center gap-2 mb-3" role="alert">
-                        <span class="material-symbols-outlined">check_circle</span>
-                        ${successMsg}
-                    </div>
-                </c:if>
-                <c:if test="${not empty errorMsg}">
-                    <div class="alert alert-error d-flex align-items-center gap-2 mb-3" role="alert">
-                        <span class="material-symbols-outlined">error</span>
-                        ${errorMsg}
-                    </div>
-                </c:if>
+                <jsp:include page="/components/alert.jsp" />
 
                 <div class="d-flex justify-content-between align-items-end mb-4 flex-wrap gap-3">
                     <div>
-                        <h2 class="h3 text-on-surface fw-bold mb-1">Yêu cầu Nghỉ phép</h2>
-                        <p class="body-md text-on-surface-variant mb-0">Danh sách yêu cầu nghỉ phép của nhân viên.</p>
+                        <h2 class="h3 text-on-surface fw-bold mb-1">Quản lý đơn nghỉ</h2>
+                        <p class="body-md text-on-surface-variant mb-0">
+                            Theo dõi trạng thái đơn nghỉ và xử lý bước duyệt cuối theo quy trình.
+                        </p>
                     </div>
                 </div>
 
@@ -39,22 +31,18 @@
                     <div class="p-3 bg-surface border-bottom border-outline-variant">
                         <form action="${pageContext.request.contextPath}/leave-request-list" method="GET"
                               class="row g-3 align-items-end">
-                            <div class="col-md-4">
+                            <div class="col-md-3">
                                 <label class="form-label text-on-surface fw-medium mb-1">Từ khóa</label>
-                                <div class="position-relative">
-                                    <span class="material-symbols-outlined position-absolute top-50 translate-middle-y text-on-surface-variant"
-                                          style="left: 12px; font-size: 1.25rem;">search</span>
-                                    <input type="text" name="keyword" value="${keyword}"
-                                           class="form-control input-premium ps-5"
-                                           placeholder="Tìm theo tên, mã NV..." />
-                                </div>
+                                <input type="text" name="keyword" value="${keyword}"
+                                       class="form-control input-premium"
+                                       placeholder="Mã NV, tên NV, loại nghỉ" />
                             </div>
-                            <div class="col-md-2">
+                            <div class="col-md-3">
                                 <label class="form-label text-on-surface fw-medium mb-1">Trạng thái</label>
                                 <select name="status" class="form-select input-premium">
-                                    <option value="">Tất cả</option>
+                                    <option value="" ${empty selectedStatus ? 'selected' : ''}>Tất cả trạng thái</option>
                                     <option value="PENDING" ${selectedStatus == 'PENDING' ? 'selected' : ''}>Chờ duyệt</option>
-                                    <option value="APPROVED_LEVEL_1" ${selectedStatus == 'APPROVED_LEVEL_1' ? 'selected' : ''}>Đã duyệt Cấp 1</option>
+                                    <option value="APPROVED_LEVEL_1" ${selectedStatus == 'APPROVED_LEVEL_1' ? 'selected' : ''}>Đã duyệt cấp 1</option>
                                     <option value="APPROVED" ${selectedStatus == 'APPROVED' ? 'selected' : ''}>Đã duyệt</option>
                                     <option value="REJECTED" ${selectedStatus == 'REJECTED' ? 'selected' : ''}>Từ chối</option>
                                     <option value="CANCELLED" ${selectedStatus == 'CANCELLED' ? 'selected' : ''}>Đã hủy</option>
@@ -63,17 +51,23 @@
                             <div class="col-md-3">
                                 <label class="form-label text-on-surface fw-medium mb-1">Phòng ban</label>
                                 <select name="departmentId" class="form-select input-premium">
-                                    <option value="">Tất cả</option>
-                                    <c:forEach var="dept" items="${departments}">
-                                        <option value="${dept.id}" ${selectedDepartmentId == dept.id ? 'selected' : ''}>${dept.name}</option>
+                                    <option value="" ${empty selectedDepartmentId ? 'selected' : ''}>Tất cả phòng ban</option>
+                                    <c:forEach var="department" items="${departments}">
+                                        <option value="${department.id}" ${selectedDepartmentId == department.id ? 'selected' : ''}>
+                                            <c:out value="${department.name}" />
+                                        </option>
                                     </c:forEach>
                                 </select>
                             </div>
-                            <div class="col-md-1 d-flex gap-2">
-                                <button type="submit" class="btn btn-primary w-100">Lọc</button>
+                            <div class="col-md-2">
+                                <button type="submit" class="btn btn-primary w-100">
+                                    <span class="material-symbols-outlined align-middle" style="font-size: 1rem;">filter_list</span>
+                                    Lọc
+                                </button>
                             </div>
                             <div class="col-md-1">
-                                <a href="${pageContext.request.contextPath}/leave-request-list" class="btn btn-light border w-100">Reset</a>
+                                <a href="${pageContext.request.contextPath}/leave-request-list"
+                                   class="btn btn-light border w-100">Xóa</a>
                             </div>
                         </form>
                     </div>
@@ -82,84 +76,102 @@
                         <table class="table table-premium mb-0 w-100">
                             <thead>
                                 <tr>
-                                    <th>Mã NV</th>
+                                    <th>Mã đơn</th>
                                     <th>Nhân viên</th>
+                                    <th>Phòng ban</th>
                                     <th>Loại nghỉ</th>
-                                    <th>Từ ngày</th>
-                                    <th>Đến ngày</th>
-                                    <th>Số ngày</th>
+                                    <th>Thoi gian</th>
+                                    <th class="text-end">Số ngày</th>
                                     <th>Trạng thái</th>
+                                    <th>Duyệt cấp 1</th>
+                                    <th>Duyệt cuối</th>
                                     <th class="text-end">Thao tác</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                <c:forEach var="req" items="${requests}">
+                                <c:forEach var="leaveRequest" items="${leaveRequests}">
                                     <tr>
-                                        <td class="fw-medium text-on-surface">${req.employeeCode}</td>
-                                        <td>${req.userFullName}</td>
-                                        <td>${req.leaveTypeName}</td>
-                                        <td>${req.startDate}</td>
-                                        <td>${req.endDate}</td>
-                                        <td>${req.days.toBigInteger()}</td>
+                                        <td class="fw-medium text-on-surface">#${leaveRequest.id}</td>
+                                        <td>
+                                            <div class="fw-medium text-on-surface">
+                                                <c:out value="${leaveRequest.employeeName}" />
+                                            </div>
+                                            <div class="body-sm text-on-surface-variant">
+                                                <c:out value="${leaveRequest.employeeCode}" />
+                                            </div>
+                                        </td>
+                                        <td><c:out value="${empty leaveRequest.departmentName ? '-' : leaveRequest.departmentName}" /></td>
+                                        <td>
+                                            <span class="badge" style="background-color: var(--primary-fixed); color: var(--on-primary-fixed-variant);">
+                                                <c:out value="${leaveRequest.leaveTypeCode}" />
+                                            </span>
+                                            <span class="ms-2"><c:out value="${leaveRequest.leaveTypeName}" /></span>
+                                        </td>
+                                        <td>
+                                            <div><c:out value="${leaveRequest.startDate}" /></div>
+                                            <div class="body-sm text-on-surface-variant">đến <c:out value="${leaveRequest.endDate}" /></div>
+                                        </td>
+                                        <td class="text-end fw-medium">
+                                            <fmt:formatNumber value="${leaveRequest.days}" minFractionDigits="0" maxFractionDigits="2" />
+                                        </td>
                                         <td>
                                             <c:choose>
-                                                <c:when test="${req.status == 'PENDING'}">
+                                                <c:when test="${leaveRequest.status == 'PENDING'}">
                                                     <span class="badge" style="background-color: #fef3c7; color: #92400e;">Chờ duyệt</span>
                                                 </c:when>
-                                                <c:when test="${req.status == 'APPROVED_LEVEL_1'}">
-                                                    <span class="badge" style="background-color: #dbeafe; color: #1e40af;">Đã duyệt Cấp 1</span>
+                                                <c:when test="${leaveRequest.status == 'APPROVED_LEVEL_1'}">
+                                                    <span class="badge" style="background-color: #dbeafe; color: #1d4ed8;">Đã duyệt cấp 1</span>
                                                 </c:when>
-                                                <c:when test="${req.status == 'APPROVED'}">
+                                                <c:when test="${leaveRequest.status == 'APPROVED'}">
                                                     <span class="badge" style="background-color: #d1fae5; color: #065f46;">Đã duyệt</span>
                                                 </c:when>
-                                                <c:when test="${req.status == 'REJECTED'}">
+                                                <c:when test="${leaveRequest.status == 'REJECTED'}">
                                                     <span class="badge" style="background-color: #fee2e2; color: #991b1b;">Từ chối</span>
                                                 </c:when>
-                                                <c:when test="${req.status == 'CANCELLED'}">
+                                                <c:when test="${leaveRequest.status == 'CANCELLED'}">
                                                     <span class="badge" style="background-color: var(--surface-container-high); color: var(--on-surface-variant);">Đã hủy</span>
                                                 </c:when>
+                                                <c:otherwise>
+                                                    <span class="badge" style="background-color: var(--surface-container-high); color: var(--on-surface-variant);">
+                                                        <c:out value="${leaveRequest.status}" />
+                                                    </span>
+                                                </c:otherwise>
                                             </c:choose>
                                         </td>
+                                        <td><c:out value="${empty leaveRequest.level1ApproverName ? '-' : leaveRequest.level1ApproverName}" /></td>
+                                        <td><c:out value="${empty leaveRequest.approverName ? '-' : leaveRequest.approverName}" /></td>
                                         <td class="text-end">
-                                            <div class="d-flex justify-content-end gap-1">
-                                                <c:if test="${req.status == 'PENDING'}">
-                                                    <form action="${pageContext.request.contextPath}/leave-request-approve" method="POST" class="d-inline m-0">
-                                                        <input type="hidden" name="id" value="${req.id}" />
-                                                        <button type="submit" class="btn btn-sm btn-icon text-success hover-primary" title="Duyệt Cấp 1"
-                                                                onclick="return confirm('Duyệt yêu cầu này?');">
-                                                            <span class="material-symbols-outlined" style="font-size: 1.25rem;">check</span>
+                                            <div class="d-inline-flex gap-2 justify-content-end">
+                                                <c:if test="${canFinalApprove and leaveRequest.status == 'APPROVED_LEVEL_1'}">
+                                                    <form action="${pageContext.request.contextPath}/leave-request-final-approve" method="POST" class="d-inline">
+                                                        <input type="hidden" name="id" value="${leaveRequest.id}" />
+                                                        <button type="submit"
+                                                                class="btn btn-sm btn-icon text-success"
+                                                                title="Duyệt cuối"
+                                                                onclick="return confirm('Xác nhận duyệt cuối đơn nghỉ này?');">
+                                                            <span class="material-symbols-outlined" style="font-size: 1.25rem;">task_alt</span>
                                                         </button>
                                                     </form>
-                                                    <form action="${pageContext.request.contextPath}/leave-request-reject" method="POST" class="d-inline m-0">
-                                                        <input type="hidden" name="id" value="${req.id}" />
-                                                        <button type="submit" class="btn btn-sm btn-icon text-danger hover-danger" title="Từ chối"
-                                                                onclick="return confirm('Từ chối yêu cầu này?');">
-                                                            <span class="material-symbols-outlined" style="font-size: 1.25rem;">close</span>
-                                                        </button>
                                                 </c:if>
-                                                <c:if test="${req.status == 'APPROVED_LEVEL_1'}">
-                                                    <form action="${pageContext.request.contextPath}/leave-request-final-approve" method="POST" class="d-inline m-0">
-                                                        <input type="hidden" name="id" value="${req.id}" />
-                                                        <button type="submit" class="btn btn-sm btn-icon text-success hover-primary" title="Phê duyệt cuối"
-                                                                onclick="return confirm('Phê duyệt yêu cầu này?');">
-                                                            <span class="material-symbols-outlined" style="font-size: 1.25rem;">done_all</span>
+                                                <c:if test="${canReject and (leaveRequest.status == 'PENDING' or leaveRequest.status == 'APPROVED_LEVEL_1')}">
+                                                    <form action="${pageContext.request.contextPath}/leave-request-reject" method="POST" class="d-inline">
+                                                        <input type="hidden" name="id" value="${leaveRequest.id}" />
+                                                        <button type="submit"
+                                                                class="btn btn-sm btn-icon text-danger"
+                                                                title="Từ chối"
+                                                                onclick="return confirm('Xác nhận từ chối đơn nghỉ này?');">
+                                                            <span class="material-symbols-outlined" style="font-size: 1.25rem;">block</span>
                                                         </button>
                                                     </form>
-                                                    <form action="${pageContext.request.contextPath}/leave-request-reject" method="POST" class="d-inline m-0">
-                                                        <input type="hidden" name="id" value="${req.id}" />
-                                                        <button type="submit" class="btn btn-sm btn-icon text-danger hover-danger" title="Từ chối"
-                                                                onclick="return confirm('Từ chối yêu cầu này?');">
-                                                            <span class="material-symbols-outlined" style="font-size: 1.25rem;">close</span>
-                                                        </button>
                                                 </c:if>
                                             </div>
                                         </td>
                                     </tr>
                                 </c:forEach>
-                                <c:if test="${empty requests}">
+                                <c:if test="${empty leaveRequests}">
                                     <tr>
-                                        <td colspan="8" class="text-center py-4 text-on-surface-variant">
-                                            Không có yêu cầu nghỉ phép nào.
+                                        <td colspan="10" class="text-center py-4 text-on-surface-variant">
+                                            Chưa có đơn nghỉ nào phù hợp với bộ lọc hiện tại.
                                         </td>
                                     </tr>
                                 </c:if>
@@ -168,10 +180,19 @@
                     </div>
 
                     <c:if test="${totalPages > 1}">
-                        <div class="p-3 bg-surface border-top border-outline-variant d-flex align-items-center justify-content-center">
+                        <div class="p-3 bg-surface border-top border-outline-variant d-flex align-items-center justify-content-between flex-wrap gap-3">
+                            <div class="body-sm text-on-surface-variant">
+                                Tổng số đơn: ${totalRecords}
+                            </div>
                             <div class="d-flex gap-1 flex-wrap">
                                 <c:forEach begin="1" end="${totalPages}" var="i">
-                                    <a href="${pageContext.request.contextPath}/leave-request-list?page=${i}&keyword=${keyword}&status=${selectedStatus}&departmentId=${selectedDepartmentId}"
+                                    <c:url var="pageUrl" value="/leave-request-list">
+                                        <c:param name="page" value="${i}" />
+                                        <c:param name="keyword" value="${keyword}" />
+                                        <c:param name="status" value="${selectedStatus}" />
+                                        <c:param name="departmentId" value="${selectedDepartmentId}" />
+                                    </c:url>
+                                    <a href="${pageUrl}"
                                        class="btn btn-sm ${i == currentPage ? 'fw-bold' : 'btn-light border text-on-surface-variant'}"
                                        style="${i == currentPage ? 'background-color: var(--primary-fixed); color: var(--on-primary-fixed-variant); border: 1px solid var(--primary);' : 'background-color: var(--surface-container-lowest); border-color: var(--outline-variant) !important;'}">
                                         ${i}

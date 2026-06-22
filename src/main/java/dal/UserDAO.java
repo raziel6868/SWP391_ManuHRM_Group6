@@ -321,6 +321,37 @@ public class UserDAO {
 		return count("SELECT COUNT(*) FROM users WHERE role_id = ? AND is_active = TRUE", List.of(roleId));
 	}
 
+	/**
+	 * Lists active users (id, employee_code, full_name, department_name) for
+	 * dropdowns such as the contract-create form. Caller filters further if needed
+	 * (e.g. excluding users with an active contract).
+	 */
+	public List<User> getActiveUsersForDropdown() {
+		List<User> users = new ArrayList<>();
+		String sql = """
+				SELECT u.id, u.employee_code, u.full_name,
+				       d.name AS department_name
+				  FROM users u
+				  LEFT JOIN departments d ON u.department_id = d.id
+				 WHERE u.is_active = TRUE
+				 ORDER BY u.full_name ASC""";
+		try (Connection conn = DBContext.getConnection();
+				PreparedStatement ps = conn.prepareStatement(sql);
+				ResultSet rs = ps.executeQuery()) {
+			while (rs.next()) {
+				User u = new User();
+				u.setId(rs.getLong("id"));
+				u.setEmployeeCode(rs.getString("employee_code"));
+				u.setFullName(rs.getString("full_name"));
+				u.setDepartmentName(rs.getString("department_name"));
+				users.add(u);
+			}
+		} catch (SQLException e) {
+			System.err.println("UserDAO.getActiveUsersForDropdown() ERROR: " + e.getMessage());
+		}
+		return users;
+	}
+
 	// === PRIVATE HELPERS ===
 
 	private int count(String sql, List<Object> params) {

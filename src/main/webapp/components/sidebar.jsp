@@ -57,6 +57,22 @@
                         <span>Quản lý Loại hợp đồng</span>
                     </a>
                 </c:when>
+                <c:when test="${permission.code == 'CONTRACT_VIEW'}">
+                    <c:url var="menuUrl" value="${permission.urlPattern}" />
+                    <a class="${currentPath == permission.urlPattern ? 'sidebar-nav-item active text-decoration-none' : 'sidebar-nav-item text-decoration-none'}"
+                       href="${menuUrl}">
+                        <span class="material-symbols-outlined">assignment</span>
+                        <span>Quản lý Hợp đồng</span>
+                    </a>
+                </c:when>
+                <c:when test="${permission.code == 'CONTRACT_EXPIRY_VIEW'}">
+                    <c:url var="menuUrl" value="${permission.urlPattern}" />
+                    <a class="${currentPath == permission.urlPattern ? 'sidebar-nav-item active text-decoration-none' : 'sidebar-nav-item text-decoration-none'}"
+                       href="${menuUrl}">
+                        <span class="material-symbols-outlined">event_upcoming</span>
+                        <span>HĐ sắp hết hạn</span>
+                    </a>
+                </c:when>
                 <c:when test="${permission.code == 'LEAVE_TYPE_VIEW'}">
                     <c:url var="menuUrl" value="${permission.urlPattern}" />
                     <a class="${currentPath == permission.urlPattern ? 'sidebar-nav-item active text-decoration-none' : 'sidebar-nav-item text-decoration-none'}"

@@ -155,7 +155,9 @@ INSERT INTO permissions (id, code, name, url_pattern, module) VALUES
 (75, 'REPORT_OT',               'Overtime report',          '/report-overtime',         'REPORT'),
 -- Audit
 (76, 'AUDIT_LOG_VIEW',          'View audit log',           '/audit-log-list',          'AUDIT'),
-(77, 'APPROVAL_HISTORY_VIEW',   'View approval history',    '/approval-history-list',   'AUDIT');
+(77, 'APPROVAL_HISTORY_VIEW',   'View approval history',    '/approval-history-list',   'AUDIT'),
+(78, 'CONTRACT_TERMINATE',     'Terminate contracts',    '/contract-terminate',    'CONTRACT'),
+(79, 'CONTRACT_EXPIRY_VIEW',   'View expiring contracts',    '/contract-expiry',    'CONTRACT');
 
 -- =========================================================
 -- Iter 1 Role Permissions (Explicit)
@@ -199,12 +201,12 @@ INSERT INTO role_permissions (role_id, permission_id) VALUES
 (1, 53), (1, 54), (1, 55), (1, 56), (1, 57), (1, 58), (1, 59),
 (1, 60), (1, 61), (1, 62), (1, 63), (1, 64), (1, 65), (1, 66),
 (1, 67), (1, 68), (1, 69), (1, 70), (1, 71), (1, 72), (1, 73),
-(1, 74), (1, 75), (1, 76), (1, 77);
+(1, 74), (1, 75), (1, 76), (1, 77), (1, 78), (1, 79);
 
 -- HR_MANAGER: explicit operational scope
 INSERT INTO role_permissions (role_id, permission_id) VALUES
 -- Contracts
-(2, 32), (2, 33), (2, 34), (2, 35), (2, 36), (2, 37), (2, 38),
+(2, 32), (2, 33), (2, 34), (2, 35), (2, 36), (2, 37), (2, 38), (2, 78), (2, 79),
 -- Leave
 (2, 39), (2, 40), (2, 41), (2, 46), (2, 47),
 -- Shift Assignment

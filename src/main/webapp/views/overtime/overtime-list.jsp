@@ -1,0 +1,191 @@
+<%@ page contentType="text/html;charset=UTF-8" language="java" %>
+<%@ taglib prefix="c" uri="jakarta.tags.core" %>
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Danh sách tăng ca - ManuHRM</title>
+    <link href="${pageContext.request.contextPath}/assets/css/main.css" rel="stylesheet">
+</head>
+<body class="bg-background text-on-surface">
+    <div class="layout-wrapper">
+        <jsp:include page="/components/sidebar.jsp" />
+        <div class="main-content">
+            <jsp:include page="/components/header.jsp" />
+
+            <div class="page-container">
+                <c:if test="${not empty successMsg}">
+                    <div class="alert alert-success d-flex align-items-center gap-2 mb-3" role="alert">
+                        <span class="material-symbols-outlined">check_circle</span>
+                        <c:out value="${successMsg}" />
+                    </div>
+                </c:if>
+                <c:if test="${not empty errorMsg}">
+                    <div class="alert alert-danger d-flex align-items-center gap-2 mb-3" role="alert">
+                        <span class="material-symbols-outlined">error</span>
+                        <c:out value="${errorMsg}" />
+                    </div>
+                </c:if>
+
+                <div class="d-flex justify-content-between align-items-end mb-4 flex-wrap gap-3">
+                    <div>
+                        <h2 class="h3 text-on-surface fw-bold mb-1">Danh sách tăng ca</h2>
+                        <p class="body-md text-on-surface-variant mb-0">Xem và phê duyệt các yêu cầu tăng ca (OT) của nhân viên.</p>
+                    </div>
+                    <c:if test="${canRequest}">
+                        <a href="${pageContext.request.contextPath}/overtime-request"
+                           class="btn-primary-gradient text-decoration-none px-3 py-2 d-flex align-items-center gap-2 shadow-sm">
+                            <span class="material-symbols-outlined" style="font-size: 1.125rem;">add_circle</span>
+                            Tạo yêu cầu OT
+                        </a>
+                    </c:if>
+                </div>
+
+                <div class="card-premium overflow-hidden d-flex flex-column mb-4 w-100">
+                    <div class="p-3 bg-surface border-bottom border-outline-variant">
+                        <form action="${pageContext.request.contextPath}/overtime-list" method="GET"
+                              class="row g-3 align-items-end">
+                            <div class="col-md-3">
+                                <label class="form-label text-on-surface fw-medium mb-1">Trạng thái</label>
+                                <select name="status" class="form-select input-premium">
+                                    <option value="">-- Tất cả --</option>
+                                    <option value="PENDING"  ${selectedStatus == 'PENDING'  ? 'selected' : ''}>Đang chờ</option>
+                                    <option value="APPROVED" ${selectedStatus == 'APPROVED' ? 'selected' : ''}>Đã duyệt</option>
+                                    <option value="REJECTED" ${selectedStatus == 'REJECTED' ? 'selected' : ''}>Đã từ chối</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <button type="submit" class="btn btn-primary w-100">Lọc</button>
+                            </div>
+                            <div class="col-md-4 text-md-end text-on-surface-variant body-sm">
+                                Tổng số: <strong>${totalRecords}</strong>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="table table-premium mb-0 w-100">
+                            <thead>
+                                <tr>
+                                    <th>Mã NV</th>
+                                    <th>Nhân viên</th>
+                                    <th>Ngày OT</th>
+                                    <th>Giờ đề nghị</th>
+                                    <th>Giờ duyệt</th>
+                                    <th>Lý do</th>
+                                    <th>Trạng thái</th>
+                                    <th>Người duyệt</th>
+                                    <th class="text-end">Thao tác</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <c:forEach var="ot" items="${overtimeRecords}">
+                                    <tr>
+                                        <td class="fw-medium text-on-surface"><c:out value="${ot.employeeCode}" /></td>
+                                        <td><c:out value="${ot.employeeName}" /></td>
+                                        <td>${ot.date}</td>
+                                        <td class="fw-medium text-on-surface">${ot.requestedHours}h</td>
+                                        <td>
+                                            <c:choose>
+                                                <c:when test="${not empty ot.approvedHours}">${ot.approvedHours}h</c:when>
+                                                <c:otherwise><span class="text-on-surface-variant">—</span></c:otherwise>
+                                            </c:choose>
+                                        </td>
+                                        <td style="max-width: 220px;"><c:out value="${ot.reason}" /></td>
+                                        <td>
+                                            <c:choose>
+                                                <c:when test="${ot.status == 'PENDING'}">
+                                                    <span class="badge" style="background-color: #fef3c7; color: #92400e;">Đang chờ</span>
+                                                </c:when>
+                                                <c:when test="${ot.status == 'APPROVED'}">
+                                                    <span class="badge" style="background-color: #d1fae5; color: #065f46;">Đã duyệt</span>
+                                                </c:when>
+                                                <c:when test="${ot.status == 'REJECTED'}">
+                                                    <span class="badge" style="background-color: #fee2e2; color: #991b1b;">Đã từ chối</span>
+                                                </c:when>
+                                            </c:choose>
+                                        </td>
+                                        <td>
+                                            <c:out value="${ot.approverName}" default="—" />
+                                        </td>
+                                        <td class="text-end">
+                                            <c:if test="${ot.status == 'PENDING' && (canApprove || canReject)}">
+                                                <div class="d-flex justify-content-end align-items-center gap-1 flex-wrap">
+                                                    <c:if test="${canApprove && ot.userId != sessionScope.authUser.id}">
+                                                        <form method="post"
+                                                              action="${pageContext.request.contextPath}/overtime-approve"
+                                                              class="d-inline-flex align-items-center gap-1 m-0"
+                                                              onsubmit="return confirm('Duyệt yêu cầu OT của ${ot.employeeName}?')">
+                                                            <input type="hidden" name="id" value="${ot.id}" />
+                                                            <input type="number" name="approvedHours"
+                                                                   class="form-control form-control-sm input-premium"
+                                                                   style="width: 72px;"
+                                                                   value="${ot.requestedHours}"
+                                                                   min="0.5" max="24" step="0.5"
+                                                                   title="Giờ duyệt" required />
+                                                            <button type="submit"
+                                                                    class="btn btn-sm btn-icon text-on-surface-variant hover-primary"
+                                                                    title="Duyệt">
+                                                                <span class="material-symbols-outlined" style="font-size: 1.25rem; color: #065f46;">check_circle</span>
+                                                            </button>
+                                                        </form>
+                                                    </c:if>
+                                                    <c:if test="${canReject && ot.userId != sessionScope.authUser.id}">
+                                                        <form method="post"
+                                                              action="${pageContext.request.contextPath}/overtime-reject"
+                                                              class="d-inline m-0"
+                                                              onsubmit="return confirm('Từ chối yêu cầu OT của ${ot.employeeName}?')">
+                                                            <input type="hidden" name="id" value="${ot.id}" />
+                                                            <button type="submit"
+                                                                    class="btn btn-sm btn-icon text-on-surface-variant hover-primary"
+                                                                    title="Từ chối">
+                                                                <span class="material-symbols-outlined" style="font-size: 1.25rem; color: #991b1b;">cancel</span>
+                                                            </button>
+                                                        </form>
+                                                    </c:if>
+                                                </div>
+                                            </c:if>
+                                            <c:if test="${ot.status == 'PENDING' && !canApprove && !canReject}">
+                                                <span class="text-on-surface-variant body-sm">—</span>
+                                            </c:if>
+                                            <c:if test="${ot.status != 'PENDING'}">
+                                                <span class="text-on-surface-variant body-sm">—</span>
+                                            </c:if>
+                                        </td>
+                                    </tr>
+                                </c:forEach>
+                                <c:if test="${empty overtimeRecords}">
+                                    <tr>
+                                        <td colspan="9" class="text-center py-4 text-on-surface-variant">
+                                            Không có yêu cầu tăng ca nào.
+                                        </td>
+                                    </tr>
+                                </c:if>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <c:if test="${totalPages > 1}">
+                        <div class="p-3 bg-surface border-top border-outline-variant d-flex align-items-center justify-content-center">
+                            <div class="d-flex gap-1 flex-wrap">
+                                <c:forEach begin="1" end="${totalPages}" var="i">
+                                    <a href="${pageContext.request.contextPath}/overtime-list?page=${i}&status=${selectedStatus}"
+                                       class="btn btn-sm ${i == currentPage ? 'fw-bold' : 'btn-light border text-on-surface-variant'}"
+                                       style="${i == currentPage ? 'background-color: var(--primary-fixed); color: var(--on-primary-fixed-variant); border: 1px solid var(--primary);' : 'background-color: var(--surface-container-lowest); border-color: var(--outline-variant) !important;'}">
+                                        ${i}
+                                    </a>
+                                </c:forEach>
+                            </div>
+                        </div>
+                    </c:if>
+                </div>
+            </div>
+
+            <jsp:include page="/components/footer.jsp" />
+        </div>
+    </div>
+
+    <jsp:include page="/components/foot.jsp" />
+</body>
+</html>

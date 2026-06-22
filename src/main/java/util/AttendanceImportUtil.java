@@ -66,14 +66,23 @@ public class AttendanceImportUtil {
 				LocalTime checkIn = readTime(row.getCell(2), formatter);
 				LocalTime checkOut = readTime(row.getCell(3), formatter);
 
-				validateRequired(errors, displayRow, employeeCode, date, checkIn, checkOut);
-				if (employeeCode == null || date == null || checkIn == null || checkOut == null) {
+				// Chỉ bắt buộc employeeCode và date
+				validateRequired(errors, displayRow, employeeCode, date);
+				if (employeeCode == null || date == null) {
 					continue;
 				}
 
-				if (!checkOut.isAfter(checkIn)) {
-					errors.add("Dòng " + displayRow + ": Giờ ra phải lớn hơn giờ vào.");
-					continue;
+				// checkIn có giá trị → checkOut bắt buộc phải có và phải sau checkIn
+				// checkIn null → ABSENT, hợp lệ, không báo lỗi
+				if (checkIn != null) {
+					if (checkOut == null) {
+						errors.add("Dòng " + displayRow + ": Có giờ vào nhưng thiếu giờ ra. Định dạng gợi ý: HH:mm.");
+						continue;
+					}
+					if (!checkOut.isAfter(checkIn)) {
+						errors.add("Dòng " + displayRow + ": Giờ ra phải lớn hơn giờ vào.");
+						continue;
+					}
 				}
 
 				String key = employeeCode.toUpperCase() + "|" + date;
@@ -101,9 +110,11 @@ public class AttendanceImportUtil {
 				record.setEmployeeCode(employeeCode);
 				record.setDate(sqlDate);
 				record.setShiftId(shift.getId());
-				record.setCheckIn(Time.valueOf(checkIn));
-				record.setCheckOut(Time.valueOf(checkOut));
-				record.setWorkingHours(calculateWorkingHours(checkIn, checkOut, shift.getBreakMinutes()));
+				record.setCheckIn(checkIn != null ? Time.valueOf(checkIn) : null);
+				record.setCheckOut(checkOut != null ? Time.valueOf(checkOut) : null);
+				record.setWorkingHours(checkIn != null && checkOut != null
+						? calculateWorkingHours(checkIn, checkOut, shift.getBreakMinutes())
+						: null);
 				record.setStatus(resolveStatus(checkIn, shift.getStartTime()));
 				record.setImportBatchId(importBatchId);
 				records.add(record);
@@ -125,19 +136,12 @@ public class AttendanceImportUtil {
 		return records;
 	}
 
-	private void validateRequired(List<String> errors, int rowNumber, String employeeCode, LocalDate date,
-			LocalTime checkIn, LocalTime checkOut) {
+	private void validateRequired(List<String> errors, int rowNumber, String employeeCode, LocalDate date) {
 		if (employeeCode == null) {
 			errors.add("Dòng " + rowNumber + ": Thiếu mã nhân viên.");
 		}
 		if (date == null) {
 			errors.add("Dòng " + rowNumber + ": Ngày không hợp lệ. Định dạng gợi ý: yyyy-MM-dd.");
-		}
-		if (checkIn == null) {
-			errors.add("Dòng " + rowNumber + ": Giờ vào không hợp lệ. Định dạng gợi ý: HH:mm.");
-		}
-		if (checkOut == null) {
-			errors.add("Dòng " + rowNumber + ": Giờ ra không hợp lệ. Định dạng gợi ý: HH:mm.");
 		}
 	}
 

@@ -5,7 +5,7 @@
 <c:set var="currentPath" value="${pageContext.request.servletPath}" />
 <c:set var="hasAdminPermission" value="${false}" />
 <c:forEach var="permission" items="${sessionScope.permissions}">
-    <c:if test="${permission.code == 'USER_VIEW' or permission.code == 'ROLE_VIEW' or permission.code == 'CONTRACT_TYPE_VIEW' or permission.code == 'LEAVE_TYPE_VIEW' or permission.code == 'LEAVE_BALANCE_SETUP' or permission.code == 'LEAVE_REQUEST_VIEW' or permission.code == 'SHIFT_VIEW' or permission.code == 'SHIFT_ASSIGNMENT_VIEW' or permission.code == 'JOB_TITLE_VIEW' or permission.code == 'DEPARTMENT_VIEW' or permission.code == 'ATTENDANCE_VIEW' or permission.code == 'ATTENDANCE_CORRECTION_VIEW' or permission.code == 'OT_VIEW' or permission.code == 'MONTHLY_SHEET_VIEW'}">
+    <c:if test="${permission.code == 'USER_VIEW' or permission.code == 'ROLE_VIEW' or permission.code == 'CONTRACT_TYPE_VIEW' or permission.code == 'LEAVE_TYPE_VIEW' or permission.code == 'LEAVE_BALANCE_SETUP' or permission.code == 'LEAVE_REQUEST_VIEW' or permission.code == 'SHIFT_VIEW' or permission.code == 'SHIFT_ASSIGNMENT_VIEW' or permission.code == 'JOB_TITLE_VIEW' or permission.code == 'DEPARTMENT_VIEW' or permission.code == 'ATTENDANCE_VIEW' or permission.code == 'ATTENDANCE_CORRECTION_VIEW' or permission.code == 'OT_VIEW' or permission.code == 'MONTHLY_SHEET_VIEW' or permission.code == 'SALARY_BASE_SETUP' or permission.code == 'PAYROLL_VIEW' or permission.code == 'PAYSLIP_VIEW'}">
         <c:set var="hasAdminPermission" value="${true}" />
     </c:if>
 </c:forEach>
@@ -178,6 +178,30 @@
                         <span>Tăng ca của tôi</span>
                     </a>
                 </c:when>
+                <c:when test="${permission.code == 'SALARY_BASE_SETUP'}">
+                    <c:url var="menuUrl" value="${permission.urlPattern}" />
+                    <a class="${currentPath == permission.urlPattern ? 'sidebar-nav-item active text-decoration-none' : 'sidebar-nav-item text-decoration-none'}"
+                       href="${menuUrl}">
+                        <span class="material-symbols-outlined">payments</span>
+                        <span>Thiết lập lương</span>
+                    </a>
+                </c:when>
+                <c:when test="${permission.code == 'PAYROLL_VIEW'}">
+                    <c:url var="menuUrl" value="${permission.urlPattern}" />
+                    <a class="${currentPath == permission.urlPattern ? 'sidebar-nav-item active text-decoration-none' : 'sidebar-nav-item text-decoration-none'}"
+                       href="${menuUrl}">
+                        <span class="material-symbols-outlined">account_balance_wallet</span>
+                        <span>Bảng lương</span>
+                    </a>
+                </c:when>
+                <c:when test="${permission.code == 'PAYSLIP_VIEW'}">
+                    <c:url var="menuUrl" value="${permission.urlPattern}" />
+                    <a class="${currentPath == permission.urlPattern ? 'sidebar-nav-item active text-decoration-none' : 'sidebar-nav-item text-decoration-none'}"
+                       href="${menuUrl}">
+                        <span class="material-symbols-outlined">receipt_long</span>
+                        <span>Phiếu lương</span>
+                    </a>
+                </c:when>
             </c:choose>
         </c:forEach>
 
@@ -201,6 +225,14 @@
                        href="${menuUrl}">
                         <span class="material-symbols-outlined">calendar_month</span>
                         <span>Yêu cầu nghỉ phép</span>
+                    </a>
+                </c:if>
+                <c:if test="${permission.code == 'PAYSLIP_VIEW'}">
+                    <c:url var="menuUrl" value="${permission.urlPattern}" />
+                    <a class="${currentPath == permission.urlPattern ? 'sidebar-nav-item active text-decoration-none' : 'sidebar-nav-item text-decoration-none'}"
+                       href="${menuUrl}">
+                        <span class="material-symbols-outlined">receipt_long</span>
+                        <span>Phiếu lương</span>
                     </a>
                 </c:if>
             </c:forEach>

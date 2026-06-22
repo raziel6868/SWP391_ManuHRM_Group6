@@ -7,6 +7,7 @@ USE manufacturing_hrm;
 
 SET FOREIGN_KEY_CHECKS = 0;
 TRUNCATE TABLE password_resets;
+TRUNCATE TABLE holidays;
 TRUNCATE TABLE audit_logs;
 TRUNCATE TABLE monthly_salaries;
 TRUNCATE TABLE monthly_sheets;
@@ -156,8 +157,11 @@ INSERT INTO permissions (id, code, name, url_pattern, module) VALUES
 -- Audit
 (76, 'AUDIT_LOG_VIEW',          'View audit log',           '/audit-log-list',          'AUDIT'),
 (77, 'APPROVAL_HISTORY_VIEW',   'View approval history',    '/approval-history-list',   'AUDIT'),
-(78, 'CONTRACT_TERMINATE',     'Terminate contracts',    '/contract-terminate',    'CONTRACT'),
-(79, 'CONTRACT_EXPIRY_VIEW',   'View expiring contracts',    '/contract-expiry',    'CONTRACT');
+-- Holiday Management (IDs 78-82)
+(78, 'HOLIDAY_VIEW',            'View holidays',            '/holiday-list',           'HOLIDAY'),
+(79, 'HOLIDAY_CREATE',          'Create holiday',           '/holiday-create',         'HOLIDAY'),
+(80, 'HOLIDAY_UPDATE',          'Update holiday',           '/holiday-update',         'HOLIDAY'),
+(81, 'HOLIDAY_DELETE',          'Delete holiday',           '/holiday-delete',         'HOLIDAY');
 
 -- =========================================================
 -- Iter 1 Role Permissions (Explicit)
@@ -201,7 +205,9 @@ INSERT INTO role_permissions (role_id, permission_id) VALUES
 (1, 53), (1, 54), (1, 55), (1, 56), (1, 57), (1, 58), (1, 59),
 (1, 60), (1, 61), (1, 62), (1, 63), (1, 64), (1, 65), (1, 66),
 (1, 67), (1, 68), (1, 69), (1, 70), (1, 71), (1, 72), (1, 73),
-(1, 74), (1, 75), (1, 76), (1, 77), (1, 78), (1, 79);
+(1, 74), (1, 75), (1, 76), (1, 77);
+-- Holiday permissions for SYSADMIN
+(1, 78), (1, 79), (1, 80), (1, 81);
 
 -- HR_MANAGER: explicit operational scope
 INSERT INTO role_permissions (role_id, permission_id) VALUES
@@ -222,7 +228,9 @@ INSERT INTO role_permissions (role_id, permission_id) VALUES
 -- Reports
 (2, 70), (2, 71), (2, 72), (2, 73), (2, 74), (2, 75),
 -- Audit
-(2, 76), (2, 77);
+(2, 76), (2, 77),
+-- Holiday permissions for HR_MANAGER
+(2, 78), (2, 79), (2, 80), (2, 81);
 
 -- PRODUCTION_SUPERVISOR: exact operational scope
 INSERT INTO role_permissions (role_id, permission_id) VALUES
@@ -312,4 +320,14 @@ INSERT INTO monthly_salaries (monthly_sheet_id, user_id, actual_work_days, ot_ho
 
 INSERT INTO audit_logs (event_code, entity_type, entity_id, actor_id, actor_name, changed_fields, ip_address) VALUES
 ('SYSTEM_RESET', 'DATABASE', 1, 1, 'admin', 'Reset to Iter 3 baseline', '127.0.0.1');
+
+-- =========================================================
+-- Holiday sample data
+-- =========================================================
+
+INSERT INTO holidays (date, name, is_recurring, description) VALUES
+('2026-01-01', 'Tet Duong Lich', TRUE, 'Ngay Tet nam moi'),
+('2026-04-30', 'Ngay Giai Phong Mien Nam', TRUE, 'Ky niem 30/4'),
+('2026-05-01', 'Ngay Lao Dong Quoc Te', TRUE, 'Ngay 1 thang 5'),
+('2026-09-02', 'Quoc Khanh', TRUE, 'Ngay Quoc khanz 2/9');
 

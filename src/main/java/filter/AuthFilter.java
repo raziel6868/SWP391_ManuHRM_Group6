@@ -229,6 +229,16 @@ public class AuthFilter implements Filter {
 			return true;
 		if (path.startsWith("/profile"))
 			return true;
+		if (path.startsWith("/my-shift"))
+			return true;
+		if (path.startsWith("/shift-calendar"))
+			return true;
+		if (path.startsWith("/shift-conflict"))
+			return true;
+		if (path.startsWith("/shift-assignment-list"))
+			return true;
+		if (path.startsWith("/shift-assignment-assign"))
+			return true;
 		return false;
 	}
 }

@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.util.List;
 import model.LeaveBalance;
 import model.LeaveRequest;
+import model.Permission;
 import model.User;
 
 @WebServlet(name = "LeaveRequestMyServlet", urlPatterns = {"/leave-request-my"})
@@ -26,8 +27,10 @@ public class LeaveRequestMyServlet extends HttpServlet {
 		request.setCharacterEncoding("UTF-8");
 		HttpSession session = request.getSession();
 		User authUser = (User) session.getAttribute("authUser");
+		@SuppressWarnings("unchecked")
+		List<Permission> permissions = (List<Permission>) session.getAttribute("permissions");
 
-		if (authUser == null) {
+		if (authUser == null || permissions == null || !hasPermission(permissions, "LEAVE_MY_VIEW")) {
 			response.sendRedirect(request.getContextPath() + "/login");
 			return;
 		}
@@ -52,5 +55,17 @@ public class LeaveRequestMyServlet extends HttpServlet {
 			request.setAttribute(key, value);
 			session.removeAttribute(key);
 		}
+	}
+
+	private boolean hasPermission(List<Permission> permissions, String code) {
+		if (permissions == null) {
+			return false;
+		}
+		for (Permission p : permissions) {
+			if (p.getCode().equals(code)) {
+				return true;
+			}
+		}
+		return false;
 	}
 }

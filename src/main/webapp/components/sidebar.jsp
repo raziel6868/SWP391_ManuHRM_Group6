@@ -202,6 +202,55 @@
                         <span>Phiếu lương</span>
                     </a>
                 </c:when>
+                <c:when test="${permission.code == 'REPORT_ATTENDANCE'}">
+                    <div class="sidebar-section-label">Báo cáo</div>
+                    <c:url var="menuUrl" value="${permission.urlPattern}" />
+                    <a class="${currentPath == permission.urlPattern ? 'sidebar-nav-item active text-decoration-none' : 'sidebar-nav-item text-decoration-none'}"
+                       href="${menuUrl}">
+                        <span class="material-symbols-outlined">assignment</span>
+                        <span>Chấm công</span>
+                    </a>
+                </c:when>
+                <c:when test="${permission.code == 'REPORT_LEAVE'}">
+                    <c:url var="menuUrl" value="${permission.urlPattern}" />
+                    <a class="${currentPath == permission.urlPattern ? 'sidebar-nav-item active text-decoration-none' : 'sidebar-nav-item text-decoration-none'}"
+                       href="${menuUrl}">
+                        <span class="material-symbols-outlined">event_busy</span>
+                        <span>Nghỉ phép</span>
+                    </a>
+                </c:when>
+                <c:when test="${permission.code == 'REPORT_HEADCOUNT'}">
+                    <c:url var="menuUrl" value="${permission.urlPattern}" />
+                    <a class="${currentPath == permission.urlPattern ? 'sidebar-nav-item active text-decoration-none' : 'sidebar-nav-item text-decoration-none'}"
+                       href="${menuUrl}">
+                        <span class="material-symbols-outlined">groups</span>
+                        <span>Nhân sự</span>
+                    </a>
+                </c:when>
+                <c:when test="${permission.code == 'REPORT_CONTRACT'}">
+                    <c:url var="menuUrl" value="${permission.urlPattern}" />
+                    <a class="${currentPath == permission.urlPattern ? 'sidebar-nav-item active text-decoration-none' : 'sidebar-nav-item text-decoration-none'}"
+                       href="${menuUrl}">
+                        <span class="material-symbols-outlined">description</span>
+                        <span>Hợp đồng</span>
+                    </a>
+                </c:when>
+                <c:when test="${permission.code == 'REPORT_PAYROLL'}">
+                    <c:url var="menuUrl" value="${permission.urlPattern}" />
+                    <a class="${currentPath == permission.urlPattern ? 'sidebar-nav-item active text-decoration-none' : 'sidebar-nav-item text-decoration-none'}"
+                       href="${menuUrl}">
+                        <span class="material-symbols-outlined">payments</span>
+                        <span>Lương</span>
+                    </a>
+                </c:when>
+                <c:when test="${permission.code == 'REPORT_OT'}">
+                    <c:url var="menuUrl" value="${permission.urlPattern}" />
+                    <a class="${currentPath == permission.urlPattern ? 'sidebar-nav-item active text-decoration-none' : 'sidebar-nav-item text-decoration-none'}"
+                       href="${menuUrl}">
+                        <span class="material-symbols-outlined">hourglass_bottom</span>
+                        <span>Tăng ca</span>
+                    </a>
+                </c:when>
             </c:choose>
         </c:forEach>
 

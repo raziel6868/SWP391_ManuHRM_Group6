@@ -210,13 +210,18 @@ CREATE TABLE contracts (
     end_date DATE NULL,
     salary DECIMAL(15,2) NULL,
     file_path VARCHAR(500) NULL,
+    terminated_at DATE NULL,
+    terminated_by BIGINT NULL,
+    terminate_reason TEXT NULL,
     status ENUM('ACTIVE', 'EXPIRED', 'PENDING_RENEWAL', 'TERMINATED') NOT NULL DEFAULT 'ACTIVE',
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     CONSTRAINT fk_contracts_user
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE RESTRICT,
     CONSTRAINT fk_contracts_contract_type
-        FOREIGN KEY (contract_type_id) REFERENCES contract_types(id) ON DELETE RESTRICT
+        FOREIGN KEY (contract_type_id) REFERENCES contract_types(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_contracts_terminated_by
+        FOREIGN KEY (terminated_by) REFERENCES users(id) ON DELETE SET NULL
 );
 
 CREATE TABLE leave_balances (

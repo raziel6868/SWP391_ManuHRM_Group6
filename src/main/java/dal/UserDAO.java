@@ -85,6 +85,39 @@ public class UserDAO {
 		return null;
 	}
 
+	public User getByEmployeeCode(String employeeCode) {
+		if (employeeCode == null || employeeCode.trim().isEmpty()) {
+			return null;
+		}
+		String sql = """
+				SELECT u.id, u.employee_code, u.username, u.full_name,
+				       u.phone, u.dob, u.employee_type, u.is_active,
+				       u.job_title_id, jt.name AS job_title_name,
+				       u.department_id, u.role_id, u.manager_id, u.created_at, u.updated_at,
+				       d.name AS department_name, r.name AS role_name, r.display_name AS role_display_name,
+				       COALESCE(r.hierarchy_level, 1) AS hierarchy_level,
+				       m.full_name AS manager_name
+				FROM users u
+				LEFT JOIN departments d ON u.department_id = d.id
+				LEFT JOIN roles r ON u.role_id = r.id
+				LEFT JOIN job_titles jt ON u.job_title_id = jt.id
+				LEFT JOIN users m ON u.manager_id = m.id
+				WHERE u.employee_code = ?
+				""";
+
+		try (Connection conn = DBContext.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+			ps.setString(1, employeeCode.trim());
+			try (ResultSet rs = ps.executeQuery()) {
+				if (rs.next()) {
+					return mapRow(rs);
+				}
+			}
+		} catch (SQLException e) {
+			System.err.println("UserDAO.getByEmployeeCode() ERROR: " + e.getMessage());
+		}
+		return null;
+	}
+
 	// === TÌM KIẾM & PHÂN TRANG ===
 
 	public List<User> searchUsers(String keyword, Long departmentId, Long roleId, Boolean isActive, String employeeType,

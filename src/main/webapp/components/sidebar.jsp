@@ -5,7 +5,8 @@
 <c:set var="currentPath" value="${pageContext.request.servletPath}" />
 <c:set var="hasAdminPermission" value="${false}" />
 <c:forEach var="permission" items="${sessionScope.permissions}">
-<c:if test="${permission.code == 'USER_VIEW' or permission.code == 'ROLE_VIEW' or permission.code == 'CONTRACT_TYPE_VIEW' or permission.code == 'LEAVE_TYPE_VIEW' or permission.code == 'SHIFT_VIEW' or permission.code == 'JOB_TITLE_VIEW' or permission.code == 'DEPARTMENT_VIEW' or permission.code == 'ATTENDANCE_VIEW' or permission.code == 'ATTENDANCE_IMPORT' or permission.code == 'ATTENDANCE_CORRECTION_VIEW' or permission.code == 'ATTENDANCE_MY_VIEW' or permission.code == 'OT_VIEW' or permission.code == 'OT_REQUEST'}">        <c:set var="hasAdminPermission" value="${true}" />
+    <c:if test="${permission.code == 'USER_VIEW' or permission.code == 'ROLE_VIEW' or permission.code == 'CONTRACT_TYPE_VIEW' or permission.code == 'LEAVE_TYPE_VIEW' or permission.code == 'LEAVE_BALANCE_SETUP' or permission.code == 'LEAVE_REQUEST_VIEW' or permission.code == 'SHIFT_VIEW' or permission.code == 'SHIFT_ASSIGNMENT_VIEW' or permission.code == 'JOB_TITLE_VIEW' or permission.code == 'DEPARTMENT_VIEW' or permission.code == 'ATTENDANCE_VIEW' or permission.code == 'ATTENDANCE_MY_VIEW' or permission.code == 'ATTENDANCE_CORRECTION_VIEW' or permission.code == 'OT_VIEW' or permission.code == 'MONTHLY_SHEET_VIEW' or permission.code == 'SALARY_BASE_SETUP' or permission.code == 'PAYROLL_VIEW' or permission.code == 'PAYSLIP_VIEW'}">
+        <c:set var="hasAdminPermission" value="${true}" />
     </c:if>
 </c:forEach>
 
@@ -65,14 +66,6 @@
                         <span>Quản lý Hợp đồng</span>
                     </a>
                 </c:when>
-                <c:when test="${permission.code == 'CONTRACT_EXPIRY_VIEW'}">
-                    <c:url var="menuUrl" value="${permission.urlPattern}" />
-                    <a class="${currentPath == permission.urlPattern ? 'sidebar-nav-item active text-decoration-none' : 'sidebar-nav-item text-decoration-none'}"
-                       href="${menuUrl}">
-                        <span class="material-symbols-outlined">event_upcoming</span>
-                        <span>HĐ sắp hết hạn</span>
-                    </a>
-                </c:when>
                 <c:when test="${permission.code == 'LEAVE_TYPE_VIEW'}">
                     <c:url var="menuUrl" value="${permission.urlPattern}" />
                     <a class="${currentPath == permission.urlPattern ? 'sidebar-nav-item active text-decoration-none' : 'sidebar-nav-item text-decoration-none'}"
@@ -81,12 +74,44 @@
                         <span>Quản lý Loại nghỉ</span>
                     </a>
                 </c:when>
+                <c:when test="${permission.code == 'LEAVE_BALANCE_SETUP'}">
+                    <c:url var="menuUrl" value="${permission.urlPattern}" />
+                    <a class="${currentPath == permission.urlPattern ? 'sidebar-nav-item active text-decoration-none' : 'sidebar-nav-item text-decoration-none'}"
+                       href="${menuUrl}">
+                        <span class="material-symbols-outlined">event_available</span>
+                        <span>Thiết lập nghỉ phép</span>
+                    </a>
+                </c:when>
+                <c:when test="${permission.code == 'LEAVE_REQUEST_VIEW'}">
+                    <c:url var="menuUrl" value="${permission.urlPattern}" />
+                    <a class="${currentPath == permission.urlPattern ? 'sidebar-nav-item active text-decoration-none' : 'sidebar-nav-item text-decoration-none'}"
+                       href="${menuUrl}">
+                        <span class="material-symbols-outlined">how_to_reg</span>
+                        <span>Duyệt nghỉ phép</span>
+                    </a>
+                </c:when>
+                <c:when test="${permission.code == 'LEAVE_MY_VIEW'}">
+                    <c:url var="menuUrl" value="${permission.urlPattern}" />
+                    <a class="${currentPath == permission.urlPattern ? 'sidebar-nav-item active text-decoration-none' : 'sidebar-nav-item text-decoration-none'}"
+                       href="${menuUrl}">
+                        <span class="material-symbols-outlined">calendar_month</span>
+                        <span>Yêu cầu nghỉ phép</span>
+                    </a>
+                </c:when>
                 <c:when test="${permission.code == 'SHIFT_VIEW'}">
                     <c:url var="menuUrl" value="${permission.urlPattern}" />
                     <a class="${currentPath == permission.urlPattern ? 'sidebar-nav-item active text-decoration-none' : 'sidebar-nav-item text-decoration-none'}"
                        href="${menuUrl}">
                         <span class="material-symbols-outlined">schedule</span>
                         <span>Quản lý Ca làm việc</span>
+                    </a>
+                </c:when>
+                <c:when test="${permission.code == 'SHIFT_ASSIGNMENT_VIEW'}">
+                    <c:url var="menuUrl" value="${permission.urlPattern}" />
+                    <a class="${currentPath == permission.urlPattern ? 'sidebar-nav-item active text-decoration-none' : 'sidebar-nav-item text-decoration-none'}"
+                       href="${menuUrl}">
+                        <span class="material-symbols-outlined">event</span>
+                        <span>Phân ca</span>
                     </a>
                 </c:when>
                 <c:when test="${permission.code == 'JOB_TITLE_VIEW'}">
@@ -113,6 +138,119 @@
                         <span>Quản lý Ngày lễ</span>
                     </a>
                 </c:when>
+                <c:when test="${permission.code == 'ATTENDANCE_VIEW'}">
+                    <c:url var="menuUrl" value="${permission.urlPattern}" />
+                    <a class="${currentPath == permission.urlPattern ? 'sidebar-nav-item active text-decoration-none' : 'sidebar-nav-item text-decoration-none'}"
+                       href="${menuUrl}">
+                        <span class="material-symbols-outlined">access_time</span>
+                        <span>Quản lý Chấm công</span>
+                    </a>
+                </c:when>
+                <c:when test="${permission.code == 'ATTENDANCE_CORRECTION_VIEW'}">
+                    <c:url var="menuUrl" value="${permission.urlPattern}" />
+                    <a class="${currentPath == permission.urlPattern ? 'sidebar-nav-item active text-decoration-none' : 'sidebar-nav-item text-decoration-none'}"
+                       href="${menuUrl}">
+                        <span class="material-symbols-outlined">fact_check</span>
+                        <span>Duyệt Sửa Chấm Công</span>
+                    </a>
+                </c:when>
+                <c:when test="${permission.code == 'OT_VIEW'}">
+                    <c:url var="menuUrl" value="${permission.urlPattern}" />
+                    <a class="${currentPath == permission.urlPattern ? 'sidebar-nav-item active text-decoration-none' : 'sidebar-nav-item text-decoration-none'}"
+                       href="${menuUrl}">
+                        <span class="material-symbols-outlined">hourglass_bottom</span>
+                        <span>Quản lý Tăng ca</span>
+                    </a>
+                </c:when>
+                <c:when test="${permission.code == 'MONTHLY_SHEET_VIEW'}">
+                    <c:url var="menuUrl" value="${permission.urlPattern}" />
+                    <a class="${currentPath == permission.urlPattern ? 'sidebar-nav-item active text-decoration-none' : 'sidebar-nav-item text-decoration-none'}"
+                       href="${menuUrl}">
+                        <span class="material-symbols-outlined">calendar_view_month</span>
+                        <span>Bảng công tháng</span>
+                    </a>
+                </c:when>
+                <c:when test="${permission.code == 'ATTENDANCE_MY_VIEW'}">
+                    <c:url var="menuUrl" value="${permission.urlPattern}" />
+                    <a class="${currentPath == permission.urlPattern ? 'sidebar-nav-item active text-decoration-none' : 'sidebar-nav-item text-decoration-none'}"
+                       href="${menuUrl}">
+                        <span class="material-symbols-outlined">pending_actions</span>
+                        <span>Chấm công của tôi</span>
+                    </a>
+                </c:when>
+                <c:when test="${permission.code == 'SALARY_BASE_SETUP'}">
+                    <c:url var="menuUrl" value="${permission.urlPattern}" />
+                    <a class="${currentPath == permission.urlPattern ? 'sidebar-nav-item active text-decoration-none' : 'sidebar-nav-item text-decoration-none'}"
+                       href="${menuUrl}">
+                        <span class="material-symbols-outlined">payments</span>
+                        <span>Thiết lập lương</span>
+                    </a>
+                </c:when>
+                <c:when test="${permission.code == 'PAYROLL_VIEW'}">
+                    <c:url var="menuUrl" value="${permission.urlPattern}" />
+                    <a class="${currentPath == permission.urlPattern ? 'sidebar-nav-item active text-decoration-none' : 'sidebar-nav-item text-decoration-none'}"
+                       href="${menuUrl}">
+                        <span class="material-symbols-outlined">account_balance_wallet</span>
+                        <span>Bảng lương</span>
+                    </a>
+                </c:when>
+                <c:when test="${permission.code == 'PAYSLIP_VIEW'}">
+                    <c:url var="menuUrl" value="${permission.urlPattern}" />
+                    <a class="${currentPath == permission.urlPattern ? 'sidebar-nav-item active text-decoration-none' : 'sidebar-nav-item text-decoration-none'}"
+                       href="${menuUrl}">
+                        <span class="material-symbols-outlined">receipt_long</span>
+                        <span>Phiếu lương</span>
+                    </a>
+                </c:when>
+                <c:when test="${permission.code == 'REPORT_ATTENDANCE'}">
+                    <div class="sidebar-section-label">Báo cáo</div>
+                    <c:url var="menuUrl" value="${permission.urlPattern}" />
+                    <a class="${currentPath == permission.urlPattern ? 'sidebar-nav-item active text-decoration-none' : 'sidebar-nav-item text-decoration-none'}"
+                       href="${menuUrl}">
+                        <span class="material-symbols-outlined">assignment</span>
+                        <span>Chấm công</span>
+                    </a>
+                </c:when>
+                <c:when test="${permission.code == 'REPORT_LEAVE'}">
+                    <c:url var="menuUrl" value="${permission.urlPattern}" />
+                    <a class="${currentPath == permission.urlPattern ? 'sidebar-nav-item active text-decoration-none' : 'sidebar-nav-item text-decoration-none'}"
+                       href="${menuUrl}">
+                        <span class="material-symbols-outlined">event_busy</span>
+                        <span>Nghỉ phép</span>
+                    </a>
+                </c:when>
+                <c:when test="${permission.code == 'REPORT_HEADCOUNT'}">
+                    <c:url var="menuUrl" value="${permission.urlPattern}" />
+                    <a class="${currentPath == permission.urlPattern ? 'sidebar-nav-item active text-decoration-none' : 'sidebar-nav-item text-decoration-none'}"
+                       href="${menuUrl}">
+                        <span class="material-symbols-outlined">groups</span>
+                        <span>Nhân sự</span>
+                    </a>
+                </c:when>
+                <c:when test="${permission.code == 'REPORT_CONTRACT'}">
+                    <c:url var="menuUrl" value="${permission.urlPattern}" />
+                    <a class="${currentPath == permission.urlPattern ? 'sidebar-nav-item active text-decoration-none' : 'sidebar-nav-item text-decoration-none'}"
+                       href="${menuUrl}">
+                        <span class="material-symbols-outlined">description</span>
+                        <span>Hợp đồng</span>
+                    </a>
+                </c:when>
+                <c:when test="${permission.code == 'REPORT_PAYROLL'}">
+                    <c:url var="menuUrl" value="${permission.urlPattern}" />
+                    <a class="${currentPath == permission.urlPattern ? 'sidebar-nav-item active text-decoration-none' : 'sidebar-nav-item text-decoration-none'}"
+                       href="${menuUrl}">
+                        <span class="material-symbols-outlined">payments</span>
+                        <span>Lương</span>
+                    </a>
+                </c:when>
+                <c:when test="${permission.code == 'REPORT_OT'}">
+                    <c:url var="menuUrl" value="${permission.urlPattern}" />
+                    <a class="${currentPath == permission.urlPattern ? 'sidebar-nav-item active text-decoration-none' : 'sidebar-nav-item text-decoration-none'}"
+                       href="${menuUrl}">
+                        <span class="material-symbols-outlined">hourglass_bottom</span>
+                        <span>Tăng ca</span>
+                    </a>
+                </c:when>
             </c:choose>
         </c:forEach>
 
@@ -125,46 +263,28 @@
             <span>Hồ sơ của tôi</span>
         </a>
 
-        <hr class="my-3 border-secondary opacity-25">
-
-        <c:forEach var="permission" items="${sessionScope.permissions}">
-            <c:choose>
-                <c:when test="${permission.code == 'SHIFT_ASSIGNMENT_VIEW'}">
-                    <c:url var="shiftAssignUrl" value="${permission.urlPattern}" />
-                    <a class="${currentPath == permission.urlPattern ? 'sidebar-nav-item active text-decoration-none' : 'sidebar-nav-item text-decoration-none'}"
-                       href="${shiftAssignUrl}">
-                        <span class="material-symbols-outlined">assignment</span>
-                        <span>Phân công ca</span>
-                    </a>
-                </c:when>
-            </c:choose>
-        </c:forEach>
-
-        <c:url var="myShiftUrl" value="/my-shift" />
-        <a class="${currentPath == '/my-shift' ? 'sidebar-nav-item active text-decoration-none' : 'sidebar-nav-item text-decoration-none'}"
-           href="${myShiftUrl}">
-            <span class="material-symbols-outlined">calendar_month</span>
-            <span>Ca làm việc của tôi</span>
-        </a>
-
-        <c:url var="shiftCalendarUrl" value="/shift-calendar" />
-        <a class="${currentPath == '/shift-calendar' ? 'sidebar-nav-item active text-decoration-none' : 'sidebar-nav-item text-decoration-none'}"
-           href="${shiftCalendarUrl}">
-            <span class="material-symbols-outlined">calendar_view_month</span>
-            <span>Lịch phân ca</span>
-        </a>
-
-        <c:url var="shiftConflictUrl" value="/shift-conflict" />
-        <a class="${currentPath == '/shift-conflict' ? 'sidebar-nav-item active text-decoration-none' : 'sidebar-nav-item text-decoration-none'}"
-           href="${shiftConflictUrl}">
-            <span class="material-symbols-outlined">assignment_turned_in</span>
-            <span>Kiểm tra xung đột ca</span>
-        </a>
-
         <c:if test="${not hasAdminPermission}">
             <div class="text-on-surface-variant body-sm px-3 py-2">
                 Role hiện tại chưa có quyền quản trị.
             </div>
+            <c:forEach var="permission" items="${sessionScope.permissions}">
+                <c:if test="${permission.code == 'LEAVE_MY_VIEW'}">
+                    <c:url var="menuUrl" value="${permission.urlPattern}" />
+                    <a class="${currentPath == permission.urlPattern ? 'sidebar-nav-item active text-decoration-none' : 'sidebar-nav-item text-decoration-none'}"
+                       href="${menuUrl}">
+                        <span class="material-symbols-outlined">calendar_month</span>
+                        <span>Yêu cầu nghỉ phép</span>
+                    </a>
+                </c:if>
+                <c:if test="${permission.code == 'PAYSLIP_VIEW'}">
+                    <c:url var="menuUrl" value="${permission.urlPattern}" />
+                    <a class="${currentPath == permission.urlPattern ? 'sidebar-nav-item active text-decoration-none' : 'sidebar-nav-item text-decoration-none'}"
+                       href="${menuUrl}">
+                        <span class="material-symbols-outlined">receipt_long</span>
+                        <span>Phiếu lương</span>
+                    </a>
+                </c:if>
+            </c:forEach>
         </c:if>
     </nav>
 

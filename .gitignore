@@ -10,6 +10,23 @@ plans/
 .codex/
 group6_frontend_template/
 
+### E2E Testing (do NOT commit) ###
+e2e-tests/
+test-results/
+playwright-report/
+node_modules/
+package-lock.json
+package.json
+run_test.ps1
+playwright.config.ts
+*.spec.js
+*.spec.ts
+
+### Debug assets ###
+*.png
+*.log
+debug-*
+
 ### Maven ###
 target/
 !.mvn/wrapper/maven-wrapper.jar

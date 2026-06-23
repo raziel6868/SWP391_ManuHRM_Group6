@@ -212,7 +212,7 @@ INSERT INTO role_permissions (role_id, permission_id) VALUES
 -- HR_MANAGER: explicit operational scope
 INSERT INTO role_permissions (role_id, permission_id) VALUES
 -- Contracts
-(2, 32), (2, 33), (2, 34), (2, 35), (2, 36), (2, 37), (2, 38), (2, 78), (2, 79),
+(2, 32), (2, 33), (2, 34), (2, 35), (2, 36), (2, 37), (2, 38), 
 -- Leave
 (2, 39), (2, 40), (2, 41), (2, 46), (2, 47),
 -- Shift Assignment

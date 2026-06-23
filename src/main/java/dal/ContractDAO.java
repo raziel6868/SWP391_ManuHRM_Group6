@@ -64,7 +64,11 @@ public class ContractDAO {
 	}
 
 	public int countContracts(String keyword, String status) {
-		StringBuilder sql = new StringBuilder("SELECT COUNT(*) FROM contracts c");
+		StringBuilder sql = new StringBuilder("""
+				SELECT COUNT(*) FROM contracts c
+				JOIN users u ON u.id = c.user_id
+				JOIN contract_types ct ON ct.id = c.contract_type_id
+				""");
 		List<Object> params = new ArrayList<>();
 		appendFilter(sql, params, keyword, status);
 		return count(sql.toString(), params);
@@ -419,14 +423,14 @@ public class ContractDAO {
 					d.setFilePath(rs.getString("file_path"));
 					d.setStatus(rs.getString("status"));
 					d.setTerminatedAt(rs.getDate("terminated_at"));
-					long tb = rs.getLong("terminated_by");
-					d.setTerminatedBy(rs.wasNull() ? null : tb);
+					Long terminatedByVal = rs.getObject("terminated_by", Long.class);
+					d.setTerminatedBy(terminatedByVal);
 					d.setTerminatedByName(rs.getString("terminated_by_name"));
 					d.setTerminateReason(rs.getString("terminate_reason"));
-					long renewalId = rs.getLong("renewal_of_id");
-					d.setRenewalOfId(rs.wasNull() ? null : renewalId);
-					long renewalCode = rs.getLong("renewal_of_code");
-					d.setRenewalOfCode(rs.wasNull() ? null : String.valueOf(renewalCode));
+					Long renewalOfIdVal = rs.getObject("renewal_of_id", Long.class);
+					d.setRenewalOfId(renewalOfIdVal);
+					Long renewalCodeVal = rs.getObject("renewal_of_code", Long.class);
+					d.setRenewalOfCode(renewalCodeVal == null ? null : String.valueOf(renewalCodeVal));
 					d.setRenewalOfStartDate(rs.getDate("renewal_of_start_date"));
 					d.setRenewalOfEndDate(rs.getDate("renewal_of_end_date"));
 					d.setCreatedAt(rs.getTimestamp("created_at"));
@@ -466,11 +470,11 @@ public class ContractDAO {
 		String status = rs.getString("status");
 		c.setStatus(status == null ? null : Contract.Status.valueOf(status));
 		c.setTerminatedAt(rs.getDate("terminated_at"));
-		long tb = rs.getLong("terminated_by");
-		c.setTerminatedBy(rs.wasNull() ? null : tb);
+		Long terminatedByVal = rs.getObject("terminated_by", Long.class);
+		c.setTerminatedBy(terminatedByVal);
 		c.setTerminateReason(rs.getString("terminate_reason"));
-		long rid = rs.getLong("renewal_of_id");
-		c.setRenewalOfId(rs.wasNull() ? null : rid);
+		Long renewalOfIdVal = rs.getObject("renewal_of_id", Long.class);
+		c.setRenewalOfId(renewalOfIdVal);
 		c.setCreatedAt(rs.getTimestamp("created_at"));
 		c.setUpdatedAt(rs.getTimestamp("updated_at"));
 		return c;

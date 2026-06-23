@@ -46,7 +46,7 @@ public class ContractTypeDAO {
 	}
 
 	public List<ContractType> getActiveContractTypes() {
-		String sql = "SELECT " + SELECT_COLUMNS + " FROM contract_types WHERE is_active = TRUE ORDER BY name ASC";
+		String sql = "SELECT " + SELECT_COLUMNS + " FROM contract_types WHERE is_active = 1 ORDER BY name ASC";
 		return queryList(sql, null);
 	}
 	// === QUERY: Kiem tra ton tai ===

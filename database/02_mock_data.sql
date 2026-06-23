@@ -157,14 +157,11 @@ INSERT INTO permissions (id, code, name, url_pattern, module) VALUES
 -- Audit
 (76, 'AUDIT_LOG_VIEW',          'View audit log',           '/audit-log-list',          'AUDIT'),
 (77, 'APPROVAL_HISTORY_VIEW',   'View approval history',    '/approval-history-list',   'AUDIT'),
--- Holiday Management (IDs 78-81)
+-- Holiday Management (IDs 78-82)
 (78, 'HOLIDAY_VIEW',            'View holidays',            '/holiday-list',           'HOLIDAY'),
 (79, 'HOLIDAY_CREATE',          'Create holiday',           '/holiday-create',         'HOLIDAY'),
 (80, 'HOLIDAY_UPDATE',          'Update holiday',           '/holiday-update',         'HOLIDAY'),
-(81, 'HOLIDAY_DELETE',          'Delete holiday',           '/holiday-delete',         'HOLIDAY'),
--- Contract extensions (IDs 82-83)
-(82, 'CONTRACT_EXPIRING_VIEW',  'View expiring contracts',  '/contract-expiring',      'CONTRACT'),
-(83, 'CONTRACT_TERMINATE',      'Terminate contracts',     '/contract-terminate',     'CONTRACT');
+(81, 'HOLIDAY_DELETE',          'Delete holiday',           '/holiday-delete',         'HOLIDAY');
 
 -- =========================================================
 -- Iter 1 Role Permissions (Explicit)
@@ -208,9 +205,9 @@ INSERT INTO role_permissions (role_id, permission_id) VALUES
 (1, 53), (1, 54), (1, 55), (1, 56), (1, 57), (1, 58), (1, 59),
 (1, 60), (1, 61), (1, 62), (1, 63), (1, 64), (1, 65), (1, 66),
 (1, 67), (1, 68), (1, 69), (1, 70), (1, 71), (1, 72), (1, 73),
-(1, 74), (1, 75), (1, 76), (1, 77),
--- Holiday + Contract permissions for SYSADMIN
-(1, 78), (1, 79), (1, 80), (1, 81), (1, 82), (1, 83);
+(1, 74), (1, 75), (1, 76), (1, 77);
+-- Holiday permissions for SYSADMIN
+(1, 78), (1, 79), (1, 80), (1, 81);
 
 -- HR_MANAGER: explicit operational scope
 INSERT INTO role_permissions (role_id, permission_id) VALUES
@@ -233,9 +230,7 @@ INSERT INTO role_permissions (role_id, permission_id) VALUES
 -- Audit
 (2, 76), (2, 77),
 -- Holiday permissions for HR_MANAGER
-(2, 78), (2, 79), (2, 80), (2, 81),
--- Contract extension permissions for HR_MANAGER
-(2, 82), (2, 83);
+(2, 78), (2, 79), (2, 80), (2, 81);
 
 -- PRODUCTION_SUPERVISOR: exact operational scope
 INSERT INTO role_permissions (role_id, permission_id) VALUES

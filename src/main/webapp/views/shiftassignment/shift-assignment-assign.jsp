@@ -120,7 +120,17 @@
                 const option = userSelect.options[i];
                 const userDeptId = option.getAttribute('data-department-id');
 
-                if (deptId === '' || userDeptId === deptId) {
+                // Skip placeholder option
+                if (option.value === '') {
+                    continue;
+                }
+
+                // If no department selected, show all users
+                // If department selected, only show users in that department
+                // Handle null department_id (show only when no filter)
+                if (deptId === '') {
+                    option.style.display = '';
+                } else if (userDeptId && userDeptId === deptId) {
                     option.style.display = '';
                 } else {
                     option.style.display = 'none';

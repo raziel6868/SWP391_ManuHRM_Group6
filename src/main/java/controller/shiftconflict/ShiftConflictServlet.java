@@ -2,10 +2,8 @@ package controller.shiftconflict;
 
 import dal.ShiftAssignmentDAO;
 import dal.UserDAO;
-import dal.ShiftDAO;
 import model.ShiftAssignment;
 import model.User;
-import model.Shift;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
@@ -24,21 +22,17 @@ public class ShiftConflictServlet extends HttpServlet {
 
 	private final ShiftAssignmentDAO shiftAssignmentDAO = new ShiftAssignmentDAO();
 	private final UserDAO userDAO = new UserDAO();
-	private final ShiftDAO shiftDAO = new ShiftDAO();
 
 	@Override
 	protected void doGet(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
 		List<User> users = userDAO.searchUsers(null, null, null, true, null, 0, 100);
-		List<Shift> shifts = shiftDAO.searchShifts(null, null, true, 0, 100);
 
 		request.setAttribute("users", users);
-		request.setAttribute("shifts", shifts);
 
 		String userIdParam = request.getParameter("userId");
 		String startDateParam = request.getParameter("startDate");
 		String endDateParam = request.getParameter("endDate");
-		String shiftIdParam = request.getParameter("shiftId");
 
 		if (userIdParam != null && !userIdParam.isBlank() && startDateParam != null && !startDateParam.isBlank()
 				&& endDateParam != null && !endDateParam.isBlank()) {
@@ -46,7 +40,6 @@ public class ShiftConflictServlet extends HttpServlet {
 			Long userId = Long.parseLong(userIdParam);
 			LocalDate startDate = LocalDate.parse(startDateParam);
 			LocalDate endDate = LocalDate.parse(endDateParam);
-			Long shiftId = shiftIdParam != null && !shiftIdParam.isBlank() ? Long.parseLong(shiftIdParam) : null;
 
 			List<ShiftAssignment> existingAssignments = shiftAssignmentDAO.getByUserIdAndDateRange(userId,
 					Date.valueOf(startDate), Date.valueOf(endDate));
@@ -70,7 +63,6 @@ public class ShiftConflictServlet extends HttpServlet {
 			request.setAttribute("selectedUserId", userId);
 			request.setAttribute("selectedStartDate", startDateParam);
 			request.setAttribute("selectedEndDate", endDateParam);
-			request.setAttribute("selectedShiftId", shiftId);
 		}
 
 		request.getRequestDispatcher("/views/shiftconflict/shift-conflict.jsp").forward(request, response);
@@ -85,7 +77,6 @@ public class ShiftConflictServlet extends HttpServlet {
 		String userIdParam = request.getParameter("userId");
 		String startDateParam = request.getParameter("startDate");
 		String endDateParam = request.getParameter("endDate");
-		String shiftIdParam = request.getParameter("shiftId");
 
 		StringBuilder errorMsg = new StringBuilder();
 
@@ -98,9 +89,6 @@ public class ShiftConflictServlet extends HttpServlet {
 		if (ValidationUtil.isBlank(endDateParam)) {
 			errorMsg.append("Ngay ket thuc la truong bat buoc.<br>");
 		}
-		if (ValidationUtil.isBlank(shiftIdParam)) {
-			errorMsg.append("Ca lam viec la truong bat buoc.<br>");
-		}
 
 		if (errorMsg.length() > 0) {
 			session.setAttribute("errorMsg", errorMsg.toString());
@@ -111,7 +99,6 @@ public class ShiftConflictServlet extends HttpServlet {
 		Long userId = Long.parseLong(userIdParam);
 		LocalDate startDate;
 		LocalDate endDate;
-		Long shiftId = Long.parseLong(shiftIdParam);
 
 		try {
 			startDate = LocalDate.parse(startDateParam);
@@ -147,21 +134,24 @@ public class ShiftConflictServlet extends HttpServlet {
 			}
 		}
 
+		session.setAttribute("hasConflict", hasConflict);
+		session.setAttribute("conflictAssignment", conflictAssignment);
+		session.setAttribute("existingAssignments", existingAssignments);
+		session.setAttribute("selectedUserId", userId);
+		session.setAttribute("selectedStartDate", startDateParam);
+		session.setAttribute("selectedEndDate", endDateParam);
+
 		if (hasConflict) {
 			session.setAttribute("warningMsg", "Xung dot phat hien: Nhan vien da co lich lam viec vao ngay "
 					+ conflictAssignment.getDate() + " voi ca " + conflictAssignment.getShiftName());
-			response.sendRedirect(request.getContextPath() + "/shift-conflict");
-			return;
+		} else if (!existingAssignments.isEmpty()) {
+			session.setAttribute("successMsg", "Khong co xung dot. Nhan vien co " + existingAssignments.size()
+					+ " ca lam viec trong khoang thoi gian nay.");
+		} else {
+			session.setAttribute("successMsg",
+					"Khong co xung dot. Nhan vien chua co ca lam viec trong khoang thoi gian nay.");
 		}
 
-		int assignedCount = 0;
-		for (LocalDate date = startDate; !date.isAfter(endDate); date = date.plusDays(1)) {
-			if (shiftAssignmentDAO.upsert(userId, shiftId, Date.valueOf(date))) {
-				assignedCount++;
-			}
-		}
-
-		session.setAttribute("successMsg", "Da gan " + assignedCount + " ngay cho nhan vien thanh cong!");
-		response.sendRedirect(request.getContextPath() + "/shift-assignment-list");
+		response.sendRedirect(request.getContextPath() + "/shift-conflict");
 	}
 }

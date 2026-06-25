@@ -161,7 +161,9 @@ INSERT INTO permissions (id, code, name, url_pattern, module) VALUES
 (78, 'HOLIDAY_VIEW',            'View holidays',            '/holiday-list',           'HOLIDAY'),
 (79, 'HOLIDAY_CREATE',          'Create holiday',           '/holiday-create',         'HOLIDAY'),
 (80, 'HOLIDAY_UPDATE',          'Update holiday',           '/holiday-update',         'HOLIDAY'),
-(81, 'HOLIDAY_DELETE',          'Delete holiday',           '/holiday-delete',         'HOLIDAY');
+(81, 'HOLIDAY_DELETE',          'Delete holiday',           '/holiday-delete',         'HOLIDAY'),
+(83, 'CONTRACT_TERMINATE',      'Terminate contracts',      '/contract-terminate',     'CONTRACT'),
+(84, 'CONTRACT_EXPIRY',        'View expiring contracts',  '/contract-expiry',        'CONTRACT');
 
 -- =========================================================
 -- Iter 1 Role Permissions (Explicit)
@@ -205,14 +207,15 @@ INSERT INTO role_permissions (role_id, permission_id) VALUES
 (1, 53), (1, 54), (1, 55), (1, 56), (1, 57), (1, 58), (1, 59),
 (1, 60), (1, 61), (1, 62), (1, 63), (1, 64), (1, 65), (1, 66),
 (1, 67), (1, 68), (1, 69), (1, 70), (1, 71), (1, 72), (1, 73),
-(1, 74), (1, 75), (1, 76), (1, 77);
+(1, 74), (1, 75), (1, 76), (1, 77), (1, 83), (1, 84);
 -- Holiday permissions for SYSADMIN
 (1, 78), (1, 79), (1, 80), (1, 81);
 
 -- HR_MANAGER: explicit operational scope
 INSERT INTO role_permissions (role_id, permission_id) VALUES
 -- Contracts
-(2, 32), (2, 33), (2, 34), (2, 35), (2, 36), (2, 37), (2, 38), 
+(2, 32), (2, 33), (2, 34), (2, 35), (2, 36), (2, 37), (2, 38),
+(2, 83), (2, 84), 
 -- Leave
 (2, 39), (2, 40), (2, 41), (2, 46), (2, 47),
 -- Shift Assignment

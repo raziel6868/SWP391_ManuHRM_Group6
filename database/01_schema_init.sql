@@ -214,8 +214,10 @@ CREATE TABLE contracts (
     terminated_by BIGINT NULL,
     terminate_reason TEXT NULL,
     status ENUM('ACTIVE', 'EXPIRED', 'PENDING_RENEWAL', 'TERMINATED') NOT NULL DEFAULT 'ACTIVE',
+    renewal_of_id BIGINT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_contracts_renewal_of FOREIGN KEY (renewal_of_id) REFERENCES contracts(id) ON DELETE SET NULL,
     CONSTRAINT fk_contracts_user
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE RESTRICT,
     CONSTRAINT fk_contracts_contract_type

@@ -50,7 +50,7 @@
                                     <label class="form-label text-on-surface fw-medium mb-1">
                                         Phòng ban <span class="text-danger">*</span>
                                     </label>
-                                    <select id="departmentSelect" class="form-select input-premium">
+                                    <select id="departmentSelect" class="form-select input-premium" onchange="filterUsers()">
                                         <option value="">-- Chọn phòng ban --</option>
                                         <c:forEach var="dept" items="${departments}">
                                             <option value="${dept.id}">${dept.name}</option>
@@ -63,6 +63,11 @@
                                     </label>
                                     <select name="userId" id="userSelect" class="form-select input-premium" required>
                                         <option value="">-- Chọn nhân viên --</option>
+                                        <c:forEach var="u" items="${users}">
+                                            <option value="${u.id}" data-department-id="${u.departmentId}">
+                                                ${u.fullName} (${u.employeeCode}) - ${u.departmentName}
+                                            </option>
+                                        </c:forEach>
                                     </select>
                                 </div>
                                 <div class="col-md-4">
@@ -105,5 +110,35 @@
     </div>
 
     <jsp:include page="/components/foot.jsp" />
+    <script>
+        function filterUsers() {
+            const deptId = document.getElementById('departmentSelect').value;
+            const userSelect = document.getElementById('userSelect');
+            const selectedUserId = '${selectedUserId}';
+
+            for (let i = 0; i < userSelect.options.length; i++) {
+                const option = userSelect.options[i];
+                const userDeptId = option.getAttribute('data-department-id');
+
+                if (deptId === '' || userDeptId === deptId) {
+                    option.style.display = '';
+                } else {
+                    option.style.display = 'none';
+                }
+            }
+
+            // Reset selection if current value is not valid
+            const currentValue = userSelect.value;
+            if (currentValue) {
+                const selectedOption = userSelect.querySelector('option[value="' + currentValue + '"]');
+                if (selectedOption && selectedOption.style.display === 'none') {
+                    userSelect.value = '';
+                }
+            }
+        }
+
+        // Filter on page load in case form is re-rendered
+        document.addEventListener('DOMContentLoaded', filterUsers);
+    </script>
 </body>
 </html>

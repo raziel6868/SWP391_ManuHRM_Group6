@@ -8,6 +8,7 @@ public class Holiday {
 	private Date date;
 	private String name;
 	private boolean isRecurring;
+	private boolean isActive;
 	private String description;
 	private Timestamp createdAt;
 	private Timestamp updatedAt;
@@ -15,12 +16,21 @@ public class Holiday {
 	public Holiday() {
 	}
 
-	public Holiday(Long id, Date date, String name, boolean isRecurring, String description) {
+	public Holiday(Long id, Date date, String name, boolean isRecurring, boolean isActive, String description) {
 		this.id = id;
 		this.date = date;
 		this.name = name;
 		this.isRecurring = isRecurring;
+		this.isActive = isActive;
 		this.description = description;
+	}
+
+	public boolean isActive() {
+		return isActive;
+	}
+
+	public void setActive(boolean active) {
+		isActive = active;
 	}
 
 	public Long getId() {

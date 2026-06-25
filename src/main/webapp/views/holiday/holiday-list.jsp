@@ -42,22 +42,24 @@
                 </div>
 
                 <div class="card-premium overflow-hidden d-flex flex-column mb-4 w-100">
-                    <div class="p-3 bg-surface border-bottom border-outline-variant d-flex justify-content-between align-items-center">
+                    <div class="p-3 bg-surface border-bottom border-outline-variant">
                         <form action="${pageContext.request.contextPath}/holiday-list" method="GET"
-                            class="d-flex position-relative" style="width: 280px;">
-                            <span class="material-symbols-outlined position-absolute top-50 translate-middle-y text-on-surface-variant"
-                                style="left: 12px; font-size: 1.25rem;">search</span>
-                            <input type="text" name="keyword" value="${keyword}"
-                                class="input-premium w-100 py-1" placeholder="Tìm kiếm ngày lễ..."
-                                style="padding-left: 2.5rem;" />
-                            <button type="submit" class="d-none"></button>
-                        </form>
-                        <form action="${pageContext.request.contextPath}/holiday-list" method="GET" class="d-flex gap-2 align-items-center">
-                            <select name="year" class="input-premium" onchange="this.form.submit()">
-                                <c:forEach var="y" begin="2020" end="2030">
-                                    <option value="${y}" ${y == year ? 'selected' : ''}>${y}</option>
-                                </c:forEach>
-                            </select>
+                            class="d-flex gap-3 align-items-center flex-wrap">
+                            <div class="position-relative" style="flex: 1; min-width: 200px;">
+                                <span class="material-symbols-outlined position-absolute top-50 translate-middle-y text-on-surface-variant"
+                                    style="left: 12px; font-size: 1.25rem;">search</span>
+                                <input type="text" name="keyword" value="${keyword}"
+                                    class="input-premium w-100 py-1" placeholder="Tìm kiếm ngày lễ..."
+                                    style="padding-left: 2.5rem;" />
+                            </div>
+                            <div class="d-flex align-items-center gap-2">
+                                <select name="year" class="input-premium">
+                                    <c:forEach var="y" begin="2020" end="2030">
+                                        <option value="${y}" ${y == year ? 'selected' : ''}>${y}</option>
+                                    </c:forEach>
+                                </select>
+                                <button type="submit" class="btn btn-primary">Tìm kiếm</button>
+                            </div>
                         </form>
                     </div>
 
@@ -70,6 +72,7 @@
                                     <th>Tên ngày lễ</th>
                                     <th>Mô tả</th>
                                     <th>Lặp lại hàng năm</th>
+                                    <th>Trạng thái</th>
                                     <th class="text-end">Thao tác</th>
                                 </tr>
                             </thead>
@@ -92,26 +95,51 @@
                                                 </c:otherwise>
                                             </c:choose>
                                         </td>
+                                        <td>
+                                            <c:choose>
+                                                <c:when test="${h.active}">
+                                                    <span class="badge" style="background-color: #d1fae5; color: #065f46;">Hoạt động</span>
+                                                </c:when>
+                                                <c:otherwise>
+                                                    <span class="badge" style="background-color: #fee2e2; color: #991b1b;">Không hoạt động</span>
+                                                </c:otherwise>
+                                            </c:choose>
+                                        </td>
                                         <td class="text-end">
                                             <div class="d-flex justify-content-end gap-1">
                                                 <a href="${pageContext.request.contextPath}/holiday-update?id=${h.id}"
                                                     class="btn btn-sm btn-icon text-on-surface-variant hover-primary" title="Sửa">
                                                     <span class="material-symbols-outlined" style="font-size: 1.25rem;">edit</span>
                                                 </a>
-                                                <form action="${pageContext.request.contextPath}/holiday-delete" method="POST" class="d-inline m-0">
-                                                    <input type="hidden" name="id" value="${h.id}" />
-                                                    <button type="submit" class="btn btn-sm btn-icon text-on-surface-variant hover-error"
-                                                        title="Xóa" onclick="return confirm('Bạn có chắc muốn xóa ngày lễ này?')">
-                                                        <span class="material-symbols-outlined" style="font-size: 1.25rem;">delete</span>
-                                                    </button>
-                                                </form>
+                                                <c:choose>
+                                                    <c:when test="${h.active}">
+                                                        <form action="${pageContext.request.contextPath}/holiday-toggle" method="POST" class="d-inline m-0">
+                                                            <input type="hidden" name="id" value="${h.id}" />
+                                                            <input type="hidden" name="action" value="deactivate" />
+                                                            <button type="submit" class="btn btn-sm btn-icon text-on-surface-variant hover-error"
+                                                                title="Vô hiệu hóa" onclick="return confirm('Bạn có chắc muốn vô hiệu hóa ngày lễ này?')">
+                                                                <span class="material-symbols-outlined" style="font-size: 1.25rem;">toggle_off</span>
+                                                            </button>
+                                                        </form>
+                                                    </c:when>
+                                                    <c:otherwise>
+                                                        <form action="${pageContext.request.contextPath}/holiday-toggle" method="POST" class="d-inline m-0">
+                                                            <input type="hidden" name="id" value="${h.id}" />
+                                                            <input type="hidden" name="action" value="activate" />
+                                                            <button type="submit" class="btn btn-sm btn-icon hover-success"
+                                                                title="Kích hoạt">
+                                                                <span class="material-symbols-outlined text-success" style="font-size: 1.25rem;">toggle_on</span>
+                                                            </button>
+                                                        </form>
+                                                    </c:otherwise>
+                                                </c:choose>
                                             </div>
                                         </td>
                                     </tr>
                                 </c:forEach>
                                 <c:if test="${empty holidays}">
                                     <tr>
-                                        <td colspan="6" class="text-center text-on-surface-variant py-4">
+                                        <td colspan="7" class="text-center text-on-surface-variant py-4">
                                             Không có ngày lễ nào trong năm ${year}.
                                         </td>
                                     </tr>

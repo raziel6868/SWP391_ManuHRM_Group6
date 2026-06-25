@@ -385,6 +385,36 @@ public class UserDAO {
 		return users;
 	}
 
+	/**
+	 * Lists active users by department ID for dropdowns.
+	 */
+	public List<User> getActiveUsersByDepartment(Long departmentId) {
+		List<User> users = new ArrayList<>();
+		String sql = """
+				SELECT u.id, u.employee_code, u.full_name,
+				       d.name AS department_name
+				  FROM users u
+				  LEFT JOIN departments d ON u.department_id = d.id
+				 WHERE u.is_active = TRUE AND u.department_id = ?
+				 ORDER BY u.full_name ASC""";
+		try (Connection conn = DBContext.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+			ps.setObject(1, departmentId);
+			try (ResultSet rs = ps.executeQuery()) {
+				while (rs.next()) {
+					User u = new User();
+					u.setId(rs.getLong("id"));
+					u.setEmployeeCode(rs.getString("employee_code"));
+					u.setFullName(rs.getString("full_name"));
+					u.setDepartmentName(rs.getString("department_name"));
+					users.add(u);
+				}
+			}
+		} catch (SQLException e) {
+			System.err.println("UserDAO.getActiveUsersByDepartment() ERROR: " + e.getMessage());
+		}
+		return users;
+	}
+
 	// === PRIVATE HELPERS ===
 
 	private int count(String sql, List<Object> params) {

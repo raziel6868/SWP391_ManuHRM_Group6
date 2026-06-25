@@ -60,7 +60,7 @@ public class HolidayListServlet extends HttpServlet {
 		}
 
 		int pageSize = 10;
-		List<Holiday> allHolidays = holidayDAO.getByYear(year);
+		List<Holiday> allHolidays = holidayDAO.search(keyword, year);
 		List<Holiday> holidays = paginate(allHolidays, page, pageSize);
 		int totalPages = (int) Math.ceil((double) allHolidays.size() / pageSize);
 

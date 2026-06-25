@@ -5,7 +5,7 @@
 <c:set var="currentPath" value="${pageContext.request.servletPath}" />
 <c:set var="hasAdminPermission" value="${false}" />
 <c:forEach var="permission" items="${sessionScope.permissions}">
-    <c:if test="${permission.code == 'USER_VIEW' or permission.code == 'ROLE_VIEW' or permission.code == 'CONTRACT_TYPE_VIEW' or permission.code == 'LEAVE_TYPE_VIEW' or permission.code == 'LEAVE_BALANCE_SETUP' or permission.code == 'LEAVE_REQUEST_VIEW' or permission.code == 'SHIFT_VIEW' or permission.code == 'SHIFT_ASSIGNMENT_VIEW' or permission.code == 'JOB_TITLE_VIEW' or permission.code == 'DEPARTMENT_VIEW' or permission.code == 'ATTENDANCE_VIEW' or permission.code == 'ATTENDANCE_MY_VIEW' or permission.code == 'ATTENDANCE_CORRECTION_VIEW' or permission.code == 'OT_VIEW' or permission.code == 'MONTHLY_SHEET_VIEW' or permission.code == 'SALARY_BASE_SETUP' or permission.code == 'PAYROLL_VIEW' or permission.code == 'PAYSLIP_VIEW'}">
+    <c:if test="${permission.code == 'USER_VIEW' or permission.code == 'ROLE_VIEW' or permission.code == 'CONTRACT_TYPE_VIEW' or permission.code == 'LEAVE_TYPE_VIEW' or permission.code == 'LEAVE_BALANCE_SETUP' or permission.code == 'LEAVE_REQUEST_VIEW' or permission.code == 'SHIFT_VIEW' or permission.code == 'SHIFT_ASSIGNMENT_VIEW' or permission.code == 'SHIFT_CALENDAR_VIEW' or permission.code == 'JOB_TITLE_VIEW' or permission.code == 'DEPARTMENT_VIEW' or permission.code == 'ATTENDANCE_VIEW' or permission.code == 'ATTENDANCE_MY_VIEW' or permission.code == 'ATTENDANCE_CORRECTION_VIEW' or permission.code == 'OT_VIEW' or permission.code == 'MONTHLY_SHEET_VIEW' or permission.code == 'SALARY_BASE_SETUP' or permission.code == 'PAYROLL_VIEW' or permission.code == 'PAYSLIP_VIEW'}">
         <c:set var="hasAdminPermission" value="${true}" />
     </c:if>
 </c:forEach>
@@ -112,6 +112,22 @@
                        href="${menuUrl}">
                         <span class="material-symbols-outlined">event</span>
                         <span>Phân ca</span>
+                    </a>
+                </c:when>
+                <c:when test="${permission.code == 'SHIFT_CALENDAR_VIEW'}">
+                    <c:url var="menuUrl" value="${permission.urlPattern}" />
+                    <a class="${currentPath == permission.urlPattern ? 'sidebar-nav-item active text-decoration-none' : 'sidebar-nav-item text-decoration-none'}"
+                       href="${menuUrl}">
+                        <span class="material-symbols-outlined">calendar_month</span>
+                        <span>Lịch phân ca</span>
+                    </a>
+                </c:when>
+                <c:when test="${permission.code == 'MY_SHIFT_VIEW'}">
+                    <c:url var="menuUrl" value="${permission.urlPattern}" />
+                    <a class="${currentPath == permission.urlPattern ? 'sidebar-nav-item active text-decoration-none' : 'sidebar-nav-item text-decoration-none'}"
+                       href="${menuUrl}">
+                        <span class="material-symbols-outlined">schedule</span>
+                        <span>Ca của tôi</span>
                     </a>
                 </c:when>
                 <c:when test="${permission.code == 'JOB_TITLE_VIEW'}">

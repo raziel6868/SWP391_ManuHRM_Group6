@@ -18,6 +18,7 @@ import java.sql.Date;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.util.List;
+import model.User;
 import util.ValidationUtil;
 
 @WebServlet(name = "ShiftAssignmentAssignServlet", urlPatterns = {"/shift-assignment-assign"})
@@ -33,9 +34,11 @@ public class ShiftAssignmentAssignServlet extends HttpServlet {
 			throws ServletException, IOException {
 		List<Department> departments = departmentDAO.getActiveDepartments();
 		List<Shift> shifts = shiftDAO.searchShifts(null, null, true, 0, 100);
+		List<User> users = userDAO.getActiveUsersForDropdown();
 
 		request.setAttribute("departments", departments);
 		request.setAttribute("shifts", shifts);
+		request.setAttribute("users", users);
 
 		moveFlashMessage(request);
 

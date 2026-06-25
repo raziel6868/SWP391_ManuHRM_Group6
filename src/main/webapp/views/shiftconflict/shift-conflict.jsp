@@ -1,7 +1,7 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 <%@ taglib prefix="c" uri="jakarta.tags.core" %>
 <!DOCTYPE html>
-<html lang="vi">
+<!--<html lang="vi">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -37,7 +37,7 @@
                 <div class="d-flex justify-content-between align-items-end mb-4 flex-wrap gap-3">
                     <div>
                         <h2 class="h3 text-on-surface fw-bold mb-1">Kiểm tra xung đột ca</h2>
-                        <p class="body-md text-on-surface-variant mb-0">Kiểm tra và gán ca làm việc cho nhân viên.</p>
+                        <p class="body-md text-on-surface-variant mb-0">Kiểm tra xung đột lịch làm việc của nhân viên.</p>
                     </div>
                 </div>
 
@@ -46,7 +46,7 @@
                         <h5 class="mb-3">Kiểm tra xung đột</h5>
                         <form action="${pageContext.request.contextPath}/shift-conflict" method="POST">
                             <div class="row g-3 align-items-end">
-                                <div class="col-md-3">
+                                <div class="col-md-4">
                                     <label class="form-label text-on-surface fw-medium mb-1">
                                         Nhân viên <span class="text-danger">*</span>
                                     </label>
@@ -59,30 +59,17 @@
                                         </c:forEach>
                                     </select>
                                 </div>
-                                <div class="col-md-2">
+                                <div class="col-md-3">
                                     <label class="form-label text-on-surface fw-medium mb-1">
                                         Ngày bắt đầu <span class="text-danger">*</span>
                                     </label>
                                     <input type="date" name="startDate" value="${selectedStartDate}" class="form-control input-premium" required />
                                 </div>
-                                <div class="col-md-2">
+                                <div class="col-md-3">
                                     <label class="form-label text-on-surface fw-medium mb-1">
                                         Ngày kết thúc <span class="text-danger">*</span>
                                     </label>
                                     <input type="date" name="endDate" value="${selectedEndDate}" class="form-control input-premium" required />
-                                </div>
-                                <div class="col-md-3">
-                                    <label class="form-label text-on-surface fw-medium mb-1">
-                                        Ca làm việc <span class="text-danger">*</span>
-                                    </label>
-                                    <select name="shiftId" class="form-select input-premium" required>
-                                        <option value="">-- Chọn ca --</option>
-                                        <c:forEach var="shift" items="${shifts}">
-                                            <option value="${shift.id}" ${selectedShiftId == shift.id ? 'selected' : ''}>
-                                                ${shift.name} (${shift.code})
-                                            </option>
-                                        </c:forEach>
-                                    </select>
                                 </div>
                                 <div class="col-md-2 d-flex gap-2">
                                     <button type="submit" class="btn btn-primary w-100">
@@ -148,4 +135,4 @@
 
     <jsp:include page="/components/foot.jsp" />
 </body>
-</html>
+</html>-->

@@ -34,11 +34,11 @@
                         <p class="body-md text-on-surface-variant mb-0">Quản lý phân công ca làm việc.</p>
                     </div>
                     <div class="d-flex gap-2">
-                        <a href="${pageContext.request.contextPath}/shift-conflict"
+<!--                        <a href="${pageContext.request.contextPath}/shift-conflict"
                            class="btn btn-outline-primary px-3 py-2 d-flex align-items-center gap-2">
                             <span class="material-symbols-outlined" style="font-size: 1.125rem;">assignment</span>
                             Kiểm tra xung đột
-                        </a>
+                        </a>-->
                         <a href="${pageContext.request.contextPath}/shift-assignment-assign"
                            class="btn-primary-gradient text-decoration-none px-3 py-2 d-flex align-items-center gap-2 shadow-sm">
                             <span class="material-symbols-outlined" style="font-size: 1.125rem;">add</span>

@@ -362,7 +362,7 @@ public class UserDAO {
 	public List<User> getActiveUsersForDropdown() {
 		List<User> users = new ArrayList<>();
 		String sql = """
-				SELECT u.id, u.employee_code, u.full_name,
+				SELECT u.id, u.employee_code, u.full_name, u.department_id,
 				       d.name AS department_name
 				  FROM users u
 				  LEFT JOIN departments d ON u.department_id = d.id
@@ -376,6 +376,7 @@ public class UserDAO {
 				u.setId(rs.getLong("id"));
 				u.setEmployeeCode(rs.getString("employee_code"));
 				u.setFullName(rs.getString("full_name"));
+				u.setDepartmentId(rs.getObject("department_id", Long.class));
 				u.setDepartmentName(rs.getString("department_name"));
 				users.add(u);
 			}

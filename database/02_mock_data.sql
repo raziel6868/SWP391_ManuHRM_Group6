@@ -124,6 +124,8 @@ INSERT INTO permissions (id, code, name, url_pattern, module) VALUES
 (48, 'SHIFT_ASSIGNMENT_VIEW',   'View shift assignments',   '/shift-assignment-list',   'SHIFT'),
 (49, 'SHIFT_ASSIGNMENT_ASSIGN', 'Assign single shift',     '/shift-assignment-assign', 'SHIFT'),
 (50, 'SHIFT_ASSIGNMENT_BULK',   'Bulk assign shifts',      '/shift-assignment-bulk',   'SHIFT'),
+(85, 'SHIFT_CALENDAR_VIEW',      'View shift calendar',      '/shift-calendar',          'SHIFT'),
+(86, 'MY_SHIFT_VIEW',           'View my shift',          '/my-shift',               'SHIFT'),
 -- Attendance
 (51, 'ATTENDANCE_VIEW',         'View all attendance',      '/attendance-list',         'ATTENDANCE'),
 (52, 'ATTENDANCE_MY_VIEW',      'View own attendance',      '/attendance-my',           'ATTENDANCE'),
@@ -207,7 +209,7 @@ INSERT INTO role_permissions (role_id, permission_id) VALUES
 (1, 53), (1, 54), (1, 55), (1, 56), (1, 57), (1, 58), (1, 59),
 (1, 60), (1, 61), (1, 62), (1, 63), (1, 64), (1, 65), (1, 66),
 (1, 67), (1, 68), (1, 69), (1, 70), (1, 71), (1, 72), (1, 73),
-(1, 74), (1, 75), (1, 76), (1, 77), (1, 83), (1, 84);
+(1, 74), (1, 75), (1, 76), (1, 77), (1, 83), (1, 84), (1, 85), (1, 86),
 -- Holiday permissions for SYSADMIN
 (1, 78), (1, 79), (1, 80), (1, 81);
 
@@ -219,7 +221,7 @@ INSERT INTO role_permissions (role_id, permission_id) VALUES
 -- Leave
 (2, 39), (2, 40), (2, 41), (2, 46), (2, 47),
 -- Shift Assignment
-(2, 48), (2, 49), (2, 50),
+(2, 48), (2, 49), (2, 50), (2, 85), (2, 86),
 -- Attendance
 (2, 51), (2, 53), (2, 55), (2, 56), (2, 57),
 -- Overtime
@@ -238,13 +240,56 @@ INSERT INTO role_permissions (role_id, permission_id) VALUES
 -- PRODUCTION_SUPERVISOR: exact operational scope
 INSERT INTO role_permissions (role_id, permission_id) VALUES
 (3, 45), (3, 47),
-(3, 48), (3, 51), (3, 57), (3, 55), (3, 56),
+(3, 48), (3, 51), (3, 57), (3, 55), (3, 56), (3, 85), (3, 86),
 (3, 58), (3, 59);
 
 -- EMPLOYEE: self-service scope only
 INSERT INTO role_permissions (role_id, permission_id) VALUES
 (4, 42), (4, 43), (4, 44),
-(4, 52), (4, 54), (4, 66);
+(4, 52), (4, 54), (4, 66),
+(4, 86);
+
+-- =========================================================
+-- Iter 2 + Iter 3 permissions
+-- =========================================================
+
+INSERT INTO permissions (id, code, name, url_pattern, module)
+SELECT 85, 'SHIFT_CALENDAR_VIEW', 'View shift calendar', '/shift-calendar', 'SHIFT'
+WHERE NOT EXISTS (SELECT 1 FROM permissions WHERE code = 'SHIFT_CALENDAR_VIEW');
+
+INSERT INTO permissions (id, code, name, url_pattern, module)
+SELECT 86, 'MY_SHIFT_VIEW', 'View my shift', '/my-shift', 'SHIFT'
+WHERE NOT EXISTS (SELECT 1 FROM permissions WHERE code = 'MY_SHIFT_VIEW');
+
+-- SHIFT_CALENDAR_VIEW (85) for SYSADMIN, HR_MANAGER, PRODUCTION_SUPERVISOR
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT 1, 85
+WHERE NOT EXISTS (SELECT 1 FROM role_permissions WHERE role_id = 1 AND permission_id = 85);
+
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT 2, 85
+WHERE NOT EXISTS (SELECT 1 FROM role_permissions WHERE role_id = 2 AND permission_id = 85);
+
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT 3, 85
+WHERE NOT EXISTS (SELECT 1 FROM role_permissions WHERE role_id = 3 AND permission_id = 85);
+
+-- MY_SHIFT_VIEW (86) for ALL roles
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT 1, 86
+WHERE NOT EXISTS (SELECT 1 FROM role_permissions WHERE role_id = 1 AND permission_id = 86);
+
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT 2, 86
+WHERE NOT EXISTS (SELECT 1 FROM role_permissions WHERE role_id = 2 AND permission_id = 86);
+
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT 3, 86
+WHERE NOT EXISTS (SELECT 1 FROM role_permissions WHERE role_id = 3 AND permission_id = 86);
+
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT 4, 86
+WHERE NOT EXISTS (SELECT 1 FROM role_permissions WHERE role_id = 4 AND permission_id = 86);
 
 -- =========================================================
 -- Iter 1 master data
@@ -328,9 +373,9 @@ INSERT INTO audit_logs (event_code, entity_type, entity_id, actor_id, actor_name
 -- Holiday sample data
 -- =========================================================
 
-INSERT INTO holidays (date, name, is_recurring, description) VALUES
-('2026-01-01', 'Tet Duong Lich', TRUE, 'Ngay Tet nam moi'),
-('2026-04-30', 'Ngay Giai Phong Mien Nam', TRUE, 'Ky niem 30/4'),
-('2026-05-01', 'Ngay Lao Dong Quoc Te', TRUE, 'Ngay 1 thang 5'),
-('2026-09-02', 'Quoc Khanh', TRUE, 'Ngay Quoc khanz 2/9');
+INSERT INTO holidays (date, name, is_recurring, is_active, description) VALUES
+('2026-01-01', 'Tet Duong Lich', TRUE, TRUE, 'Ngay Tet nam moi'),
+('2026-04-30', 'Ngay Giai Phong Mien Nam', TRUE, TRUE, 'Ky niem 30/4'),
+('2026-05-01', 'Ngay Lao Dong Quoc Te', TRUE, TRUE, 'Ngay 1 thang 5'),
+('2026-09-02', 'Quoc Khanh', TRUE, TRUE, 'Ngay Quoc khanz 2/9');
 

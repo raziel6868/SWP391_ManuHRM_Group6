@@ -28,10 +28,37 @@ public class HolidayDAO {
 	}
 
 	public List<Holiday> getByYear(int year) {
+		return search(null, year);
+	}
+
+	public List<Holiday> search(String keyword, Integer year) {
+		return search(keyword, year, true);
+	}
+
+	public List<Holiday> search(String keyword, Integer year, boolean activeOnly) {
 		List<Holiday> holidays = new ArrayList<>();
-		String sql = "SELECT * FROM holidays WHERE YEAR(date) = ? ORDER BY date ASC";
-		try (Connection conn = getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
-			ps.setInt(1, year);
+		StringBuilder sql = new StringBuilder("SELECT * FROM holidays WHERE 1=1");
+		List<Object> params = new ArrayList<>();
+
+		if (activeOnly) {
+			sql.append(" AND is_active = TRUE");
+		}
+		if (keyword != null && !keyword.trim().isEmpty()) {
+			sql.append(" AND (name LIKE ? OR description LIKE ?)");
+			String kw = "%" + keyword.trim() + "%";
+			params.add(kw);
+			params.add(kw);
+		}
+		if (year != null) {
+			sql.append(" AND YEAR(date) = ?");
+			params.add(year);
+		}
+		sql.append(" ORDER BY date ASC");
+
+		try (Connection conn = getConnection(); PreparedStatement ps = conn.prepareStatement(sql.toString())) {
+			for (int i = 0; i < params.size(); i++) {
+				ps.setObject(i + 1, params.get(i));
+			}
 			try (ResultSet rs = ps.executeQuery()) {
 				while (rs.next()) {
 					holidays.add(mapResultSet(rs));
@@ -134,10 +161,11 @@ public class HolidayDAO {
 		return false;
 	}
 
-	public boolean delete(Long id) {
-		String sql = "DELETE FROM holidays WHERE id = ?";
+	public boolean toggleActive(Long id, boolean active) {
+		String sql = "UPDATE holidays SET is_active = ? WHERE id = ?";
 		try (Connection conn = getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
-			ps.setLong(1, id);
+			ps.setBoolean(1, active);
+			ps.setLong(2, id);
 			return ps.executeUpdate() > 0;
 		} catch (SQLException e) {
 			e.printStackTrace();
@@ -182,6 +210,7 @@ public class HolidayDAO {
 		h.setDate(rs.getDate("date"));
 		h.setName(rs.getString("name"));
 		h.setRecurring(rs.getBoolean("is_recurring"));
+		h.setActive(rs.getBoolean("is_active"));
 		h.setDescription(rs.getString("description"));
 		h.setCreatedAt(rs.getTimestamp("created_at"));
 		h.setUpdatedAt(rs.getTimestamp("updated_at"));

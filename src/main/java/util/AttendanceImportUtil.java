@@ -1,6 +1,8 @@
 package util;
 
 import dal.AttendanceDAO;
+import dal.LeaveRequestDAO;
+import dal.OvertimeDAO;
 import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigDecimal;
@@ -20,6 +22,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import model.AttendanceRecord;
+import model.OvertimeRecord;
 import model.Shift;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellType;
@@ -35,16 +38,25 @@ public class AttendanceImportUtil {
 	private static final int LATE_THRESHOLD_MINUTES = 15;
 
 	private final AttendanceDAO attendanceDAO;
+	private final LeaveRequestDAO leaveRequestDAO;
+	private final OvertimeDAO overtimeDAO;
 
 	public AttendanceImportUtil() {
-		this(new AttendanceDAO());
+		this(new AttendanceDAO(), new LeaveRequestDAO(), new OvertimeDAO());
 	}
 
 	public AttendanceImportUtil(AttendanceDAO attendanceDAO) {
-		this.attendanceDAO = attendanceDAO;
+		this(attendanceDAO, new LeaveRequestDAO(), new OvertimeDAO());
 	}
 
-	public List<AttendanceRecord> parseExcel(InputStream inputStream) throws AttendanceImportException {
+	public AttendanceImportUtil(AttendanceDAO attendanceDAO, LeaveRequestDAO leaveRequestDAO, OvertimeDAO overtimeDAO) {
+		this.attendanceDAO = attendanceDAO;
+		this.leaveRequestDAO = leaveRequestDAO;
+		this.overtimeDAO = overtimeDAO;
+	}
+
+	public List<AttendanceRecord> parseExcel(InputStream inputStream, int year, int month)
+			throws AttendanceImportException {
 		List<AttendanceRecord> records = new ArrayList<>();
 		List<String> errors = new ArrayList<>();
 		Set<String> importedKeys = new HashSet<>();
@@ -69,6 +81,14 @@ public class AttendanceImportUtil {
 				// Chỉ bắt buộc employeeCode và date
 				validateRequired(errors, displayRow, employeeCode, date);
 				if (employeeCode == null || date == null) {
+					continue;
+				}
+
+				// Kiem tra ngay co thuoc dung thang/nam duoc chon khong
+				// Phai check som truoc conflict check de tranh bao conflict cua thang khac
+				if (date.getYear() != year || date.getMonthValue() != month) {
+					errors.add("Dong " + displayRow + ": Ngay " + date + " khong thuoc thang " + month + "/" + year
+							+ " da chon.");
 					continue;
 				}
 
@@ -117,6 +137,32 @@ public class AttendanceImportUtil {
 						: null);
 				record.setStatus(resolveStatus(checkIn, shift.getStartTime()));
 				record.setImportBatchId(importBatchId);
+
+				// ── Conflict check 1: Có leave APPROVED nhưng vẫn có attendance ──
+				if (checkIn != null && leaveRequestDAO.hasApprovedLeaveOnDate(userId, sqlDate)) {
+					errors.add("Dòng " + displayRow + " [" + employeeCode + " - " + date
+							+ "]: Conflict ATTENDANCE_ON_APPROVED_LEAVE — nhân viên có đơn nghỉ phép đã duyệt"
+							+ " nhưng vẫn có dữ liệu chấm công. HR cần xử lý trước khi import.");
+					continue;
+				}
+
+				// ── Conflict check 2: Có OT APPROVED nhưng checkout không đủ muộn ──
+				if (checkIn != null && checkOut != null) {
+					OvertimeRecord approvedOT = overtimeDAO.findApprovedOTForUserAndDate(userId, sqlDate);
+					if (approvedOT != null && approvedOT.getApprovedHours() != null && shift.getEndTime() != null) {
+						// Giờ checkout kỳ vọng tối thiểu = end_time ca + approved_hours OT
+						long otMinutes = approvedOT.getApprovedHours().multiply(BigDecimal.valueOf(60)).longValue();
+						LocalTime expectedCheckout = shift.getEndTime().toLocalTime().plusMinutes(otMinutes);
+						if (checkOut.isBefore(expectedCheckout)) {
+							errors.add("Dòng " + displayRow + " [" + employeeCode + " - " + date
+									+ "]: Conflict APPROVED_OT_WITHOUT_MATCHING_ATTENDANCE — OT "
+									+ approvedOT.getApprovedHours() + "h đã duyệt nhưng giờ ra (" + checkOut
+									+ ") chưa đủ muộn (cần đến " + expectedCheckout + " trở đi). HR cần xác minh lại.");
+							continue;
+						}
+					}
+				}
+
 				records.add(record);
 			}
 		} catch (IOException e) {

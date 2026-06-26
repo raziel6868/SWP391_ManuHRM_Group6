@@ -312,6 +312,32 @@ public class LeaveRequestDAO {
 		}
 	}
 
+	public boolean hasApprovedLeaveOnDate(Long userId, java.sql.Date date) {
+		if (userId == null || date == null) {
+			return false;
+		}
+		String sql = """
+				SELECT COUNT(*) FROM leave_requests
+				WHERE user_id = ?
+				  AND status = 'APPROVED'
+				  AND start_date <= ?
+				  AND end_date   >= ?
+				""";
+		try (Connection conn = DBContext.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+			ps.setLong(1, userId);
+			ps.setDate(2, date);
+			ps.setDate(3, date);
+			try (ResultSet rs = ps.executeQuery()) {
+				if (rs.next()) {
+					return rs.getInt(1) > 0;
+				}
+			}
+		} catch (SQLException e) {
+			System.err.println("LeaveRequestDAO.hasApprovedLeaveOnDate() ERROR: " + e.getMessage());
+		}
+		return false;
+	}
+
 	private void setParams(PreparedStatement ps, List<Object> params) throws SQLException {
 		for (int i = 0; i < params.size(); i++) {
 			ps.setObject(i + 1, params.get(i));

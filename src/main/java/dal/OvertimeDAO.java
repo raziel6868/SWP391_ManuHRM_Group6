@@ -197,6 +197,28 @@ public class OvertimeDAO {
 		return false;
 	}
 
+	public OvertimeRecord findApprovedOTForUserAndDate(Long userId, java.sql.Date date) {
+		if (userId == null || date == null) {
+			return null;
+		}
+		String sql = SELECT_BASE + """
+				WHERE ot.user_id = ? AND ot.date = ? AND ot.status = 'APPROVED'
+				LIMIT 1
+				""";
+		try (Connection conn = DBContext.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+			ps.setLong(1, userId);
+			ps.setDate(2, date);
+			try (ResultSet rs = ps.executeQuery()) {
+				if (rs.next()) {
+					return mapRow(rs);
+				}
+			}
+		} catch (SQLException e) {
+			System.err.println("OvertimeDAO.findApprovedOTForUserAndDate() ERROR: " + e.getMessage());
+		}
+		return null;
+	}
+
 	private void setParams(PreparedStatement ps, List<Object> params) throws SQLException {
 		for (int i = 0; i < params.size(); i++) {
 			ps.setObject(i + 1, params.get(i));

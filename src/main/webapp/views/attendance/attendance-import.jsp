@@ -149,6 +149,16 @@
                                                                     OT duyệt — checkout chưa đủ
                                                                 </span>
                                                             </c:when>
+                                                            <c:when test="${fn:contains(log, 'ATTENDANCE_WITHOUT_SHIFT_ASSIGNMENT')}">
+                                                                <span class="badge" style="background-color: #fce7f3; color: #831843;">
+                                                                    Chấm công không có phân ca
+                                                                </span>
+                                                            </c:when>
+                                                            <c:when test="${fn:contains(log, 'WRONG_SHIFT_ATTENDANCE')}">
+                                                                <span class="badge" style="background-color: #ecfdf5; color: #065f46;">
+                                                                    Chấm công sai ca
+                                                                </span>
+                                                            </c:when>
                                                             <c:otherwise>
                                                                 <span class="badge" style="background-color: #fee2e2; color: #991b1b;">
                                                                     Conflict khác

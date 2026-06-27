@@ -119,10 +119,41 @@ public class AttendanceImportUtil {
 				}
 
 				Date sqlDate = Date.valueOf(date);
-				Shift shift = attendanceDAO.findShiftForUserAndDate(userId, sqlDate);
-				if (shift == null) {
-					errors.add("Dòng " + displayRow + ": Chưa có ca làm mặc định để gán dữ liệu chấm công.");
+
+				// Tim ca duoc phan cong chinh xac (khong fallback default shift)
+				Shift assignedShift = attendanceDAO.findAssignedShiftOnly(userId, sqlDate);
+
+				// Conflict 3: Co checkin nhung khong co shift assignment
+				if (assignedShift == null && checkIn != null) {
+					errors.add("Dòng " + displayRow + " [" + employeeCode + " - " + date
+							+ "]: Conflict ATTENDANCE_WITHOUT_SHIFT_ASSIGNMENT — nhân viên không có phân ca"
+							+ " ngày này nhưng file Excel vẫn có dữ liệu chấm công."
+							+ " Vui lòng xoá dòng này khỏi file Excel rồi import lại.");
 					continue;
+				}
+
+				// Khong co shift assignment va khong co checkin: ghi ABSENT voi default shift
+				Shift shift = assignedShift != null ? assignedShift : attendanceDAO.findDefaultShift();
+				if (shift == null) {
+					errors.add("Dòng " + displayRow + ": Không tìm được ca làm nào trong hệ thống.");
+					continue;
+				}
+
+				// Conflict 4: Co shift assignment nhung checkin sai khung gio ca (+/- 2 tieng)
+				if (assignedShift != null && checkIn != null && assignedShift.getStartTime() != null
+						&& assignedShift.getEndTime() != null) {
+					LocalTime shiftStart = assignedShift.getStartTime().toLocalTime();
+					LocalTime shiftEnd = assignedShift.getEndTime().toLocalTime();
+					LocalTime windowStart = shiftStart.minusHours(2);
+					boolean wrongShift = checkIn.isBefore(windowStart) || checkIn.isAfter(shiftEnd);
+					if (wrongShift) {
+						errors.add("Dòng " + displayRow + " [" + employeeCode + " - " + date
+								+ "]: Conflict WRONG_SHIFT_ATTENDANCE — nhân viên được phân ca "
+								+ assignedShift.getName() + " (" + shiftStart + "–" + shiftEnd + ")"
+								+ " nhưng giờ vào trong file là " + checkIn + "."
+								+ " Vui lòng kiểm tra lại dữ liệu trong file Excel.");
+						continue;
+					}
 				}
 
 				AttendanceRecord record = new AttendanceRecord();
@@ -141,8 +172,9 @@ public class AttendanceImportUtil {
 				// ── Conflict check 1: Có leave APPROVED nhưng vẫn có attendance ──
 				if (checkIn != null && leaveRequestDAO.hasApprovedLeaveOnDate(userId, sqlDate)) {
 					errors.add("Dòng " + displayRow + " [" + employeeCode + " - " + date
-							+ "]: Conflict ATTENDANCE_ON_APPROVED_LEAVE — nhân viên có đơn nghỉ phép đã duyệt"
-							+ " nhưng vẫn có dữ liệu chấm công. HR cần xử lý trước khi import.");
+							+ "]: Conflict ATTENDANCE_ON_APPROVED_LEAVE — nhân viên đã có đơn nghỉ phép"
+							+ " được duyệt ngày này nhưng file Excel vẫn có dữ liệu chấm công."
+							+ " Vui lòng xoá dòng này khỏi file Excel rồi import lại.");
 					continue;
 				}
 
@@ -150,14 +182,14 @@ public class AttendanceImportUtil {
 				if (checkIn != null && checkOut != null) {
 					OvertimeRecord approvedOT = overtimeDAO.findApprovedOTForUserAndDate(userId, sqlDate);
 					if (approvedOT != null && approvedOT.getApprovedHours() != null && shift.getEndTime() != null) {
-						// Giờ checkout kỳ vọng tối thiểu = end_time ca + approved_hours OT
 						long otMinutes = approvedOT.getApprovedHours().multiply(BigDecimal.valueOf(60)).longValue();
 						LocalTime expectedCheckout = shift.getEndTime().toLocalTime().plusMinutes(otMinutes);
 						if (checkOut.isBefore(expectedCheckout)) {
 							errors.add("Dòng " + displayRow + " [" + employeeCode + " - " + date
-									+ "]: Conflict APPROVED_OT_WITHOUT_MATCHING_ATTENDANCE — OT "
-									+ approvedOT.getApprovedHours() + "h đã duyệt nhưng giờ ra (" + checkOut
-									+ ") chưa đủ muộn (cần đến " + expectedCheckout + " trở đi). HR cần xác minh lại.");
+									+ "]: Conflict APPROVED_OT_WITHOUT_MATCHING_ATTENDANCE — nhân viên có OT "
+									+ approvedOT.getApprovedHours() + "h được duyệt nhưng giờ ra trong file là "
+									+ checkOut + " (cần đến " + expectedCheckout + " trở đi)."
+									+ " Vui lòng sửa lại giờ ra trong file Excel rồi import lại.");
 							continue;
 						}
 					}

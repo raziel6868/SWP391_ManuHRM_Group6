@@ -106,14 +106,6 @@
                         <span>Quản lý Ca làm việc</span>
                     </a>
                 </c:when>
-                <c:when test="${permission.code == 'SHIFT_ASSIGNMENT_VIEW'}">
-                    <c:url var="menuUrl" value="${permission.urlPattern}" />
-                    <a class="${currentPath == permission.urlPattern ? 'sidebar-nav-item active text-decoration-none' : 'sidebar-nav-item text-decoration-none'}"
-                       href="${menuUrl}">
-                        <span class="material-symbols-outlined">event</span>
-                        <span>Phân ca</span>
-                    </a>
-                </c:when>
                 <c:when test="${permission.code == 'SHIFT_CALENDAR_VIEW'}">
                     <c:url var="menuUrl" value="${permission.urlPattern}" />
                     <a class="${currentPath == permission.urlPattern ? 'sidebar-nav-item active text-decoration-none' : 'sidebar-nav-item text-decoration-none'}"

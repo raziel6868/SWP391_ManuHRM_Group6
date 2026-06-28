@@ -286,6 +286,51 @@ a:hover {
   color: var(--primary);
 }
 
+.sidebar-parent {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  text-align: left;
+}
+
+.sidebar-parent .sidebar-chevron {
+  margin-left: auto;
+  transition: transform 0.2s ease;
+}
+
+.sidebar-parent[aria-expanded='true'] .sidebar-chevron {
+  transform: rotate(180deg);
+}
+
+.sidebar-submenu {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  margin: 0.125rem 0 0.5rem;
+  padding-left: 2.75rem;
+}
+
+.sidebar-subitem {
+  display: block;
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--rounded-sm);
+  color: var(--on-surface-variant);
+  font-size: 0.925rem;
+  font-weight: 500;
+  text-decoration: none;
+  transition: all 0.2s;
+}
+
+.sidebar-subitem:hover {
+  background-color: var(--surface-container);
+  color: var(--on-surface);
+}
+
+.sidebar-subitem.active {
+  background-color: var(--primary-fixed);
+  color: var(--primary);
+}
+
 .sidebar-footer {
   padding: 1rem;
   border-top: 1px solid var(--surface-variant);

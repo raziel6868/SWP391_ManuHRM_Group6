@@ -141,7 +141,8 @@ public class AttendanceImportUtil {
 
 				// Conflict 4: Co shift assignment nhung checkin sai khung gio ca (+/- 2 tieng)
 				if (assignedShift != null && checkIn != null && assignedShift.getStartTime() != null
-						&& assignedShift.getEndTime() != null) {
+						&& assignedShift.getEndTime() != null
+						&& !Boolean.TRUE.equals(assignedShift.getIsNightShift())) {
 					LocalTime shiftStart = assignedShift.getStartTime().toLocalTime();
 					LocalTime shiftEnd = assignedShift.getEndTime().toLocalTime();
 					LocalTime windowStart = shiftStart.minusHours(2);

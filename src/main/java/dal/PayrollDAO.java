@@ -67,7 +67,7 @@ public class PayrollDAO {
 		String sql = """
 				SELECT COUNT(DISTINCT DATE(date)) AS work_days
 				FROM attendance_records
-				WHERE user_id = ? AND YEAR(date) = ? AND MONTH(date) = ?
+				WHERE user_id = ? AND YEAR(date) = ? AND MONTH(date) = ? AND status != 'ABSENT'
 				""";
 
 		try (PreparedStatement ps = conn.prepareStatement(sql)) {

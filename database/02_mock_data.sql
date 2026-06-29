@@ -35,67 +35,68 @@ SET FOREIGN_KEY_CHECKS = 1;
 -- =========================================================
 
 INSERT INTO departments (id, name, department_type, parent_id, is_active) VALUES
-(1, 'Ban Giam Doc', 'OFFICE', NULL, TRUE),
-(2, 'Phong Nhan Su (HR)', 'OFFICE', 1, TRUE),
-(3, 'Phong Ke Toan', 'OFFICE', 1, TRUE),
-(4, 'Xuong Lap Rap A', 'FACTORY', NULL, TRUE),
-(5, 'To Cat Han (Xuong A)', 'FACTORY', 4, TRUE),
-(6, 'To Lap Rap (Xuong A)', 'FACTORY', 4, TRUE);
+(1, 'Ban Giám Đốc', 'OFFICE', NULL, TRUE),
+(2, 'Phòng IT', 'OFFICE', 1, TRUE),
+(3, 'Phòng Nhân Sự (HR)', 'OFFICE', 1, TRUE),
+(4, 'Xưởng Lắp Ráp A', 'FACTORY', 1, TRUE),
+(5, 'Xưởng Lắp Ráp B', 'FACTORY', 1, TRUE),
+(6, 'Xưởng Lắp Ráp C', 'FACTORY', 1, TRUE);
 
 INSERT INTO job_titles (id, name, description, is_active) VALUES
-(1, 'IT System Admin', 'Quan tri he thong noi bo', TRUE),
-(2, 'Truong phong Nhan su', 'Quan ly nhan su va chinh sach HR', TRUE),
-(3, 'Quan doc Xuong', 'Quan ly van hanh xuong san xuat', TRUE),
-(4, 'Nhan vien ke toan', 'Nhan vien van phong phong ke toan', TRUE),
-(5, 'Cong nhan han', 'Cong nhan san xuat thuoc to cat han', TRUE),
-(6, 'Cong nhan lap rap', 'Cong nhan san xuat thuoc to lap rap', TRUE);
+(1, 'Giám đốc', 'Quản lý điều hành công ty', TRUE),
+(2, 'IT Manager', 'Quản lý hệ thống và hạ tầng IT', TRUE),
+(3, 'IT Staff', 'Nhân viên hỗ trợ hệ thống IT', TRUE),
+(4, 'Trưởng phòng Nhân sự', 'Quản lý phòng nhân sự', TRUE),
+(5, 'Nhân viên Nhân sự', 'Xử lý nghiệp vụ nhân sự', TRUE),
+(6, 'Production Supervisor', 'Quản lý vận hành xưởng sản xuất', TRUE),
+(7, 'Công nhân Lắp Ráp', 'Công nhân sản xuất trong xưởng lắp Ráp', TRUE);
 
 -- =========================================================
 -- Roles
 -- =========================================================
 
 INSERT INTO roles (id, name, display_name, description, is_system, is_active, hierarchy_level) VALUES
-(1, 'SYSADMIN', 'Quan tri he thong', 'Quan ly tai khoan, role, permission va cau hinh he thong', TRUE, TRUE, 4),
-(2, 'HR_MANAGER', 'Quan ly nhan su', 'Quan ly ho so nhan su, master data, hop dong, payroll va bao cao', TRUE, TRUE, 3),
-(3, 'PRODUCTION_SUPERVISOR', 'Quan doc/To truong san xuat', 'Phan ca, lap danh sach OT, duyet nghi va theo doi cong nhan duoi quyen', FALSE, TRUE, 2),
-(4, 'EMPLOYEE', 'Nhan vien/Cong nhan', 'Nguoi dung thuong: xem ho so, lich ca, phieu luong va gui don nghi', FALSE, TRUE, 1);
+(1, 'SYSADMIN', 'Quản trị hệ thống', 'Quản lý tài khoản, vai trò, quyền và cấu hình hệ thống', TRUE, TRUE, 4),
+(2, 'HR_MANAGER', 'Quản lý nhân sự', 'Quản lý hồ sơ nhân sự, master data, hợp đồng, payroll và báo cáo', TRUE, TRUE, 3),
+(3, 'PRODUCTION_SUPERVISOR', 'Quản đốc/Tổ trưởng sản xuất', 'Phân ca, lập danh sách OT, duyệt nghỉ và theo dõi công nhân dưới quyền', FALSE, TRUE, 2),
+(4, 'EMPLOYEE', 'Nhân viên/Công nhân', 'Người dùng thường: xem hồ sơ, lịch ca, phiếu lương và gửi đơn nghỉ', FALSE, TRUE, 1);
 
 -- =========================================================
 -- Iter 1 Permissions (IDs 1-31)
 -- =========================================================
 
 INSERT INTO permissions (id, code, name, url_pattern, module) VALUES
-(1,  'USER_VIEW',    'Xem danh sach Nhan su',       '/user-list',       'USER'),
-(2,  'USER_CREATE',  'Them moi Nhan su',             '/user-create',     'USER'),
-(3,  'USER_UPDATE',  'Cap nhat Ho so',               '/user-update',     'USER'),
-(4,  'USER_STATUS',  'Khoa/Mo tai khoan',            '/user-status',     'USER'),
-(5,  'USER_DETAIL',  'Xem chi tiet Nhan su',         '/user-detail',     'USER'),
-(6,  'ROLE_VIEW',    'Xem danh sach Vai tro',        '/role-list',       'ROLE'),
-(7,  'ROLE_CREATE',  'Tao vai tro moi',              '/role-create',     'ROLE'),
-(8,  'ROLE_UPDATE',  'Cap nhat Vai tro',             '/role-update',     'ROLE'),
-(9,  'ROLE_STATUS',  'Kich hoat/Vo hieu Vai tro',    '/role-status',     'ROLE'),
-(10, 'ROLE_PERM',    'Phan quyen dong',              '/role-permission', 'ROLE'),
-(11, 'TICKET_VIEW',  'Quan ly Ticket',                '/admin/tickets',   'TICKET'),
-(12, 'DEPARTMENT_VIEW',   'Xem danh sach Phong ban',      '/department-list',   'DEPARTMENT'),
-(13, 'DEPARTMENT_CREATE', 'Them Phong ban',               '/department-create', 'DEPARTMENT'),
-(14, 'DEPARTMENT_UPDATE', 'Cap nhat Phong ban',           '/department-update', 'DEPARTMENT'),
-(15, 'DEPARTMENT_STATUS', 'Kich hoat/Vo hieu Phong ban',  '/department-status', 'DEPARTMENT'),
-(16, 'JOB_TITLE_VIEW',   'Xem danh sach Chuc danh',      '/job-title-list',   'JOB_TITLE'),
-(17, 'JOB_TITLE_CREATE', 'Them Chuc danh',               '/job-title-create', 'JOB_TITLE'),
-(18, 'JOB_TITLE_UPDATE', 'Cap nhat Chuc danh',           '/job-title-update', 'JOB_TITLE'),
-(19, 'JOB_TITLE_STATUS', 'Kich hoat/Vo hieu Chuc danh',  '/job-title-status', 'JOB_TITLE'),
-(20, 'LEAVE_TYPE_VIEW',   'Xem danh sach Loai nghi',      '/leave-type-list',   'LEAVE_TYPE'),
-(21, 'LEAVE_TYPE_CREATE', 'Them Loai nghi',               '/leave-type-create', 'LEAVE_TYPE'),
-(22, 'LEAVE_TYPE_UPDATE', 'Cap nhat Loai nghi',           '/leave-type-update', 'LEAVE_TYPE'),
-(23, 'LEAVE_TYPE_STATUS', 'Kich hoat/Vo hieu Loai nghi',  '/leave-type-status', 'LEAVE_TYPE'),
-(24, 'SHIFT_VIEW',   'Xem danh sach Ca lam',      '/shift-list',   'SHIFT'),
-(25, 'SHIFT_CREATE', 'Them Ca lam',               '/shift-create', 'SHIFT'),
-(26, 'SHIFT_UPDATE', 'Cap nhat Ca lam',           '/shift-update', 'SHIFT'),
-(27, 'SHIFT_STATUS', 'Kich hoat/Vo hieu Ca lam',  '/shift-status', 'SHIFT'),
-(28, 'CONTRACT_TYPE_VIEW',   'Xem danh sach Loai hop dong',      '/contract-type-list',   'CONTRACT_TYPE'),
-(29, 'CONTRACT_TYPE_CREATE', 'Them Loai hop dong',               '/contract-type-create', 'CONTRACT_TYPE'),
-(30, 'CONTRACT_TYPE_UPDATE', 'Cap nhat Loai hop dong',           '/contract-type-update', 'CONTRACT_TYPE'),
-(31, 'CONTRACT_TYPE_STATUS', 'Kich hoat/Vo hieu Loai hop dong',  '/contract-type-status', 'CONTRACT_TYPE');
+(1,  'USER_VIEW',    'Xem danh sách Nhân sự',       '/user-list',       'USER'),
+(2,  'USER_CREATE',  'Thêm mới Nhân sự',             '/user-create',     'USER'),
+(3,  'USER_UPDATE',  'Cập nhật Hồ sơ',               '/user-update',     'USER'),
+(4,  'USER_STATUS',  'Khóa/Mở tài khoản',            '/user-status',     'USER'),
+(5,  'USER_DETAIL',  'Xem chi tiết Nhân sự',         '/user-detail',     'USER'),
+(6,  'ROLE_VIEW',    'Xem danh sách Vai trò',        '/role-list',       'ROLE'),
+(7,  'ROLE_CREATE',  'Tạo vai trò mới',              '/role-create',     'ROLE'),
+(8,  'ROLE_UPDATE',  'Cập nhật Vai trò',             '/role-update',     'ROLE'),
+(9,  'ROLE_STATUS',  'Kích hoạt/Vô hiệu Vai trò',    '/role-status',     'ROLE'),
+(10, 'ROLE_PERM',    'Phân quyền động',              '/role-permission', 'ROLE'),
+(11, 'TICKET_VIEW',  'Quản lý Ticket',                '/admin/tickets',   'TICKET'),
+(12, 'DEPARTMENT_VIEW',   'Xem danh sách Phòng ban',      '/department-list',   'DEPARTMENT'),
+(13, 'DEPARTMENT_CREATE', 'Thêm Phòng ban',               '/department-create', 'DEPARTMENT'),
+(14, 'DEPARTMENT_UPDATE', 'Cập nhật Phòng ban',           '/department-update', 'DEPARTMENT'),
+(15, 'DEPARTMENT_STATUS', 'Kích hoạt/Vô hiệu Phòng ban',  '/department-status', 'DEPARTMENT'),
+(16, 'JOB_TITLE_VIEW',   'Xem danh sách Chức danh',      '/job-title-list',   'JOB_TITLE'),
+(17, 'JOB_TITLE_CREATE', 'Thêm Chức danh',               '/job-title-create', 'JOB_TITLE'),
+(18, 'JOB_TITLE_UPDATE', 'Cập nhật Chức danh',           '/job-title-update', 'JOB_TITLE'),
+(19, 'JOB_TITLE_STATUS', 'Kích hoạt/Vô hiệu Chức danh',  '/job-title-status', 'JOB_TITLE'),
+(20, 'LEAVE_TYPE_VIEW',   'Xem danh sách Loại nghỉ',      '/leave-type-list',   'LEAVE_TYPE'),
+(21, 'LEAVE_TYPE_CREATE', 'Thêm Loại nghỉ',               '/leave-type-create', 'LEAVE_TYPE'),
+(22, 'LEAVE_TYPE_UPDATE', 'Cập nhật Loại nghỉ',           '/leave-type-update', 'LEAVE_TYPE'),
+(23, 'LEAVE_TYPE_STATUS', 'Kích hoạt/Vô hiệu Loại nghỉ',  '/leave-type-status', 'LEAVE_TYPE'),
+(24, 'SHIFT_VIEW',   'Xem danh sách Ca làm',      '/shift-list',   'SHIFT'),
+(25, 'SHIFT_CREATE', 'Thêm Ca làm',               '/shift-create', 'SHIFT'),
+(26, 'SHIFT_UPDATE', 'Cập nhật Ca làm',           '/shift-update', 'SHIFT'),
+(27, 'SHIFT_STATUS', 'Kích hoạt/Vô hiệu Ca làm',  '/shift-status', 'SHIFT'),
+(28, 'CONTRACT_TYPE_VIEW',   'Xem danh sách Loại hợp đồng',      '/contract-type-list',   'CONTRACT_TYPE'),
+(29, 'CONTRACT_TYPE_CREATE', 'Thêm Loại hợp đồng',               '/contract-type-create', 'CONTRACT_TYPE'),
+(30, 'CONTRACT_TYPE_UPDATE', 'Cập nhật Loại hợp đồng',           '/contract-type-update', 'CONTRACT_TYPE'),
+(31, 'CONTRACT_TYPE_STATUS', 'Kích hoạt/Vô hiệu Loại hợp đồng',  '/contract-type-status', 'CONTRACT_TYPE');
 
 -- =========================================================
 -- Iter 2 + Iter 3 Permissions (IDs 32-77)
@@ -103,69 +104,69 @@ INSERT INTO permissions (id, code, name, url_pattern, module) VALUES
 
 INSERT INTO permissions (id, code, name, url_pattern, module) VALUES
 -- Contracts
-(32, 'CONTRACT_VIEW',           'View contracts',           '/contract-list',           'CONTRACT'),
-(33, 'CONTRACT_DETAIL',         'View contract detail',     '/contract-detail',         'CONTRACT'),
-(34, 'CONTRACT_CREATE',         'Create contracts',         '/contract-create',         'CONTRACT'),
-(35, 'CONTRACT_UPDATE',         'Edit contracts',           '/contract-update',         'CONTRACT'),
-(36, 'CONTRACT_RENEW',          'Renew contracts',          '/contract-renew',          'CONTRACT'),
-(37, 'CONTRACT_UPLOAD',         'Upload contract PDF',      '/contract-upload',         'CONTRACT'),
-(38, 'CONTRACT_STATUS',         'Toggle contract status',   '/contract-status',         'CONTRACT'),
+(32, 'CONTRACT_VIEW',           'Xem hợp đồng',               '/contract-list',           'CONTRACT'),
+(33, 'CONTRACT_DETAIL',         'Xem chi tiết hợp đồng',      '/contract-detail',         'CONTRACT'),
+(34, 'CONTRACT_CREATE',         'Tạo hợp đồng',              '/contract-create',         'CONTRACT'),
+(35, 'CONTRACT_UPDATE',         'Cập nhật hợp đồng',         '/contract-update',         'CONTRACT'),
+(36, 'CONTRACT_RENEW',          'Gia hạn hợp đồng',          '/contract-renew',          'CONTRACT'),
+(37, 'CONTRACT_UPLOAD',         'Tải lên hợp đồng PDF',      '/contract-upload',         'CONTRACT'),
+(38, 'CONTRACT_STATUS',         'Thay đổi trạng thái hợp đồng', '/contract-status',       'CONTRACT'),
 -- Leave
-(39, 'LEAVE_BALANCE_VIEW',      'View leave balances',      '/leave-balance-list',      'LEAVE'),
-(40, 'LEAVE_BALANCE_SETUP',     'Set/update leave quota',   '/leave-balance-setup',     'LEAVE'),
-(41, 'LEAVE_REQUEST_VIEW',      'View all leave requests',  '/leave-request-list',      'LEAVE'),
-(42, 'LEAVE_MY_VIEW',           'View own leave requests',  '/leave-request-my',        'LEAVE'),
-(43, 'LEAVE_MY_CREATE',         'Submit leave request',     '/leave-request-create',    'LEAVE'),
-(44, 'LEAVE_MY_CANCEL',         'Cancel own leave request', '/leave-request-cancel',    'LEAVE'),
-(45, 'LEAVE_REQUEST_APPROVE_L1','Approve leave (Level 1)',  '/leave-request-approve',   'LEAVE'),
-(46, 'LEAVE_REQUEST_APPROVE_L2','Final approve leave',      '/leave-request-final-approve', 'LEAVE'),
-(47, 'LEAVE_REQUEST_REJECT',    'Reject leave request',     '/leave-request-reject',    'LEAVE'),
+(39, 'LEAVE_BALANCE_VIEW',      'Xem số dư phép năm',         '/leave-balance-list',      'LEAVE'),
+(40, 'LEAVE_BALANCE_SETUP',     'Cài đặt quota phép năm',     '/leave-balance-setup',     'LEAVE'),
+(41, 'LEAVE_REQUEST_VIEW',      'Xem tất cả đơn nghỉ',        '/leave-request-list',      'LEAVE'),
+(42, 'LEAVE_MY_VIEW',           'Xem đơn nghỉ của tôi',       '/leave-request-my',        'LEAVE'),
+(43, 'LEAVE_MY_CREATE',         'Gửi đơn nghỉ phép',         '/leave-request-create',    'LEAVE'),
+(44, 'LEAVE_MY_CANCEL',         'Hủy đơn nghỉ của tôi',       '/leave-request-cancel',    'LEAVE'),
+(45, 'LEAVE_REQUEST_APPROVE_L1','Duyệt nghỉ phép cấp 1',    '/leave-request-approve',   'LEAVE'),
+(46, 'LEAVE_REQUEST_APPROVE_L2','Duyệt nghỉ phép cấp cuối',  '/leave-request-final-approve', 'LEAVE'),
+(47, 'LEAVE_REQUEST_REJECT',    'Từ chối đơn nghỉ phép',     '/leave-request-reject',    'LEAVE'),
 -- Shift Assignment
-(48, 'SHIFT_ASSIGNMENT_VIEW',   'View shift assignments',   '/shift-assignment-list',   'SHIFT'),
-(49, 'SHIFT_ASSIGNMENT_ASSIGN', 'Assign single shift',     '/shift-calendar',          'SHIFT'),
-(50, 'SHIFT_ASSIGNMENT_BULK',   'Bulk assign shifts',      '/shift-calendar-import',   'SHIFT'),
-(85, 'SHIFT_CALENDAR_VIEW',      'View shift calendar',      '/shift-calendar',          'SHIFT'),
-(86, 'MY_SHIFT_VIEW',           'View my shift',          '/my-shift',               'SHIFT'),
+(48, 'SHIFT_ASSIGNMENT_VIEW',   'Xem phân ca',                '/shift-assignment-list',   'SHIFT'),
+(49, 'SHIFT_ASSIGNMENT_ASSIGN', 'Phân ca đơn',                '/shift-calendar',          'SHIFT'),
+(50, 'SHIFT_ASSIGNMENT_BULK',   'Phân ca hàng loạt',          '/shift-calendar-import',   'SHIFT'),
+(85, 'SHIFT_CALENDAR_VIEW',      'Xem lịch ca',                 '/shift-calendar',          'SHIFT'),
+(86, 'MY_SHIFT_VIEW',           'Xem ca làm của tôi',          '/my-shift',               'SHIFT'),
 -- Attendance
-(51, 'ATTENDANCE_VIEW',         'View all attendance',      '/attendance-list',         'ATTENDANCE'),
-(52, 'ATTENDANCE_MY_VIEW',      'View own attendance',      '/attendance-my',           'ATTENDANCE'),
-(53, 'ATTENDANCE_IMPORT',       'Import attendance Excel',  '/attendance-import',       'ATTENDANCE'),
-(54, 'ATTENDANCE_CORRECTION_REQUEST', 'Request correction',  '/attendance-correction-request', 'ATTENDANCE'),
-(55, 'ATTENDANCE_CORRECTION_APPROVE','Approve correction',   '/attendance-correction-approve', 'ATTENDANCE'),
-(56, 'ATTENDANCE_CORRECTION_REJECT', 'Reject correction',   '/attendance-correction-reject',  'ATTENDANCE'),
-(57, 'ATTENDANCE_CORRECTION_VIEW', 'View attendance corrections', '/attendance-correction-list', 'ATTENDANCE'),
+(51, 'ATTENDANCE_VIEW',         'Xem chấm công tất cả',       '/attendance-list',         'ATTENDANCE'),
+(52, 'ATTENDANCE_MY_VIEW',      'Xem chấm công của tôi',       '/attendance-my',           'ATTENDANCE'),
+(53, 'ATTENDANCE_IMPORT',       'Nhập chấm công Excel',       '/attendance-import',       'ATTENDANCE'),
+(54, 'ATTENDANCE_CORRECTION_REQUEST', 'Yêu cầu chỉnh sửa',     '/attendance-correction-request', 'ATTENDANCE'),
+(55, 'ATTENDANCE_CORRECTION_APPROVE','Duyệt chỉnh sửa công',   '/attendance-correction-approve', 'ATTENDANCE'),
+(56, 'ATTENDANCE_CORRECTION_REJECT', 'Từ chối chỉnh sửa công', '/attendance-correction-reject',  'ATTENDANCE'),
+(57, 'ATTENDANCE_CORRECTION_VIEW', 'Xem đơn chỉnh sửa công',   '/attendance-correction-list', 'ATTENDANCE'),
 -- Overtime
-(58, 'OT_VIEW',                 'View overtime records',    '/overtime-list',           'OVERTIME'),
-(59, 'OT_REQUEST',              'Request overtime',         '/overtime-request',        'OVERTIME'),
-(60, 'OT_APPROVE',              'Approve overtime',         '/overtime-approve',        'OVERTIME'),
-(61, 'OT_REJECT',               'Reject overtime',          '/overtime-reject',         'OVERTIME'),
+(58, 'OT_VIEW',                 'Xem tăng ca',                 '/overtime-list',           'OVERTIME'),
+(59, 'OT_REQUEST',              'Yêu cầu tăng ca',            '/overtime-request',        'OVERTIME'),
+(60, 'OT_APPROVE',              'Duyệt tăng ca',              '/overtime-approve',        'OVERTIME'),
+(61, 'OT_REJECT',               'Từ chối tăng ca',           '/overtime-reject',         'OVERTIME'),
 -- Salary / Payroll
-(62, 'SALARY_BASE_VIEW',        'View salary bases',        '/salary-base-list',        'SALARY'),
-(63, 'SALARY_BASE_SETUP',       'Set/update salary base',   '/salary-base-setup',       'SALARY'),
-(64, 'PAYROLL_VIEW',            'View payroll preview',     '/payroll-preview',         'PAYROLL'),
-(65, 'PAYROLL_GENERATE',        'Generate monthly payroll', '/payroll-generate',        'PAYROLL'),
-(66, 'PAYSLIP_VIEW',            'View payslip',             '/payslip-view',            'PAYSLIP'),
+(62, 'SALARY_BASE_VIEW',        'Xem lương cơ bản',           '/salary-base-list',        'SALARY'),
+(63, 'SALARY_BASE_SETUP',       'Cài đặt lương cơ bản',      '/salary-base-setup',       'SALARY'),
+(64, 'PAYROLL_VIEW',            'Xem bảng lương',             '/payroll-preview',         'PAYROLL'),
+(65, 'PAYROLL_GENERATE',        'Tạo bảng lương tháng',      '/payroll-generate',        'PAYROLL'),
+(66, 'PAYSLIP_VIEW',            'Xem phiếu lương',            '/payslip-view',            'PAYSLIP'),
 -- Monthly Sheet
-(67, 'MONTHLY_SHEET_VIEW',      'View monthly sheets',      '/monthly-sheet-list',      'PAYROLL'),
-(68, 'MONTHLY_SHEET_CLOSE',     'Close monthly sheet',      '/monthly-sheet-close',     'PAYROLL'),
-(69, 'MONTHLY_SHEET_REOPEN',    'Reopen monthly sheet',     '/monthly-sheet-reopen',    'PAYROLL'),
+(67, 'MONTHLY_SHEET_VIEW',      'Xem bảng công tháng',        '/monthly-sheet-list',      'PAYROLL'),
+(68, 'MONTHLY_SHEET_CLOSE',     'Đóng bảng công tháng',       '/monthly-sheet-close',     'PAYROLL'),
+(69, 'MONTHLY_SHEET_REOPEN',    'Mở lại bảng công tháng',    '/monthly-sheet-reopen',    'PAYROLL'),
 -- Reports
-(70, 'REPORT_ATTENDANCE',       'Attendance report',        '/report-attendance',       'REPORT'),
-(71, 'REPORT_LEAVE',            'Leave report',             '/report-leave',            'REPORT'),
-(72, 'REPORT_HEADCOUNT',        'Headcount report',         '/report-headcount',        'REPORT'),
-(73, 'REPORT_CONTRACT',         'Contract report',          '/report-contract',         'REPORT'),
-(74, 'REPORT_PAYROLL',          'Payroll report',           '/report-payroll',          'REPORT'),
-(75, 'REPORT_OT',               'Overtime report',          '/report-overtime',         'REPORT'),
+(70, 'REPORT_ATTENDANCE',       'Báo cáo chấm công',          '/report-attendance',       'REPORT'),
+(71, 'REPORT_LEAVE',            'Báo cáo nghỉ phép',          '/report-leave',            'REPORT'),
+(72, 'REPORT_HEADCOUNT',        'Báo cáo nhân sự',            '/report-headcount',        'REPORT'),
+(73, 'REPORT_CONTRACT',         'Báo cáo hợp đồng',          '/report-contract',         'REPORT'),
+(74, 'REPORT_PAYROLL',          'Báo cáo lương',              '/report-payroll',          'REPORT'),
+(75, 'REPORT_OT',               'Báo cáo tăng ca',            '/report-overtime',         'REPORT'),
 -- Audit
-(76, 'AUDIT_LOG_VIEW',          'View audit log',           '/audit-log-list',          'AUDIT'),
-(77, 'APPROVAL_HISTORY_VIEW',   'View approval history',    '/approval-history-list',   'AUDIT'),
--- Holiday Management (IDs 78-82)
-(78, 'HOLIDAY_VIEW',            'View holidays',            '/holiday-list',           'HOLIDAY'),
-(79, 'HOLIDAY_CREATE',          'Create holiday',           '/holiday-create',         'HOLIDAY'),
-(80, 'HOLIDAY_UPDATE',          'Update holiday',           '/holiday-update',         'HOLIDAY'),
-(81, 'HOLIDAY_DELETE',          'Delete holiday',           '/holiday-delete',         'HOLIDAY'),
-(83, 'CONTRACT_TERMINATE',      'Terminate contracts',      '/contract-terminate',     'CONTRACT'),
-(84, 'CONTRACT_EXPIRY',        'View expiring contracts',  '/contract-expiry',        'CONTRACT');
+(76, 'AUDIT_LOG_VIEW',          'Xem lịch sử hệ thống',      '/audit-log-list',          'AUDIT'),
+(77, 'APPROVAL_HISTORY_VIEW',   'Xem lịch sử phê duyệt',     '/approval-history-list',   'AUDIT'),
+-- Holiday Management
+(78, 'HOLIDAY_VIEW',            'Xem ngày nghỉ lễ',          '/holiday-list',           'HOLIDAY'),
+(79, 'HOLIDAY_CREATE',          'Tạo ngày nghỉ lễ',          '/holiday-create',         'HOLIDAY'),
+(80, 'HOLIDAY_UPDATE',          'Cập nhật ngày nghỉ lễ',    '/holiday-update',         'HOLIDAY'),
+(81, 'HOLIDAY_DELETE',          'Xóa ngày nghỉ lễ',          '/holiday-delete',         'HOLIDAY'),
+(83, 'CONTRACT_TERMINATE',      'Chấm dứt hợp đồng',         '/contract-terminate',     'CONTRACT'),
+(84, 'CONTRACT_EXPIRY',        'Xem hợp đồng hết hạn',     '/contract-expiry',        'CONTRACT');
 
 -- =========================================================
 -- Iter 1 Role Permissions (Explicit)
@@ -217,7 +218,7 @@ INSERT INTO role_permissions (role_id, permission_id) VALUES
 INSERT INTO role_permissions (role_id, permission_id) VALUES
 -- Contracts
 (2, 32), (2, 33), (2, 34), (2, 35), (2, 36), (2, 37), (2, 38),
-(2, 83), (2, 84), 
+(2, 83), (2, 84),
 -- Leave
 (2, 39), (2, 40), (2, 41), (2, 46), (2, 47),
 -- Shift Assignment
@@ -232,8 +233,8 @@ INSERT INTO role_permissions (role_id, permission_id) VALUES
 (2, 67), (2, 68), (2, 69),
 -- Reports
 (2, 70), (2, 71), (2, 72), (2, 73), (2, 74), (2, 75),
--- Audit
-(2, 76), (2, 77),
+-- Audit permissions belong to SYSADMIN (IT Manager) only
+-- (2, 76), (2, 77),
 -- Holiday permissions for HR_MANAGER
 (2, 78), (2, 79), (2, 80), (2, 81);
 
@@ -296,21 +297,21 @@ WHERE NOT EXISTS (SELECT 1 FROM role_permissions WHERE role_id = 4 AND permissio
 -- =========================================================
 
 INSERT INTO leave_types (id, code, name, description, is_paid, is_active) VALUES
-(1, 'ANNUAL', 'Nghi phep nam', 'Nghi phep huong luong theo quota nam', TRUE, TRUE),
-(2, 'SICK', 'Nghi benh', 'Nghi do van de suc khoe', TRUE, TRUE),
-(3, 'UNPAID', 'Nghi khong luong', 'Nghi khong huong luong', FALSE, TRUE),
-(4, 'OTHER', 'Nghi khac', 'Cac loai nghi khac', FALSE, TRUE);
+(1, 'ANNUAL', 'Nghỉ phép năm', 'Nghỉ phép hưởng lương theo quota năm', TRUE, TRUE),
+(2, 'SICK', 'Nghỉ bệnh', 'Nghỉ do vấn đề sức khỏe', TRUE, TRUE),
+(3, 'UNPAID', 'Nghỉ không lương', 'Nghỉ không hưởng lương', FALSE, TRUE),
+(4, 'OTHER', 'Nghỉ khác', 'Các loại nghỉ khác', FALSE, TRUE);
 
 INSERT INTO shifts (id, code, name, start_time, end_time, break_minutes, is_night_shift, is_active) VALUES
-(1, 'OFFICE', 'Ca hanh chinh', '08:00:00', '17:00:00', 60, FALSE, TRUE),
-(2, 'MORNING', 'Ca sang', '06:00:00', '14:00:00', 30, FALSE, TRUE),
-(3, 'AFTERNOON', 'Ca chieu', '14:00:00', '22:00:00', 30, FALSE, TRUE),
-(4, 'NIGHT', 'Ca dem', '22:00:00', '06:00:00', 30, TRUE, TRUE);
+(1, 'OFFICE', 'Ca hành chính', '08:00:00', '17:00:00', 60, FALSE, TRUE),
+(2, 'MORNING', 'Ca sáng', '06:00:00', '14:00:00', 30, FALSE, TRUE),
+(3, 'AFTERNOON', 'Ca chiều', '14:00:00', '22:00:00', 30, FALSE, TRUE),
+(4, 'NIGHT', 'Ca đêm', '22:00:00', '06:00:00', 30, TRUE, TRUE);
 
 INSERT INTO contract_types (id, code, name, description, is_active) VALUES
-(1, 'PROBATION', 'Hop dong thu viec', 'Hop dong thu viec ban dau', TRUE),
-(2, 'FULL_TIME', 'Hop dong chinh thuc', 'Hop dong lao dong chinh thuc', TRUE),
-(3, 'SEASONAL', 'Hop dong thoi vu', 'Hop dong theo mua vu/san luong', TRUE);
+(1, 'PROBATION', 'Hợp đồng thử việc', 'Hợp đồng thử việc ban đầu', TRUE),
+(2, 'FULL_TIME', 'Hợp đồng chính thức', 'Hợp đồng lao động chính thức', TRUE),
+(3, 'SEASONAL', 'Hợp đồng thời vụ', 'Hợp đồng theo mùa vụ/sản lượng', TRUE);
 
 -- =========================================================
 -- Demo users
@@ -321,61 +322,81 @@ INSERT INTO users
 (id, employee_code, username, password_hash, full_name, phone, dob, job_title_id,
  department_id, manager_id, employee_type, role_id, is_active, must_change_password)
 VALUES
-(1, 'AD001', 'admin', '$2a$12$Tn1q.eN8rBFqEBGS9iqWFus7.8lAbr5dp4oI8WsKH3tpbXzJNM.Ny', 'Nguyen Quan', '0901111111', '1990-01-01', 1, 1, NULL, 'OFFICE', 1, TRUE, FALSE),
-(2, 'HR001', 'hr_lan', '$2a$12$Tn1q.eN8rBFqEBGS9iqWFus7.8lAbr5dp4oI8WsKH3tpbXzJNM.Ny', 'Le Thi Lan', '0902222222', '1992-02-02', 2, 2, 1, 'OFFICE', 2, TRUE, FALSE),
-(3, 'MNG001', 'supervisor_tuan', '$2a$12$Tn1q.eN8rBFqEBGS9iqWFus7.8lAbr5dp4oI8WsKH3tpbXzJNM.Ny', 'Tran Van Tuan', '0903333333', '1988-03-03', 3, 4, 1, 'OFFICE', 3, TRUE, FALSE),
-(4, 'KT001', 'accountant_mai', '$2a$12$Tn1q.eN8rBFqEBGS9iqWFus7.8lAbr5dp4oI8WsKH3tpbXzJNM.Ny', 'Pham Thi Mai', '0904444444', '1996-04-04', 4, 3, 2, 'OFFICE', 4, TRUE, FALSE),
-(5, 'CN001', 'worker_an', '$2a$12$Tn1q.eN8rBFqEBGS9iqWFus7.8lAbr5dp4oI8WsKH3tpbXzJNM.Ny', 'Nguyen Van An', '0905555555', '2000-05-05', 5, 5, 3, 'WORKER', 4, TRUE, FALSE),
-(6, 'CN002', 'worker_binh', '$2a$12$Tn1q.eN8rBFqEBGS9iqWFus7.8lAbr5dp4oI8WsKH3tpbXzJNM.Ny', 'Pham Thai Binh', '0906666666', '2001-06-06', 6, 6, 3, 'WORKER', 4, TRUE, FALSE);
+-- Ban Giam Doc
+(1, 'GD001', 'director_minhanh', '$2a$12$Tn1q.eN8rBFqEBGS9iqWFus7.8lAbr5dp4oI8WsKH3tpbXzJNM.Ny', 'Nguyễn Minh Anh', '0901000001', '1980-01-01', 1, 1, NULL, 'OFFICE', 2, TRUE, FALSE),
+
+-- Phong IT: 1 IT Manager + 1 IT Staff, deu role SYSADMIN
+(2, 'IT001', 'it_manager_khoa', '$2a$12$Tn1q.eN8rBFqEBGS9iqWFus7.8lAbr5dp4oI8WsKH3tpbXzJNM.Ny', 'Trần Đăng Khoa', '0902000001', '1988-02-01', 2, 2, 1, 'OFFICE', 1, TRUE, FALSE),
+(3, 'IT002', 'it_staff_huy', '$2a$12$Tn1q.eN8rBFqEBGS9iqWFus7.8lAbr5dp4oI8WsKH3tpbXzJNM.Ny', 'Lê Quang Huy', '0902000002', '1995-02-02', 3, 2, 2, 'OFFICE', 1, TRUE, FALSE),
+
+-- Phong Nhan Su: 1 HR Manager + 2 HR Staff, deu role HR_MANAGER
+(4, 'HR001', 'hr_manager_lan', '$2a$12$Tn1q.eN8rBFqEBGS9iqWFus7.8lAbr5dp4oI8WsKH3tpbXzJNM.Ny', 'Lê Thị Lan', '0903000001', '1990-03-01', 4, 3, 1, 'OFFICE', 2, TRUE, FALSE),
+(5, 'HR002', 'hr_staff_hoa', '$2a$12$Tn1q.eN8rBFqEBGS9iqWFus7.8lAbr5dp4oI8WsKH3tpbXzJNM.Ny', 'Nguyễn Thị Hoa', '0903000002', '1996-03-02', 5, 3, 4, 'OFFICE', 2, TRUE, FALSE),
+(6, 'HR003', 'hr_staff_trang', '$2a$12$Tn1q.eN8rBFqEBGS9iqWFus7.8lAbr5dp4oI8WsKH3tpbXzJNM.Ny', 'Phạm Thu Trang', '0903000003', '1997-03-03', 5, 3, 4, 'OFFICE', 2, TRUE, FALSE),
+
+-- Xuong Lap Rap A: 1 Production Supervisor + 2 Employee
+(7, 'SX001', 'sup_a_tuan', '$2a$12$Tn1q.eN8rBFqEBGS9iqWFus7.8lAbr5dp4oI8WsKH3tpbXzJNM.Ny', 'Trần Văn Tuấn', '0904000001', '1987-04-01', 6, 4, 1, 'OFFICE', 3, TRUE, FALSE),
+(8, 'CN001', 'worker_a_an', '$2a$12$Tn1q.eN8rBFqEBGS9iqWFus7.8lAbr5dp4oI8WsKH3tpbXzJNM.Ny', 'Nguyễn Văn An', '0904000002', '2000-04-02', 7, 4, 7, 'WORKER', 4, TRUE, FALSE),
+(9, 'CN002', 'worker_a_binh', '$2a$12$Tn1q.eN8rBFqEBGS9iqWFus7.8lAbr5dp4oI8WsKH3tpbXzJNM.Ny', 'Phạm Thái Bình', '0904000003', '2001-04-03', 7, 4, 7, 'WORKER', 4, TRUE, FALSE),
+
+-- Xuong Lap Rap B: 1 Production Supervisor + 2 Employee
+(10, 'SX002', 'sup_b_hung', '$2a$12$Tn1q.eN8rBFqEBGS9iqWFus7.8lAbr5dp4oI8WsKH3tpbXzJNM.Ny', 'Đỗ Mạnh Hùng', '0905000001', '1989-05-01', 6, 5, 1, 'OFFICE', 3, TRUE, FALSE),
+(11, 'CN003', 'worker_b_cuong', '$2a$12$Tn1q.eN8rBFqEBGS9iqWFus7.8lAbr5dp4oI8WsKH3tpbXzJNM.Ny', 'Võ Văn Cường', '0905000002', '2000-05-02', 7, 5, 10, 'WORKER', 4, TRUE, FALSE),
+(12, 'CN004', 'worker_b_dung', '$2a$12$Tn1q.eN8rBFqEBGS9iqWFus7.8lAbr5dp4oI8WsKH3tpbXzJNM.Ny', 'Bùi Tiến Dũng', '0905000003', '2001-05-03', 7, 5, 10, 'WORKER', 4, TRUE, FALSE),
+
+-- Xuong Lap Rap C: 1 Production Supervisor + 2 Employee
+(13, 'SX003', 'sup_c_phuc', '$2a$12$Tn1q.eN8rBFqEBGS9iqWFus7.8lAbr5dp4oI8WsKH3tpbXzJNM.Ny', 'Hoàng Minh Phúc', '0906000001', '1990-06-01', 6, 6, 1, 'OFFICE', 3, TRUE, FALSE),
+(14, 'CN005', 'worker_c_hai', '$2a$12$Tn1q.eN8rBFqEBGS9iqWFus7.8lAbr5dp4oI8WsKH3tpbXzJNM.Ny', 'Đặng Văn Hải', '0906000002', '2000-06-02', 7, 6, 13, 'WORKER', 4, TRUE, FALSE),
+(15, 'CN006', 'worker_c_kiet', '$2a$12$Tn1q.eN8rBFqEBGS9iqWFus7.8lAbr5dp4oI8WsKH3tpbXzJNM.Ny', 'Mai Tuấn Kiệt', '0906000003', '2001-06-03', 7, 6, 13, 'WORKER', 4, TRUE, FALSE);
 
 -- =========================================================
 -- Iter 2 + Iter 3 sample data
 -- =========================================================
 
 INSERT INTO contracts (user_id, contract_type_id, start_date, end_date, salary, file_path, status) VALUES
-(5, 2, '2024-01-01', '2027-12-31', 8000000, '/contracts/worker_an_full_time.pdf', 'ACTIVE');
+(8, 2, '2024-01-01', '2027-12-31', 8000000, '/contracts/worker_a_an_full_time.pdf', 'ACTIVE');
 
 INSERT INTO leave_balances (user_id, leave_type_id, year, total_days, used_days) VALUES
-(5, 1, 2026, 12, 2);
+(8, 1, 2026, 12, 2);
 
 INSERT INTO leave_requests (user_id, leave_type_id, start_date, end_date, days, reason, status) VALUES
-(5, 1, '2026-06-20', '2026-06-22', 3, 'Nghi phep nam dinh ky', 'PENDING');
+(8, 1, '2026-06-20', '2026-06-22', 3, 'Nghỉ phép năm định kỳ', 'PENDING');
 
 INSERT INTO shift_assignments (user_id, shift_id, date) VALUES
-(5, 2, '2026-06-15');
+(8, 2, '2026-06-15');
 
 INSERT INTO attendance_records (user_id, date, shift_id, check_in, check_out, working_hours, status, import_batch_id) VALUES
-(5, '2026-06-15', 2, '06:02:00', '14:05:00', 8.0, 'NORMAL', 'BATCH-202606');
+(8, '2026-06-15', 2, '06:02:00', '14:05:00', 8.0, 'NORMAL', 'BATCH-202606');
 
 INSERT INTO attendance_corrections (attendance_record_id, requested_by, new_check_in, new_check_out, reason, status) VALUES
-(1, 5, '06:00:00', '14:00:00', 'Cham cong sai gio', 'PENDING');
+(1, 8, '06:00:00', '14:00:00', 'Chấm công sai giờ', 'PENDING');
 
 INSERT INTO overtime_records (user_id, date, requested_hours, reason, status) VALUES
-(5, '2026-06-14', 2, 'San xuat tang cuong don hang', 'PENDING');
+(8, '2026-06-14', 2, 'Sản xuất tăng cường đơn hàng', 'PENDING');
 
 INSERT INTO salary_bases (user_id, base_salary, effective_from) VALUES
-(5, 8000000, '2024-01-01');
+(8, 8000000, '2024-01-01');
 
--- For demo user: worker_an (user_id=5) needs salary base for payroll preview calculation.
+-- For worker_a_an (user_id=8) needs salary base for payroll preview calculation.
 -- EMPLOYEE role has PAYSLIP_VIEW permission (ID 66) and monthly_salaries row at line 309;
 -- salary base enables end-to-end demo of payslip-view flow per Phase 6 success criteria.
 
 INSERT INTO monthly_sheets (year, month, status, closed_at, closed_by) VALUES
-(2026, 6, 'CLOSED', '2026-06-30 23:59:59', 1);
+(2026, 6, 'CLOSED', '2026-06-30 23:59:59', 4);
 
 INSERT INTO monthly_salaries (monthly_sheet_id, user_id, actual_work_days, ot_hours, gross_salary, deductions, net_salary, status) VALUES
-(1, 5, 22, 0, 8000000, 0, 8000000, 'FINAL');
+(1, 8, 22, 0, 8000000, 0, 8000000, 'FINAL');
 
 INSERT INTO audit_logs (event_code, entity_type, entity_id, actor_id, actor_name, changed_fields, ip_address) VALUES
-('SYSTEM_RESET', 'DATABASE', 1, 1, 'admin', 'Reset to Iter 3 baseline', '127.0.0.1');
+('SYSTEM_RESET', 'DATABASE', 1, 2, 'it_manager_khoa', 'Reset to Iter 3 baseline', '127.0.0.1');
 
 -- =========================================================
 -- Holiday sample data
 -- =========================================================
 
 INSERT INTO holidays (date, name, is_recurring, is_active, description) VALUES
-('2026-01-01', 'Tet Duong Lich', TRUE, TRUE, 'Ngay Tet nam moi'),
-('2026-04-30', 'Ngay Giai Phong Mien Nam', TRUE, TRUE, 'Ky niem 30/4'),
-('2026-05-01', 'Ngay Lao Dong Quoc Te', TRUE, TRUE, 'Ngay 1 thang 5'),
-('2026-09-02', 'Quoc Khanh', TRUE, TRUE, 'Ngay Quoc khanz 2/9');
+('2026-01-01', 'Tết Dương Lịch', TRUE, TRUE, 'Ngày Tết năm mới'),
+('2026-04-30', 'Ngày Giải Phóng Miền Nam', TRUE, TRUE, 'Kỷ niệm 30/4'),
+('2026-05-01', 'Ngày Lao Động Quốc Tế', TRUE, TRUE, 'Ngày 1 tháng 5'),
+('2026-09-02', 'Quốc Khánh', TRUE, TRUE, 'Ngày Quốc khánh 2/9');
 

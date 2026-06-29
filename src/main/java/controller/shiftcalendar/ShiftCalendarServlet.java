@@ -6,6 +6,7 @@ import dal.ShiftDAO;
 import dal.UserDAO;
 import model.ShiftAssignment;
 import model.Department;
+import model.Permission;
 import model.Shift;
 import model.User;
 import jakarta.servlet.ServletException;
@@ -13,6 +14,7 @@ import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
 import java.sql.Date;
 import java.time.LocalDate;
@@ -32,6 +34,11 @@ public class ShiftCalendarServlet extends HttpServlet {
 	@Override
 	protected void doGet(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
+		if (!hasPermission(request, "SHIFT_CALENDAR_VIEW")) {
+			response.sendError(HttpServletResponse.SC_FORBIDDEN);
+			return;
+		}
+
 		String yearParam = request.getParameter("year");
 		String monthParam = request.getParameter("month");
 		String departmentIdParam = request.getParameter("departmentId");
@@ -83,10 +90,22 @@ public class ShiftCalendarServlet extends HttpServlet {
 		String action = request.getParameter("action");
 
 		if ("assign".equals(action)) {
+			if (!hasPermission(request, "SHIFT_ASSIGNMENT_ASSIGN")) {
+				response.sendError(HttpServletResponse.SC_FORBIDDEN);
+				return;
+			}
 			handleAssign(request, response);
 		} else if ("delete".equals(action)) {
+			if (!hasPermission(request, "SHIFT_ASSIGNMENT_ASSIGN")) {
+				response.sendError(HttpServletResponse.SC_FORBIDDEN);
+				return;
+			}
 			handleDelete(request, response);
 		} else if ("deleteAll".equals(action)) {
+			if (!hasPermission(request, "SHIFT_ASSIGNMENT_BULK")) {
+				response.sendError(HttpServletResponse.SC_FORBIDDEN);
+				return;
+			}
 			handleDeleteAll(request, response);
 		} else {
 			response.sendRedirect(request.getContextPath() + "/shift-calendar");
@@ -153,13 +172,42 @@ public class ShiftCalendarServlet extends HttpServlet {
 		String month = request.getParameter("month");
 
 		try {
-			int deleted = shiftAssignmentDAO.deleteAll();
-			request.getSession().setAttribute("successMsg", "Đã xóa " + deleted + " phân ca!");
+			LocalDate today = LocalDate.now();
+			int selectedYear = parseInt(year, today.getYear());
+			int selectedMonth = parseInt(month, today.getMonthValue());
+			YearMonth yearMonth = YearMonth.of(selectedYear, selectedMonth);
+			Long selectedDepartmentId = parseLong(departmentId);
+
+			int deleted = shiftAssignmentDAO.deleteByDateRangeAndDepartment(Date.valueOf(yearMonth.atDay(1)),
+					Date.valueOf(yearMonth.atEndOfMonth()), selectedDepartmentId);
+			request.getSession().setAttribute("successMsg", "Đã xóa " + deleted + " phân ca trong tháng đang xem!");
 		} catch (Exception e) {
 			request.getSession().setAttribute("errorMsg", "Không thể xóa phân ca.");
 		}
 
 		redirectBack(request, response, departmentId, year, month);
+	}
+
+	private int parseInt(String value, int defaultValue) {
+		if (value == null || value.isBlank()) {
+			return defaultValue;
+		}
+		try {
+			return Integer.parseInt(value.trim());
+		} catch (NumberFormatException e) {
+			return defaultValue;
+		}
+	}
+
+	private Long parseLong(String value) {
+		if (value == null || value.isBlank()) {
+			return null;
+		}
+		try {
+			return Long.parseLong(value.trim());
+		} catch (NumberFormatException e) {
+			return null;
+		}
 	}
 
 	private void redirectBack(HttpServletRequest request, HttpServletResponse response, String departmentId,
@@ -223,5 +271,25 @@ public class ShiftCalendarServlet extends HttpServlet {
 			};
 			request.setAttribute("errorMsg", errorMsg2);
 		}
+	}
+
+	private boolean hasPermission(HttpServletRequest request, String code) {
+		HttpSession session = request.getSession(false);
+		if (session == null) {
+			return false;
+		}
+
+		@SuppressWarnings("unchecked")
+		List<Permission> permissions = (List<Permission>) session.getAttribute("permissions");
+		if (permissions == null) {
+			return false;
+		}
+
+		for (Permission permission : permissions) {
+			if (code.equals(permission.getCode())) {
+				return true;
+			}
+		}
+		return false;
 	}
 }

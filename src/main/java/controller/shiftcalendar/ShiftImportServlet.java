@@ -9,7 +9,9 @@ import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 import jakarta.servlet.http.Part;
+import model.Permission;
 import model.ShiftAssignment;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
@@ -32,6 +34,11 @@ public class ShiftImportServlet extends HttpServlet {
 	protected void doPost(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
 		request.setCharacterEncoding("UTF-8");
+
+		if (!hasPermission(request, "SHIFT_ASSIGNMENT_BULK")) {
+			response.sendError(HttpServletResponse.SC_FORBIDDEN);
+			return;
+		}
 
 		Part filePart = request.getPart("excelFile");
 		if (filePart == null || filePart.getInputStream().available() == 0) {
@@ -237,5 +244,25 @@ public class ShiftImportServlet extends HttpServlet {
 			}
 		}
 		return "";
+	}
+
+	private boolean hasPermission(HttpServletRequest request, String code) {
+		HttpSession session = request.getSession(false);
+		if (session == null) {
+			return false;
+		}
+
+		@SuppressWarnings("unchecked")
+		List<Permission> permissions = (List<Permission>) session.getAttribute("permissions");
+		if (permissions == null) {
+			return false;
+		}
+
+		for (Permission permission : permissions) {
+			if (code.equals(permission.getCode())) {
+				return true;
+			}
+		}
+		return false;
 	}
 }

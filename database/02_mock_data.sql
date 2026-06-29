@@ -122,8 +122,8 @@ INSERT INTO permissions (id, code, name, url_pattern, module) VALUES
 (47, 'LEAVE_REQUEST_REJECT',    'Reject leave request',     '/leave-request-reject',    'LEAVE'),
 -- Shift Assignment
 (48, 'SHIFT_ASSIGNMENT_VIEW',   'View shift assignments',   '/shift-assignment-list',   'SHIFT'),
-(49, 'SHIFT_ASSIGNMENT_ASSIGN', 'Assign single shift',     '/shift-assignment-assign', 'SHIFT'),
-(50, 'SHIFT_ASSIGNMENT_BULK',   'Bulk assign shifts',      '/shift-assignment-bulk',   'SHIFT'),
+(49, 'SHIFT_ASSIGNMENT_ASSIGN', 'Assign single shift',     '/shift-calendar',          'SHIFT'),
+(50, 'SHIFT_ASSIGNMENT_BULK',   'Bulk assign shifts',      '/shift-calendar-import',   'SHIFT'),
 (85, 'SHIFT_CALENDAR_VIEW',      'View shift calendar',      '/shift-calendar',          'SHIFT'),
 (86, 'MY_SHIFT_VIEW',           'View my shift',          '/my-shift',               'SHIFT'),
 -- Attendance

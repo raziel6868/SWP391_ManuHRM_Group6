@@ -340,6 +340,16 @@ public class ShiftAssignmentDAO {
 		return false;
 	}
 
+	public int deleteAll() {
+		String sql = "DELETE FROM shift_assignments";
+		try (Connection conn = DBContext.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+			return ps.executeUpdate();
+		} catch (SQLException e) {
+			System.err.println("ShiftAssignmentDAO.deleteAll() ERROR: " + e.getMessage());
+		}
+		return 0;
+	}
+
 	private void setParams(PreparedStatement ps, List<Object> params) throws SQLException {
 		for (int i = 0; i < params.size(); i++) {
 			ps.setObject(i + 1, params.get(i));

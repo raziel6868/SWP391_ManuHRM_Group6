@@ -47,7 +47,7 @@ public class OvertimeDAO {
 		return false;
 	}
 
-	public List<OvertimeRecord> search(String status, int offset, int limit) {
+	public List<OvertimeRecord> search(String status, Integer month, Integer year, int offset, int limit) {
 		List<OvertimeRecord> list = new ArrayList<>();
 		StringBuilder sql = new StringBuilder(SELECT_BASE + " WHERE 1=1");
 		List<Object> params = new ArrayList<>();
@@ -56,8 +56,16 @@ public class OvertimeDAO {
 			sql.append(" AND ot.status = ?");
 			params.add(status.trim().toUpperCase());
 		}
+		if (month != null) {
+			sql.append(" AND MONTH(ot.date) = ?");
+			params.add(month);
+		}
+		if (year != null) {
+			sql.append(" AND YEAR(ot.date) = ?");
+			params.add(year);
+		}
 
-		sql.append(" ORDER BY ot.created_at DESC LIMIT ? OFFSET ?");
+		sql.append(" ORDER BY ot.date DESC, ot.created_at DESC LIMIT ? OFFSET ?");
 		params.add(limit);
 		params.add(offset);
 
@@ -76,13 +84,21 @@ public class OvertimeDAO {
 		return list;
 	}
 
-	public int count(String status) {
+	public int count(String status, Integer month, Integer year) {
 		StringBuilder sql = new StringBuilder("SELECT COUNT(*) FROM overtime_records WHERE 1=1");
 		List<Object> params = new ArrayList<>();
 
 		if (status != null && !status.isBlank()) {
 			sql.append(" AND status = ?");
 			params.add(status.trim().toUpperCase());
+		}
+		if (month != null) {
+			sql.append(" AND MONTH(date) = ?");
+			params.add(month);
+		}
+		if (year != null) {
+			sql.append(" AND YEAR(date) = ?");
+			params.add(year);
 		}
 
 		try (Connection conn = DBContext.getConnection();
@@ -195,6 +211,33 @@ public class OvertimeDAO {
 		}
 
 		return false;
+	}
+
+	/**
+	 * Tìm OT đã APPROVED của nhân viên trong một ngày. Dùng để phát hiện conflict
+	 * APPROVED_OT_WITHOUT_MATCHING_ATTENDANCE khi import (checkout chưa đủ muộn).
+	 * Trả về null nếu không có OT approved.
+	 */
+	public OvertimeRecord findApprovedOTForUserAndDate(Long userId, java.sql.Date date) {
+		if (userId == null || date == null) {
+			return null;
+		}
+		String sql = SELECT_BASE + """
+				WHERE ot.user_id = ? AND ot.date = ? AND ot.status = 'APPROVED'
+				LIMIT 1
+				""";
+		try (Connection conn = DBContext.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+			ps.setLong(1, userId);
+			ps.setDate(2, date);
+			try (ResultSet rs = ps.executeQuery()) {
+				if (rs.next()) {
+					return mapRow(rs);
+				}
+			}
+		} catch (SQLException e) {
+			System.err.println("OvertimeDAO.findApprovedOTForUserAndDate() ERROR: " + e.getMessage());
+		}
+		return null;
 	}
 
 	private void setParams(PreparedStatement ps, List<Object> params) throws SQLException {

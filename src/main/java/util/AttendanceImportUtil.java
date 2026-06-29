@@ -1,6 +1,8 @@
 package util;
 
 import dal.AttendanceDAO;
+import dal.LeaveRequestDAO;
+import dal.OvertimeDAO;
 import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigDecimal;
@@ -20,6 +22,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import model.AttendanceRecord;
+import model.OvertimeRecord;
 import model.Shift;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellType;
@@ -35,16 +38,25 @@ public class AttendanceImportUtil {
 	private static final int LATE_THRESHOLD_MINUTES = 15;
 
 	private final AttendanceDAO attendanceDAO;
+	private final LeaveRequestDAO leaveRequestDAO;
+	private final OvertimeDAO overtimeDAO;
 
 	public AttendanceImportUtil() {
-		this(new AttendanceDAO());
+		this(new AttendanceDAO(), new LeaveRequestDAO(), new OvertimeDAO());
 	}
 
 	public AttendanceImportUtil(AttendanceDAO attendanceDAO) {
-		this.attendanceDAO = attendanceDAO;
+		this(attendanceDAO, new LeaveRequestDAO(), new OvertimeDAO());
 	}
 
-	public List<AttendanceRecord> parseExcel(InputStream inputStream) throws AttendanceImportException {
+	public AttendanceImportUtil(AttendanceDAO attendanceDAO, LeaveRequestDAO leaveRequestDAO, OvertimeDAO overtimeDAO) {
+		this.attendanceDAO = attendanceDAO;
+		this.leaveRequestDAO = leaveRequestDAO;
+		this.overtimeDAO = overtimeDAO;
+	}
+
+	public List<AttendanceRecord> parseExcel(InputStream inputStream, int year, int month)
+			throws AttendanceImportException {
 		List<AttendanceRecord> records = new ArrayList<>();
 		List<String> errors = new ArrayList<>();
 		Set<String> importedKeys = new HashSet<>();
@@ -69,6 +81,14 @@ public class AttendanceImportUtil {
 				// Chỉ bắt buộc employeeCode và date
 				validateRequired(errors, displayRow, employeeCode, date);
 				if (employeeCode == null || date == null) {
+					continue;
+				}
+
+				// Kiem tra ngay co thuoc dung thang/nam duoc chon khong
+				// Phai check som truoc conflict check de tranh bao conflict cua thang khac
+				if (date.getYear() != year || date.getMonthValue() != month) {
+					errors.add("Dong " + displayRow + ": Ngay " + date + " khong thuoc thang " + month + "/" + year
+							+ " da chon.");
 					continue;
 				}
 
@@ -99,10 +119,42 @@ public class AttendanceImportUtil {
 				}
 
 				Date sqlDate = Date.valueOf(date);
-				Shift shift = attendanceDAO.findShiftForUserAndDate(userId, sqlDate);
-				if (shift == null) {
-					errors.add("Dòng " + displayRow + ": Chưa có ca làm mặc định để gán dữ liệu chấm công.");
+
+				// Tim ca duoc phan cong chinh xac (khong fallback default shift)
+				Shift assignedShift = attendanceDAO.findAssignedShiftOnly(userId, sqlDate);
+
+				// Conflict 3: Co checkin nhung khong co shift assignment
+				if (assignedShift == null && checkIn != null) {
+					errors.add("Dòng " + displayRow + " [" + employeeCode + " - " + date
+							+ "]: Conflict ATTENDANCE_WITHOUT_SHIFT_ASSIGNMENT — nhân viên không có phân ca"
+							+ " ngày này nhưng file Excel vẫn có dữ liệu chấm công."
+							+ " Vui lòng xoá dòng này khỏi file Excel rồi import lại.");
 					continue;
+				}
+
+				// Khong co shift assignment va khong co checkin: ghi ABSENT voi default shift
+				Shift shift = assignedShift != null ? assignedShift : attendanceDAO.findDefaultShift();
+				if (shift == null) {
+					errors.add("Dòng " + displayRow + ": Không tìm được ca làm nào trong hệ thống.");
+					continue;
+				}
+
+				// Conflict 4: Co shift assignment nhung checkin sai khung gio ca (+/- 2 tieng)
+				if (assignedShift != null && checkIn != null && assignedShift.getStartTime() != null
+						&& assignedShift.getEndTime() != null
+						&& !Boolean.TRUE.equals(assignedShift.getIsNightShift())) {
+					LocalTime shiftStart = assignedShift.getStartTime().toLocalTime();
+					LocalTime shiftEnd = assignedShift.getEndTime().toLocalTime();
+					LocalTime windowStart = shiftStart.minusHours(2);
+					boolean wrongShift = checkIn.isBefore(windowStart) || checkIn.isAfter(shiftEnd);
+					if (wrongShift) {
+						errors.add("Dòng " + displayRow + " [" + employeeCode + " - " + date
+								+ "]: Conflict WRONG_SHIFT_ATTENDANCE — nhân viên được phân ca "
+								+ assignedShift.getName() + " (" + shiftStart + "–" + shiftEnd + ")"
+								+ " nhưng giờ vào trong file là " + checkIn + "."
+								+ " Vui lòng kiểm tra lại dữ liệu trong file Excel.");
+						continue;
+					}
 				}
 
 				AttendanceRecord record = new AttendanceRecord();
@@ -117,6 +169,33 @@ public class AttendanceImportUtil {
 						: null);
 				record.setStatus(resolveStatus(checkIn, shift.getStartTime()));
 				record.setImportBatchId(importBatchId);
+
+				// ── Conflict check 1: Có leave APPROVED nhưng vẫn có attendance ──
+				if (checkIn != null && leaveRequestDAO.hasApprovedLeaveOnDate(userId, sqlDate)) {
+					errors.add("Dòng " + displayRow + " [" + employeeCode + " - " + date
+							+ "]: Conflict ATTENDANCE_ON_APPROVED_LEAVE — nhân viên đã có đơn nghỉ phép"
+							+ " được duyệt ngày này nhưng file Excel vẫn có dữ liệu chấm công."
+							+ " Vui lòng xoá dòng này khỏi file Excel rồi import lại.");
+					continue;
+				}
+
+				// ── Conflict check 2: Có OT APPROVED nhưng checkout không đủ muộn ──
+				if (checkIn != null && checkOut != null) {
+					OvertimeRecord approvedOT = overtimeDAO.findApprovedOTForUserAndDate(userId, sqlDate);
+					if (approvedOT != null && approvedOT.getApprovedHours() != null && shift.getEndTime() != null) {
+						long otMinutes = approvedOT.getApprovedHours().multiply(BigDecimal.valueOf(60)).longValue();
+						LocalTime expectedCheckout = shift.getEndTime().toLocalTime().plusMinutes(otMinutes);
+						if (checkOut.isBefore(expectedCheckout)) {
+							errors.add("Dòng " + displayRow + " [" + employeeCode + " - " + date
+									+ "]: Conflict APPROVED_OT_WITHOUT_MATCHING_ATTENDANCE — nhân viên có OT "
+									+ approvedOT.getApprovedHours() + "h được duyệt nhưng giờ ra trong file là "
+									+ checkOut + " (cần đến " + expectedCheckout + " trở đi)."
+									+ " Vui lòng sửa lại giờ ra trong file Excel rồi import lại.");
+							continue;
+						}
+					}
+				}
+
 				records.add(record);
 			}
 		} catch (IOException e) {

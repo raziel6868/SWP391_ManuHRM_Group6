@@ -13,7 +13,10 @@ import jakarta.servlet.http.Part;
 import java.io.IOException;
 import java.io.InputStream;
 import java.time.LocalDate;
+import java.time.YearMonth;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import model.AttendanceRecord;
 import util.AttendanceImportUtil;
 import util.AttendanceImportUtil.AttendanceImportException;
@@ -32,9 +35,11 @@ public class AttendanceImportServlet extends HttpServlet {
 		HttpSession session = request.getSession();
 		moveFlashMessage(session, request, "successMsg");
 		moveFlashMessage(session, request, "errorMsg");
+
 		LocalDate today = LocalDate.now();
 		request.setAttribute("selectedYear", today.getYear());
 		request.setAttribute("selectedMonth", today.getMonthValue());
+		request.setAttribute("availableMonths", buildAvailableMonths(today));
 		request.getRequestDispatcher("/views/attendance/attendance-import.jsp").forward(request, response);
 	}
 
@@ -42,13 +47,20 @@ public class AttendanceImportServlet extends HttpServlet {
 	protected void doPost(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
 		request.setCharacterEncoding("UTF-8");
-		int year = parseInt(request.getParameter("year"), LocalDate.now().getYear());
-		int month = parseInt(request.getParameter("month"), LocalDate.now().getMonthValue());
+		LocalDate today = LocalDate.now();
+		int year = parseInt(request.getParameter("year"), today.getYear());
+		int month = parseInt(request.getParameter("month"), today.getMonthValue());
 		request.setAttribute("selectedYear", year);
 		request.setAttribute("selectedMonth", month);
+		request.setAttribute("availableMonths", buildAvailableMonths(today));
 
 		if (year < 2000 || year > 2100 || month < 1 || month > 12) {
 			forwardWithError(request, response, List.of("Tháng/năm import không hợp lệ."));
+			return;
+		}
+		LocalDate selected = LocalDate.of(year, month, 1);
+		if (selected.isAfter(today.withDayOfMonth(1))) {
+			forwardWithError(request, response, List.of("Không thể import chấm công cho tháng tương lai."));
 			return;
 		}
 		if (monthlySheetDAO.isPeriodClosed(year, month)) {
@@ -68,12 +80,7 @@ public class AttendanceImportServlet extends HttpServlet {
 		}
 
 		try (InputStream inputStream = filePart.getInputStream()) {
-			List<AttendanceRecord> records = importUtil.parseExcel(inputStream);
-			if (!isSamePeriod(records, year, month)) {
-				forwardWithError(request, response,
-						List.of("File có dữ liệu không thuộc đúng tháng/năm đã chọn. Vui lòng kiểm tra lại."));
-				return;
-			}
+			List<AttendanceRecord> records = importUtil.parseExcel(inputStream, year, month);
 			boolean success = attendanceDAO.batchUpsertByMonth(year, month, records);
 			if (success) {
 				request.getSession().setAttribute("successMsg",
@@ -85,6 +92,24 @@ public class AttendanceImportServlet extends HttpServlet {
 		} catch (AttendanceImportException e) {
 			forwardWithError(request, response, e.getErrors());
 		}
+	}
+
+	/**
+	 * Tạo danh sách các tháng có thể import: từ 12 tháng trước đến tháng hiện tại,
+	 * bỏ qua tháng đã CLOSED. Key = "yyyy-M", Value = label hiển thị.
+	 */
+	private Map<String, String> buildAvailableMonths(LocalDate today) {
+		Map<String, String> result = new LinkedHashMap<>();
+		YearMonth current = YearMonth.from(today);
+		for (int i = 11; i >= 0; i--) {
+			YearMonth ym = current.minusMonths(i);
+			if (!monthlySheetDAO.isPeriodClosed(ym.getYear(), ym.getMonthValue())) {
+				String key = ym.getYear() + "-" + ym.getMonthValue();
+				String label = "Tháng " + ym.getMonthValue() + "/" + ym.getYear();
+				result.put(key, label);
+			}
+		}
+		return result;
 	}
 
 	private boolean isSamePeriod(List<AttendanceRecord> records, int year, int month) {

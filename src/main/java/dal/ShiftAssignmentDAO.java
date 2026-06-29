@@ -340,6 +340,36 @@ public class ShiftAssignmentDAO {
 		return false;
 	}
 
+	public int deleteByDateRangeAndDepartment(Date startDate, Date endDate, Long departmentId) {
+		if (startDate == null || endDate == null) {
+			return 0;
+		}
+
+		StringBuilder sql = new StringBuilder("""
+				DELETE sa
+				FROM shift_assignments sa
+				INNER JOIN users u ON sa.user_id = u.id
+				WHERE sa.date BETWEEN ? AND ?
+				""");
+		List<Object> params = new ArrayList<>();
+		params.add(startDate);
+		params.add(endDate);
+
+		if (departmentId != null) {
+			sql.append(" AND u.department_id = ?");
+			params.add(departmentId);
+		}
+
+		try (Connection conn = DBContext.getConnection();
+				PreparedStatement ps = conn.prepareStatement(sql.toString())) {
+			setParams(ps, params);
+			return ps.executeUpdate();
+		} catch (SQLException e) {
+			System.err.println("ShiftAssignmentDAO.deleteByDateRangeAndDepartment() ERROR: " + e.getMessage());
+		}
+		return 0;
+	}
+
 	private void setParams(PreparedStatement ps, List<Object> params) throws SQLException {
 		for (int i = 0; i < params.size(); i++) {
 			ps.setObject(i + 1, params.get(i));

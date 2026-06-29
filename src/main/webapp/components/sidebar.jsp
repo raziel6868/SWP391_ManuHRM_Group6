@@ -20,7 +20,6 @@
 <c:set var="hasLeaveRequestView" value="${false}" />
 
 <c:set var="hasShiftView" value="${false}" />
-<c:set var="hasShiftAssignmentView" value="${false}" />
 <c:set var="hasShiftCalendarView" value="${false}" />
 <c:set var="hasMyShiftView" value="${false}" />
 
@@ -90,10 +89,6 @@
         <c:when test="${permission.code == 'SHIFT_VIEW'}">
             <c:set var="hasShiftView" value="${true}" />
             <c:set var="shiftViewUrl" value="${permission.urlPattern}" />
-        </c:when>
-        <c:when test="${permission.code == 'SHIFT_ASSIGNMENT_VIEW'}">
-            <c:set var="hasShiftAssignmentView" value="${true}" />
-            <c:set var="shiftAssignmentViewUrl" value="${permission.urlPattern}" />
         </c:when>
         <c:when test="${permission.code == 'SHIFT_CALENDAR_VIEW'}">
             <c:set var="hasShiftCalendarView" value="${true}" />
@@ -165,7 +160,7 @@
 <c:set var="hasSystemMenu" value="${hasUserView or hasRoleView or hasDepartmentView or hasJobTitleView or hasHolidayView}" />
 <c:set var="hasContractMenu" value="${hasContractTypeView or hasContractView}" />
 <c:set var="hasLeaveMenu" value="${hasLeaveTypeView or hasLeaveBalanceView or hasLeaveMyView or hasLeaveRequestView}" />
-<c:set var="hasShiftMenu" value="${hasShiftView or hasShiftAssignmentView or hasShiftCalendarView or hasMyShiftView}" />
+<c:set var="hasShiftMenu" value="${hasShiftView or hasShiftCalendarView or hasMyShiftView}" />
 <c:set var="hasAttendanceMenu" value="${hasAttendanceView or hasAttendanceMyView or hasAttendanceCorrectionView or hasOtView}" />
 <c:set var="hasPayrollMenu" value="${hasMonthlySheetView or hasSalaryBaseSetup or hasPayrollView or hasPayslipView}" />
 <c:set var="hasReportMenu" value="${hasReportAttendance or hasReportLeave or hasReportHeadcount or hasReportContract or hasReportPayroll or hasReportOt}" />
@@ -304,10 +299,6 @@
                     <c:if test="${hasShiftView}">
                         <c:url var="menuUrl" value="${shiftViewUrl}" />
                         <a class="${currentPath == shiftViewUrl ? 'sidebar-subitem active' : 'sidebar-subitem'}" href="${menuUrl}">Ca làm việc</a>
-                    </c:if>
-                    <c:if test="${hasShiftAssignmentView}">
-                        <c:url var="menuUrl" value="${shiftAssignmentViewUrl}" />
-                        <a class="${currentPath == shiftAssignmentViewUrl ? 'sidebar-subitem active' : 'sidebar-subitem'}" href="${menuUrl}">Phân ca</a>
                     </c:if>
                     <c:if test="${hasShiftCalendarView}">
                         <c:url var="menuUrl" value="${shiftCalendarViewUrl}" />

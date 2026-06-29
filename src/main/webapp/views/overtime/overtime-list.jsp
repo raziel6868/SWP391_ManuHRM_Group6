@@ -46,7 +46,25 @@
                     <div class="p-3 bg-surface border-bottom border-outline-variant">
                         <form action="${pageContext.request.contextPath}/overtime-list" method="GET"
                               class="row g-3 align-items-end">
-                            <div class="col-md-3">
+                            <div class="col-md-2">
+                                <label class="form-label text-on-surface fw-medium mb-1">Tháng</label>
+                                <select name="month" class="form-select input-premium">
+                                    <option value="">-- Tất cả --</option>
+                                    <c:forEach begin="1" end="12" var="m">
+                                        <option value="${m}" ${selectedMonth == m ? 'selected' : ''}>Tháng ${m}</option>
+                                    </c:forEach>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label text-on-surface fw-medium mb-1">Năm</label>
+                                <select name="year" class="form-select input-premium">
+                                    <option value="">-- Tất cả --</option>
+                                    <c:forEach begin="2024" end="2027" var="y">
+                                        <option value="${y}" ${selectedYear == y ? 'selected' : ''}>${y}</option>
+                                    </c:forEach>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
                                 <label class="form-label text-on-surface fw-medium mb-1">Trạng thái</label>
                                 <select name="status" class="form-select input-premium">
                                     <option value="">-- Tất cả --</option>
@@ -170,7 +188,7 @@
                         <div class="p-3 bg-surface border-top border-outline-variant d-flex align-items-center justify-content-center">
                             <div class="d-flex gap-1 flex-wrap">
                                 <c:forEach begin="1" end="${totalPages}" var="i">
-                                    <a href="${pageContext.request.contextPath}/overtime-list?page=${i}&status=${selectedStatus}"
+                                    <a href="${pageContext.request.contextPath}/overtime-list?page=${i}&status=${selectedStatus}&month=${selectedMonth}&year=${selectedYear}"
                                        class="btn btn-sm ${i == currentPage ? 'fw-bold' : 'btn-light border text-on-surface-variant'}"
                                        style="${i == currentPage ? 'background-color: var(--primary-fixed); color: var(--on-primary-fixed-variant); border: 1px solid var(--primary);' : 'background-color: var(--surface-container-lowest); border-color: var(--outline-variant) !important;'}">
                                         ${i}

@@ -28,11 +28,13 @@ public class OvertimeListServlet extends HttpServlet {
 		moveFlashMessage(session, request, "errorMsg");
 
 		String status = normalizeStatus(request.getParameter("status"));
+		Integer month = parseOptionalInt(request.getParameter("month"), 1, 12);
+		Integer year = parseOptionalInt(request.getParameter("year"), 2000, 2100);
 		int currentPage = parsePage(request.getParameter("page"));
 		int offset = (currentPage - 1) * PAGE_SIZE;
 
-		List<OvertimeRecord> records = overtimeDAO.search(status, offset, PAGE_SIZE);
-		int totalRecords = overtimeDAO.count(status);
+		List<OvertimeRecord> records = overtimeDAO.search(status, month, year, offset, PAGE_SIZE);
+		int totalRecords = overtimeDAO.count(status, month, year);
 		int totalPages = totalRecords / PAGE_SIZE;
 		if (totalRecords % PAGE_SIZE != 0) {
 			totalPages++;
@@ -44,11 +46,13 @@ public class OvertimeListServlet extends HttpServlet {
 		if (currentPage > totalPages) {
 			currentPage = totalPages;
 			offset = (currentPage - 1) * PAGE_SIZE;
-			records = overtimeDAO.search(status, offset, PAGE_SIZE);
+			records = overtimeDAO.search(status, month, year, offset, PAGE_SIZE);
 		}
 
 		request.setAttribute("overtimeRecords", records);
 		request.setAttribute("selectedStatus", status);
+		request.setAttribute("selectedMonth", month);
+		request.setAttribute("selectedYear", year);
 		request.setAttribute("currentPage", currentPage);
 		request.setAttribute("totalPages", totalPages);
 		request.setAttribute("totalRecords", totalRecords);
@@ -73,6 +77,18 @@ public class OvertimeListServlet extends HttpServlet {
 			}
 		}
 		return false;
+	}
+
+	private Integer parseOptionalInt(String value, int min, int max) {
+		if (value == null || value.isBlank()) {
+			return null;
+		}
+		try {
+			int v = Integer.parseInt(value.trim());
+			return (v >= min && v <= max) ? v : null;
+		} catch (NumberFormatException e) {
+			return null;
+		}
 	}
 
 	private String normalizeStatus(String status) {

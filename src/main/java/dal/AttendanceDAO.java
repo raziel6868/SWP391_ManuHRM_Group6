@@ -293,6 +293,34 @@ public class AttendanceDAO {
 		return findDefaultShift();
 	}
 
+	// Lay ca duoc phan cong chinh xac cho nhan vien trong ngay (KHONG fallback).
+	// Tra ve null neu khong co shift_assignment.
+	public Shift findAssignedShiftOnly(Long userId, Date date) {
+		if (userId == null || date == null) {
+			return null;
+		}
+		String sql = """
+				SELECT s.id, s.code, s.name, s.start_time, s.end_time, s.break_minutes, s.is_night_shift,
+				       s.is_active, s.created_at, s.updated_at
+				FROM shift_assignments sa
+				JOIN shifts s ON sa.shift_id = s.id
+				WHERE sa.user_id = ? AND sa.date = ?
+				LIMIT 1
+				""";
+		try (Connection conn = DBContext.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+			ps.setLong(1, userId);
+			ps.setDate(2, date);
+			try (ResultSet rs = ps.executeQuery()) {
+				if (rs.next()) {
+					return mapShift(rs);
+				}
+			}
+		} catch (SQLException e) {
+			System.err.println("AttendanceDAO.findAssignedShiftOnly() ERROR: " + e.getMessage());
+		}
+		return null;
+	}
+
 	public Shift findDefaultShift() {
 		String sql = """
 				SELECT id, code, name, start_time, end_time, break_minutes, is_night_shift,

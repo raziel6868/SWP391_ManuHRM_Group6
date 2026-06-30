@@ -23,6 +23,9 @@ public class LeaveRequest {
 
 	private String employeeCode;
 	private String employeeName;
+	private String requesterRole;
+	private Long requesterManagerId;
+	private String requesterManagerName;
 	private String departmentName;
 	private String leaveTypeCode;
 	private String leaveTypeName;
@@ -155,6 +158,30 @@ public class LeaveRequest {
 
 	public void setEmployeeName(String employeeName) {
 		this.employeeName = employeeName;
+	}
+
+	public String getRequesterRole() {
+		return requesterRole;
+	}
+
+	public void setRequesterRole(String requesterRole) {
+		this.requesterRole = requesterRole;
+	}
+
+	public Long getRequesterManagerId() {
+		return requesterManagerId;
+	}
+
+	public void setRequesterManagerId(Long requesterManagerId) {
+		this.requesterManagerId = requesterManagerId;
+	}
+
+	public String getRequesterManagerName() {
+		return requesterManagerName;
+	}
+
+	public void setRequesterManagerName(String requesterManagerName) {
+		this.requesterManagerName = requesterManagerName;
 	}
 
 	public String getDepartmentName() {

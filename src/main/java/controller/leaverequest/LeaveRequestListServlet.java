@@ -13,6 +13,7 @@ import java.util.List;
 import model.Department;
 import model.LeaveRequest;
 import model.Permission;
+import model.User;
 
 @WebServlet(name = "LeaveRequestListServlet", urlPatterns = {"/leave-request-list"})
 public class LeaveRequestListServlet extends HttpServlet {
@@ -34,6 +35,7 @@ public class LeaveRequestListServlet extends HttpServlet {
 		moveFlashMessage(session, request, "successMsg");
 		moveFlashMessage(session, request, "errorMsg");
 
+		User authUser = (User) session.getAttribute("authUser");
 		String keyword = normalizeText(request.getParameter("keyword"));
 		String selectedStatus = normalizeText(request.getParameter("status"));
 		Long selectedDepartmentId = parseLong(normalizeText(request.getParameter("departmentId")));
@@ -41,9 +43,14 @@ public class LeaveRequestListServlet extends HttpServlet {
 		int currentPage = parsePage(request.getParameter("page"));
 		int offset = (currentPage - 1) * PAGE_SIZE;
 
+		boolean isHighScopeRole = "HR_MANAGER".equals(authUser.getRoleName())
+				|| "SYSADMIN".equals(authUser.getRoleName());
+		boolean canViewAll = hasPermission(session, "LEAVE_REQUEST_VIEW") && isHighScopeRole;
+		Long managerId = canViewAll ? null : authUser.getId();
+
 		List<LeaveRequest> leaveRequests = leaveRequestDAO.searchRequests(keyword, selectedStatus, selectedDepartmentId,
-				offset, PAGE_SIZE);
-		int totalRecords = leaveRequestDAO.countRequests(keyword, selectedStatus, selectedDepartmentId);
+				managerId, offset, PAGE_SIZE);
+		int totalRecords = leaveRequestDAO.countRequests(keyword, selectedStatus, selectedDepartmentId, managerId);
 		int totalPages = totalRecords / PAGE_SIZE;
 		if (totalRecords % PAGE_SIZE != 0) {
 			totalPages++;
@@ -55,8 +62,8 @@ public class LeaveRequestListServlet extends HttpServlet {
 		if (currentPage > totalPages) {
 			currentPage = totalPages;
 			offset = (currentPage - 1) * PAGE_SIZE;
-			leaveRequests = leaveRequestDAO.searchRequests(keyword, selectedStatus, selectedDepartmentId, offset,
-					PAGE_SIZE);
+			leaveRequests = leaveRequestDAO.searchRequests(keyword, selectedStatus, selectedDepartmentId, managerId,
+					offset, PAGE_SIZE);
 		}
 
 		List<Department> departments = departmentDAO.getActiveDepartments();
@@ -68,6 +75,9 @@ public class LeaveRequestListServlet extends HttpServlet {
 		request.setAttribute("currentPage", currentPage);
 		request.setAttribute("totalPages", totalPages);
 		request.setAttribute("totalRecords", totalRecords);
+		request.setAttribute("canViewAll", canViewAll);
+		request.setAttribute("currentUserId", authUser.getId());
+		request.setAttribute("canApproveLevel1", hasPermission(session, "LEAVE_REQUEST_APPROVE_L1"));
 		request.setAttribute("canFinalApprove", hasPermission(session, "LEAVE_REQUEST_APPROVE_L2"));
 		request.setAttribute("canReject", hasPermission(session, "LEAVE_REQUEST_REJECT"));
 

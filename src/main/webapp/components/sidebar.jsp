@@ -18,6 +18,7 @@
 <c:set var="hasLeaveBalanceView" value="${false}" />
 <c:set var="hasLeaveMyView" value="${false}" />
 <c:set var="hasLeaveRequestView" value="${false}" />
+<c:set var="hasLeaveRequestApproveL1" value="${false}" />
 
 <c:set var="hasShiftView" value="${false}" />
 <c:set var="hasShiftCalendarView" value="${false}" />
@@ -85,6 +86,9 @@
         <c:when test="${permission.code == 'LEAVE_REQUEST_VIEW'}">
             <c:set var="hasLeaveRequestView" value="${true}" />
             <c:set var="leaveRequestViewUrl" value="${permission.urlPattern}" />
+        </c:when>
+        <c:when test="${permission.code == 'LEAVE_REQUEST_APPROVE_L1'}">
+            <c:set var="hasLeaveRequestApproveL1" value="${true}" />
         </c:when>
         <c:when test="${permission.code == 'SHIFT_VIEW'}">
             <c:set var="hasShiftView" value="${true}" />
@@ -159,7 +163,7 @@
 
 <c:set var="hasSystemMenu" value="${hasUserView or hasRoleView or hasDepartmentView or hasJobTitleView or hasHolidayView}" />
 <c:set var="hasContractMenu" value="${hasContractTypeView or hasContractView}" />
-<c:set var="hasLeaveMenu" value="${hasLeaveTypeView or hasLeaveBalanceView or hasLeaveMyView or hasLeaveRequestView}" />
+<c:set var="hasLeaveMenu" value="${hasLeaveTypeView or hasLeaveBalanceView or hasLeaveMyView or hasLeaveRequestView or hasLeaveRequestApproveL1}" />
 <c:set var="hasShiftMenu" value="${hasShiftView or hasShiftCalendarView or hasMyShiftView}" />
 <c:set var="hasAttendanceMenu" value="${hasAttendanceView or hasAttendanceMyView or hasAttendanceCorrectionView or hasOtView}" />
 <c:set var="hasPayrollMenu" value="${hasMonthlySheetView or hasSalaryBaseSetup or hasPayrollView or hasPayslipView}" />
@@ -269,6 +273,10 @@
                     <c:if test="${hasLeaveRequestView}">
                         <c:url var="menuUrl" value="${leaveRequestViewUrl}" />
                         <a class="${currentPath == leaveRequestViewUrl ? 'sidebar-subitem active' : 'sidebar-subitem'}" href="${menuUrl}">Duyệt nghỉ phép</a>
+                    </c:if>
+                    <c:if test="${hasLeaveRequestApproveL1 and not hasLeaveRequestView}">
+                        <c:url var="menuUrl" value="/leave-request-list" />
+                        <a class="${currentPath == menuUrl ? 'sidebar-subitem active' : 'sidebar-subitem'}" href="${menuUrl}">Duyệt nghỉ phép</a>
                     </c:if>
                     <c:if test="${hasLeaveBalanceView}">
                         <c:url var="menuUrl" value="${leaveBalanceViewUrl}" />

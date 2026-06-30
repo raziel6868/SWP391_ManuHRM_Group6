@@ -15,6 +15,8 @@ public class LeaveRequestDAO {
 			lr.reason, lr.status, lr.level_1_approver_id, lr.level_1_approved_at,
 			lr.approver_id, lr.approved_at, lr.created_at, lr.updated_at,
 			u.employee_code, u.full_name AS employee_name,
+			r.name AS requester_role, u.manager_id AS requester_manager_id,
+			mgr.full_name AS requester_manager_name,
 			d.name AS department_name,
 			lt.code AS leave_type_code, lt.name AS leave_type_name,
 			l1.full_name AS level_1_approver_name,
@@ -24,6 +26,8 @@ public class LeaveRequestDAO {
 	private static final String BASE_FROM = """
 			FROM leave_requests lr
 			INNER JOIN users u ON u.id = lr.user_id
+			LEFT JOIN roles r ON r.id = u.role_id
+			LEFT JOIN users mgr ON mgr.id = u.manager_id
 			LEFT JOIN departments d ON d.id = u.department_id
 			INNER JOIN leave_types lt ON lt.id = lr.leave_type_id
 			LEFT JOIN users l1 ON l1.id = lr.level_1_approver_id
@@ -55,11 +59,13 @@ public class LeaveRequestDAO {
 		return false;
 	}
 
-	public List<LeaveRequest> searchRequests(String keyword, String status, Long departmentId, int offset, int limit) {
+	public List<LeaveRequest> searchRequests(String keyword, String status, Long departmentId, Long managerId,
+			int offset, int limit) {
 		List<LeaveRequest> requests = new ArrayList<>();
 		StringBuilder sql = new StringBuilder("SELECT " + SELECT_COLUMNS + BASE_FROM + " WHERE 1 = 1");
 		List<Object> params = new ArrayList<>();
 		appendFilters(sql, params, keyword, status, departmentId);
+		appendScopeFilter(sql, params, managerId);
 		sql.append(" ORDER BY lr.created_at DESC, lr.id DESC LIMIT ? OFFSET ?");
 		params.add(limit);
 		params.add(offset);
@@ -78,10 +84,11 @@ public class LeaveRequestDAO {
 		return requests;
 	}
 
-	public int countRequests(String keyword, String status, Long departmentId) {
+	public int countRequests(String keyword, String status, Long departmentId, Long managerId) {
 		StringBuilder sql = new StringBuilder("SELECT COUNT(*) " + BASE_FROM + " WHERE 1 = 1");
 		List<Object> params = new ArrayList<>();
 		appendFilters(sql, params, keyword, status, departmentId);
+		appendScopeFilter(sql, params, managerId);
 
 		try (Connection conn = DBContext.getConnection();
 				PreparedStatement ps = conn.prepareStatement(sql.toString())) {
@@ -182,6 +189,28 @@ public class LeaveRequestDAO {
 			System.err.println("LeaveRequestDAO.approveLevel1() ERROR: " + e.getMessage());
 		}
 		return false;
+	}
+
+	public boolean directApprove(Connection conn, Long id, Long approverId) throws SQLException {
+		if (conn == null || id == null || approverId == null) {
+			return false;
+		}
+
+		String sql = """
+				UPDATE leave_requests
+				SET status = 'APPROVED',
+				    approver_id = ?,
+				    approved_at = CURRENT_TIMESTAMP,
+				    updated_at = CURRENT_TIMESTAMP
+				WHERE id = ?
+				  AND status = 'PENDING'
+				""";
+
+		try (PreparedStatement ps = conn.prepareStatement(sql)) {
+			ps.setLong(1, approverId);
+			ps.setLong(2, id);
+			return ps.executeUpdate() == 1;
+		}
 	}
 
 	public boolean finalApprove(Connection conn, Long id, Long approverId) throws SQLException {
@@ -312,6 +341,13 @@ public class LeaveRequestDAO {
 		}
 	}
 
+	private void appendScopeFilter(StringBuilder sql, List<Object> params, Long managerId) {
+		if (managerId != null) {
+			sql.append(" AND u.manager_id = ?");
+			params.add(managerId);
+		}
+	}
+
 	public boolean hasApprovedLeaveOnDate(Long userId, java.sql.Date date) {
 		if (userId == null || date == null) {
 			return false;
@@ -367,6 +403,10 @@ public class LeaveRequestDAO {
 		request.setUpdatedAt(rs.getTimestamp("updated_at"));
 		request.setEmployeeCode(rs.getString("employee_code"));
 		request.setEmployeeName(rs.getString("employee_name"));
+		request.setRequesterRole(rs.getString("requester_role"));
+		long managerId = rs.getLong("requester_manager_id");
+		request.setRequesterManagerId(rs.wasNull() ? null : managerId);
+		request.setRequesterManagerName(rs.getString("requester_manager_name"));
 		request.setDepartmentName(rs.getString("department_name"));
 		request.setLeaveTypeCode(rs.getString("leave_type_code"));
 		request.setLeaveTypeName(rs.getString("leave_type_name"));

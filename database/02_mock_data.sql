@@ -220,7 +220,7 @@ INSERT INTO role_permissions (role_id, permission_id) VALUES
 (2, 32), (2, 33), (2, 34), (2, 35), (2, 36), (2, 37), (2, 38),
 (2, 83), (2, 84),
 -- Leave
-(2, 39), (2, 40), (2, 41), (2, 46), (2, 47),
+(2, 39), (2, 40), (2, 41), (2, 45), (2, 46), (2, 47),
 -- Shift Assignment
 (2, 48), (2, 49), (2, 50), (2, 85), (2, 86),
 -- Attendance
@@ -240,7 +240,7 @@ INSERT INTO role_permissions (role_id, permission_id) VALUES
 
 -- PRODUCTION_SUPERVISOR: exact operational scope
 INSERT INTO role_permissions (role_id, permission_id) VALUES
-(3, 45), (3, 47),
+(3, 41), (3, 45), (3, 47),
 (3, 48), (3, 51), (3, 57), (3, 55), (3, 56), (3, 85), (3, 86),
 (3, 58), (3, 59);
 

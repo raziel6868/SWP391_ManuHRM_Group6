@@ -22,7 +22,7 @@
                     <div>
                         <h2 class="h3 text-on-surface fw-bold mb-1">Quản lý đơn nghỉ</h2>
                         <p class="body-md text-on-surface-variant mb-0">
-                            Theo dõi trạng thái đơn nghỉ và xử lý bước duyệt cuối theo quy trình.
+                            Theo dõi và duyệt đơn nghỉ phép theo quy trình phân quyền.
                         </p>
                     </div>
                 </div>
@@ -80,11 +80,10 @@
                                     <th>Nhân viên</th>
                                     <th>Phòng ban</th>
                                     <th>Loại nghỉ</th>
-                                    <th>Thoi gian</th>
+                                    <th>Thời gian</th>
                                     <th class="text-end">Số ngày</th>
                                     <th>Trạng thái</th>
-                                    <th>Duyệt cấp 1</th>
-                                    <th>Duyệt cuối</th>
+                                    <th>Tiến trình duyệt</th>
                                     <th class="text-end">Thao tác</th>
                                 </tr>
                             </thead>
@@ -138,11 +137,74 @@
                                                 </c:otherwise>
                                             </c:choose>
                                         </td>
-                                        <td><c:out value="${empty leaveRequest.level1ApproverName ? '-' : leaveRequest.level1ApproverName}" /></td>
-                                        <td><c:out value="${empty leaveRequest.approverName ? '-' : leaveRequest.approverName}" /></td>
+                                        <td>
+                                            <c:choose>
+                                                <c:when test="${leaveRequest.status == 'PENDING'}">
+                                                    <c:choose>
+                                                        <c:when test="${leaveRequest.requesterRole == 'EMPLOYEE'}">
+                                                            <span class="body-sm text-on-surface-variant">
+                                                                Chờ cấp 1:
+                                                                <c:out value="${empty leaveRequest.requesterManagerName ? '-' : leaveRequest.requesterManagerName}" />
+                                                            </span>
+                                                        </c:when>
+                                                        <c:otherwise>
+                                                            <span class="body-sm text-on-surface-variant">
+                                                                Chờ duyệt:
+                                                                <c:out value="${empty leaveRequest.requesterManagerName ? '-' : leaveRequest.requesterManagerName}" />
+                                                            </span>
+                                                        </c:otherwise>
+                                                    </c:choose>
+                                                </c:when>
+                                                <c:when test="${leaveRequest.status == 'APPROVED_LEVEL_1'}">
+                                                    <div class="body-sm">
+                                                        <span class="text-success">Cấp 1:</span>
+                                                        <c:out value="${leaveRequest.level1ApproverName}" />
+                                                    </div>
+                                                    <div class="body-sm text-on-surface-variant">Chờ duyệt cuối: HR Manager</div>
+                                                </c:when>
+                                                <c:when test="${leaveRequest.status == 'APPROVED'}">
+                                                    <c:choose>
+                                                        <c:when test="${leaveRequest.requesterRole == 'EMPLOYEE'}">
+                                                            <div class="body-sm">
+                                                                <span class="text-success">Cấp 1:</span>
+                                                                <c:out value="${leaveRequest.level1ApproverName}" />
+                                                            </div>
+                                                            <div class="body-sm">
+                                                                <span class="text-success">Duyệt cuối:</span>
+                                                                <c:out value="${leaveRequest.approverName}" />
+                                                            </div>
+                                                        </c:when>
+                                                        <c:otherwise>
+                                                            <span class="body-sm text-success">
+                                                                Duyệt bởi: <c:out value="${leaveRequest.approverName}" />
+                                                            </span>
+                                                        </c:otherwise>
+                                                    </c:choose>
+                                                </c:when>
+                                                <c:when test="${leaveRequest.status == 'REJECTED'}">
+                                                    <span class="body-sm text-danger">
+                                                        Từ chối bởi: <c:out value="${leaveRequest.approverName}" />
+                                                    </span>
+                                                </c:when>
+                                                <c:when test="${leaveRequest.status == 'CANCELLED'}">
+                                                    <span class="body-sm text-on-surface-variant">Đã hủy</span>
+                                                </c:when>
+                                            </c:choose>
+                                        </td>
                                         <td class="text-end">
                                             <div class="d-inline-flex gap-2 justify-content-end">
-                                                <c:if test="${canFinalApprove and leaveRequest.status == 'APPROVED_LEVEL_1'}">
+                                                <c:if test="${canApproveLevel1 and leaveRequest.status == 'PENDING' and currentUserId == leaveRequest.requesterManagerId and currentUserId != leaveRequest.userId}">
+                                                    <form action="${pageContext.request.contextPath}/leave-request-approve" method="POST" class="d-inline">
+                                                        <input type="hidden" name="id" value="${leaveRequest.id}" />
+                                                        <button type="submit"
+                                                                class="btn btn-sm btn-icon text-success"
+                                                                title="Duyệt"
+                                                                onclick="return confirm('Xác nhận duyệt đơn nghỉ này?');">
+                                                            <span class="material-symbols-outlined" style="font-size: 1.25rem;">task_alt</span>
+                                                        </button>
+                                                    </form>
+                                                </c:if>
+                                                <c:if test="${canFinalApprove and leaveRequest.status == 'APPROVED_LEVEL_1' and leaveRequest.requesterRole == 'EMPLOYEE' and currentUserId != leaveRequest.userId}">
                                                     <form action="${pageContext.request.contextPath}/leave-request-final-approve" method="POST" class="d-inline">
                                                         <input type="hidden" name="id" value="${leaveRequest.id}" />
                                                         <button type="submit"
@@ -153,7 +215,7 @@
                                                         </button>
                                                     </form>
                                                 </c:if>
-                                                <c:if test="${canReject and (leaveRequest.status == 'PENDING' or leaveRequest.status == 'APPROVED_LEVEL_1')}">
+                                                <c:if test="${canReject and currentUserId != leaveRequest.userId and ((leaveRequest.status == 'PENDING' and currentUserId == leaveRequest.requesterManagerId) or (leaveRequest.status == 'APPROVED_LEVEL_1' and canFinalApprove))}">
                                                     <form action="${pageContext.request.contextPath}/leave-request-reject" method="POST" class="d-inline">
                                                         <input type="hidden" name="id" value="${leaveRequest.id}" />
                                                         <button type="submit"
@@ -170,7 +232,7 @@
                                 </c:forEach>
                                 <c:if test="${empty leaveRequests}">
                                     <tr>
-                                        <td colspan="10" class="text-center py-4 text-on-surface-variant">
+                                        <td colspan="9" class="text-center py-4 text-on-surface-variant">
                                             Chưa có đơn nghỉ nào phù hợp với bộ lọc hiện tại.
                                         </td>
                                     </tr>

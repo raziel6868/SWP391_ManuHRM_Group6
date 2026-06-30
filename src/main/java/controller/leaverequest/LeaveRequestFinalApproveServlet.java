@@ -18,6 +18,8 @@ import model.User;
 @WebServlet(name = "LeaveRequestFinalApproveServlet", urlPatterns = {"/leave-request-final-approve"})
 public class LeaveRequestFinalApproveServlet extends HttpServlet {
 
+	private static final String ROLE_EMPLOYEE = "EMPLOYEE";
+
 	private final LeaveBalanceDAO leaveBalanceDAO = new LeaveBalanceDAO();
 	private final LeaveRequestDAO leaveRequestDAO = new LeaveRequestDAO();
 
@@ -35,7 +37,7 @@ public class LeaveRequestFinalApproveServlet extends HttpServlet {
 
 		Long id = parseLong(request.getParameter("id"));
 		LeaveRequest leaveRequest = leaveRequestDAO.getById(id);
-		String validationError = validate(leaveRequest);
+		String validationError = validate(leaveRequest, authUser);
 		if (validationError != null) {
 			session.setAttribute("errorMsg", validationError);
 			response.sendRedirect(request.getContextPath() + "/leave-request-list");
@@ -82,9 +84,15 @@ public class LeaveRequestFinalApproveServlet extends HttpServlet {
 		return false;
 	}
 
-	private String validate(LeaveRequest leaveRequest) {
+	private String validate(LeaveRequest leaveRequest, User authUser) {
 		if (leaveRequest == null) {
 			return "Không tìm thấy đơn nghỉ phép.";
+		}
+		if (!ROLE_EMPLOYEE.equals(leaveRequest.getRequesterRole())) {
+			return "Chỉ duyệt cuối cho đơn của nhân viên role EMPLOYEE.";
+		}
+		if (authUser.getId() != null && authUser.getId().equals(leaveRequest.getUserId())) {
+			return "Không thể tự duyệt đơn nghỉ phép của chính mình.";
 		}
 		if (!"APPROVED_LEVEL_1".equals(leaveRequest.getStatus())) {
 			return "Chỉ có thể duyệt cuối đơn đã được duyệt cấp 1.";

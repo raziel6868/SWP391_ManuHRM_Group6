@@ -14,6 +14,7 @@ DROP TABLE IF EXISTS password_resets;
 DROP TABLE IF EXISTS holidays;
 DROP TABLE IF EXISTS monthly_salaries;
 DROP TABLE IF EXISTS monthly_sheets;
+DROP TABLE IF EXISTS monthly_sheet_approvals;
 DROP TABLE IF EXISTS salary_bases;
 DROP TABLE IF EXISTS overtime_records;
 DROP TABLE IF EXISTS attendance_corrections;
@@ -305,22 +306,31 @@ CREATE TABLE attendance_records (
 );
 
 CREATE TABLE attendance_corrections (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    attendance_record_id BIGINT NOT NULL,
-    requested_by BIGINT NOT NULL,
-    new_check_in TIME NULL,
-    new_check_out TIME NULL,
-    reason TEXT NULL,
-    status ENUM('PENDING', 'APPROVED', 'REJECTED') NOT NULL DEFAULT 'PENDING',
-    approver_id BIGINT NULL,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    CONSTRAINT fk_attendance_corrections_record
-        FOREIGN KEY (attendance_record_id) REFERENCES attendance_records(id) ON DELETE CASCADE,
-    CONSTRAINT fk_attendance_corrections_requested_by
-        FOREIGN KEY (requested_by) REFERENCES users(id) ON DELETE RESTRICT,
-    CONSTRAINT fk_attendance_corrections_approver
-        FOREIGN KEY (approver_id) REFERENCES users(id) ON DELETE SET NULL
+                                        id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                                        attendance_record_id BIGINT NOT NULL,
+                                        requested_by BIGINT NOT NULL,
+                                        new_check_in TIME NULL,
+                                        new_check_out TIME NULL,
+                                        reason TEXT NULL,
+    -- Bước 1: quản đốc duyệt
+                                        supervisor_id BIGINT NULL,
+                                        supervisor_status ENUM('PENDING', 'APPROVED', 'REJECTED') NOT NULL DEFAULT 'PENDING',
+                                        supervisor_approved_at TIMESTAMP NULL,
+                                        supervisor_reject_reason TEXT NULL,
+    -- Bước 2: HR duyệt
+                                        status ENUM('PENDING', 'APPROVED', 'REJECTED') NOT NULL DEFAULT 'PENDING',
+                                        approver_id BIGINT NULL,
+                                        hr_reject_reason TEXT NULL,
+                                        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                                        CONSTRAINT fk_attendance_corrections_record
+                                            FOREIGN KEY (attendance_record_id) REFERENCES attendance_records(id) ON DELETE CASCADE,
+                                        CONSTRAINT fk_attendance_corrections_requested_by
+                                            FOREIGN KEY (requested_by) REFERENCES users(id) ON DELETE RESTRICT,
+                                        CONSTRAINT fk_attendance_corrections_supervisor
+                                            FOREIGN KEY (supervisor_id) REFERENCES users(id) ON DELETE SET NULL,
+                                        CONSTRAINT fk_attendance_corrections_approver
+                                            FOREIGN KEY (approver_id) REFERENCES users(id) ON DELETE SET NULL
 );
 
 CREATE TABLE overtime_records (
@@ -356,18 +366,48 @@ CREATE TABLE salary_bases (
 );
 
 CREATE TABLE monthly_sheets (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    year INT NOT NULL,
-    month INT NOT NULL,
-    status ENUM('OPEN', 'CLOSED') NOT NULL DEFAULT 'OPEN',
-    closed_at TIMESTAMP NULL,
-    closed_by BIGINT NULL,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    CONSTRAINT fk_monthly_sheets_closed_by
-        FOREIGN KEY (closed_by) REFERENCES users(id) ON DELETE SET NULL,
-    CONSTRAINT uq_monthly_sheets_year_month
-        UNIQUE (year, month)
+                                id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                                year INT NOT NULL,
+                                month INT NOT NULL,
+                                status ENUM(
+                                    'OPEN',
+                                    'PENDING_SUPERVISOR',
+                                    'PENDING_HR',
+                                    'PENDING_DIRECTOR',
+                                    'CLOSED'
+                                    ) NOT NULL DEFAULT 'OPEN',
+                                submitted_by BIGINT NULL,
+                                submitted_at TIMESTAMP NULL,
+                                hr_approved_by BIGINT NULL,
+                                hr_approved_at TIMESTAMP NULL,
+                                closed_by BIGINT NULL,
+                                closed_at TIMESTAMP NULL,
+                                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                                CONSTRAINT fk_monthly_sheets_submitted_by
+                                    FOREIGN KEY (submitted_by) REFERENCES users(id) ON DELETE SET NULL,
+                                CONSTRAINT fk_monthly_sheets_hr_approved_by
+                                    FOREIGN KEY (hr_approved_by) REFERENCES users(id) ON DELETE SET NULL,
+                                CONSTRAINT fk_monthly_sheets_closed_by
+                                    FOREIGN KEY (closed_by) REFERENCES users(id) ON DELETE SET NULL,
+                                CONSTRAINT uq_monthly_sheets_year_month
+                                    UNIQUE (year, month)
+);
+
+CREATE TABLE monthly_sheet_approvals (
+                                         id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                                         monthly_sheet_id BIGINT NOT NULL,
+                                         supervisor_id BIGINT NOT NULL,
+                                         status ENUM('PENDING', 'APPROVED') NOT NULL DEFAULT 'PENDING',
+                                         approved_at TIMESTAMP NULL,
+                                         created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                         updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                                         CONSTRAINT fk_msa_sheet
+                                             FOREIGN KEY (monthly_sheet_id) REFERENCES monthly_sheets(id) ON DELETE CASCADE,
+                                         CONSTRAINT fk_msa_supervisor
+                                             FOREIGN KEY (supervisor_id) REFERENCES users(id) ON DELETE RESTRICT,
+                                         CONSTRAINT uq_msa_sheet_supervisor
+                                             UNIQUE (monthly_sheet_id, supervisor_id)
 );
 
 CREATE TABLE monthly_salaries (

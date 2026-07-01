@@ -11,6 +11,7 @@ TRUNCATE TABLE holidays;
 TRUNCATE TABLE audit_logs;
 TRUNCATE TABLE monthly_salaries;
 TRUNCATE TABLE monthly_sheets;
+TRUNCATE TABLE monthly_sheet_approvals;
 TRUNCATE TABLE salary_bases;
 TRUNCATE TABLE overtime_records;
 TRUNCATE TABLE attendance_corrections;
@@ -168,6 +169,14 @@ INSERT INTO permissions (id, code, name, url_pattern, module) VALUES
 (83, 'CONTRACT_TERMINATE',      'Chấm dứt hợp đồng',         '/contract-terminate',     'CONTRACT'),
 (84, 'CONTRACT_EXPIRY',        'Xem hợp đồng hết hạn',     '/contract-expiry',        'CONTRACT');
 
+INSERT INTO permissions (id, code, name, url_pattern, module) VALUES
+                                                                  (87, 'MONTHLY_SHEET_SUBMIT',                    'Gửi bảng công chờ duyệt',            '/monthly-sheet-submit',                    'PAYROLL'),
+                                                                  (88, 'MONTHLY_SHEET_SUPERVISOR_VIEW',            'Xem bảng công (quản đốc)',            '/monthly-sheet-supervisor',                'PAYROLL'),
+                                                                  (89, 'MONTHLY_SHEET_SUPERVISOR_APPROVE',         'Chốt bảng công (quản đốc)',           '/monthly-sheet-supervisor-approve',        'PAYROLL'),
+                                                                  (90, 'MONTHLY_SHEET_HR_APPROVE',                 'Chốt bảng công (HR)',                 '/monthly-sheet-hr-approve',                'PAYROLL'),
+                                                                  (91, 'MONTHLY_SHEET_DIRECTOR_APPROVE',           'Chốt & đóng sổ (Giám đốc)',           '/monthly-sheet-director-approve',          'PAYROLL'),
+                                                                  (92, 'ATTENDANCE_CORRECTION_SUPERVISOR_APPROVE', 'Duyệt chỉnh sửa công (quản đốc)',    '/attendance-correction-supervisor-approve','ATTENDANCE');
+
 -- =========================================================
 -- Iter 1 Role Permissions (Explicit)
 -- =========================================================
@@ -181,7 +190,8 @@ INSERT INTO role_permissions (role_id, permission_id) VALUES
 (1, 16), (1, 17), (1, 18), (1, 19),
 (1, 20), (1, 21), (1, 22), (1, 23),
 (1, 24), (1, 25), (1, 26), (1, 27),
-(1, 28), (1, 29), (1, 30), (1, 31);
+(1, 28), (1, 29), (1, 30), (1, 31),
+(1, 87), (1, 88), (1, 89), (1, 90), (1, 91), (1, 92);
 
 -- HR_MANAGER: Iter 1 master data + user management
 INSERT INTO role_permissions (role_id, permission_id) VALUES
@@ -190,10 +200,12 @@ INSERT INTO role_permissions (role_id, permission_id) VALUES
 (2, 16), (2, 17), (2, 18), (2, 19),
 (2, 20), (2, 21), (2, 22), (2, 23),
 (2, 24), (2, 25), (2, 26), (2, 27),
+(2, 87), (2, 90), (2, 91),
 (2, 28), (2, 29), (2, 30), (2, 31);
 
 -- PRODUCTION_SUPERVISOR: Iter 1 user view only
 INSERT INTO role_permissions (role_id, permission_id) VALUES
+(3, 88), (3, 89), (3, 92),
 (3, 1), (3, 5);
 
 -- EMPLOYEE: no Iter 1 permission grants
@@ -368,8 +380,8 @@ INSERT INTO shift_assignments (user_id, shift_id, date) VALUES
 INSERT INTO attendance_records (user_id, date, shift_id, check_in, check_out, working_hours, status, import_batch_id) VALUES
 (8, '2026-06-15', 2, '06:02:00', '14:05:00', 8.0, 'NORMAL', 'BATCH-202606');
 
-INSERT INTO attendance_corrections (attendance_record_id, requested_by, new_check_in, new_check_out, reason, status) VALUES
-(1, 8, '06:00:00', '14:00:00', 'Chấm công sai giờ', 'PENDING');
+INSERT INTO attendance_corrections(attendance_record_id, requested_by, new_check_in, new_check_out, reason,supervisor_id, supervisor_status, status) VALUES
+(1, 8, '06:00:00', '14:00:00', 'Chấm công sai giờ', 7, 'PENDING', 'PENDING');
 
 INSERT INTO overtime_records (user_id, date, requested_hours, reason, status) VALUES
 (8, '2026-06-14', 2, 'Sản xuất tăng cường đơn hàng', 'PENDING');
@@ -381,8 +393,7 @@ INSERT INTO salary_bases (user_id, base_salary, effective_from) VALUES
 -- EMPLOYEE role has PAYSLIP_VIEW permission (ID 66) and monthly_salaries row at line 309;
 -- salary base enables end-to-end demo of payslip-view flow per Phase 6 success criteria.
 
-INSERT INTO monthly_sheets (year, month, status, closed_at, closed_by) VALUES
-(2026, 6, 'CLOSED', '2026-06-30 23:59:59', 4);
+INSERT INTO monthly_sheets (year, month, status) VALUES (2026, 6, 'OPEN');
 
 INSERT INTO monthly_salaries (monthly_sheet_id, user_id, actual_work_days, ot_hours, gross_salary, deductions, net_salary, status) VALUES
 (1, 8, 22, 0, 8000000, 0, 8000000, 'FINAL');

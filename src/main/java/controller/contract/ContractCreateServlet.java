@@ -24,6 +24,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.sql.Date;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -49,9 +50,12 @@ public class ContractCreateServlet extends HttpServlet {
 			throws ServletException, IOException {
 		List<User> users = userDAO.getActiveUsersForDropdown();
 		List<ContractType> contractTypes = contractTypeDAO.getActiveContractTypes();
+		String today = LocalDate.now().toString();
 
 		request.setAttribute("users", users);
 		request.setAttribute("contractTypes", contractTypes);
+		request.setAttribute("todayDate", today);
+		request.setAttribute("startDate", today);
 		request.getRequestDispatcher("/views/contract/contract-create.jsp").forward(request, response);
 	}
 
@@ -83,6 +87,12 @@ public class ContractCreateServlet extends HttpServlet {
 		if (startDate == null) {
 			returnWithError(request, response, "Ngày bắt đầu không hợp lệ.", userId, contractTypeId, startDateStr,
 					endDateStr, salaryStr, null, null);
+			return;
+		}
+		Date today = Date.valueOf(LocalDate.now());
+		if (!today.equals(startDate)) {
+			returnWithError(request, response, "Ngày bắt đầu hợp đồng phải là ngày hiện tại (" + today + ").", userId,
+					contractTypeId, startDateStr, endDateStr, salaryStr, null, null);
 			return;
 		}
 		if (endDate != null && endDate.before(startDate)) {
@@ -212,6 +222,7 @@ public class ContractCreateServlet extends HttpServlet {
 		request.setAttribute("startDate", startDateStr);
 		request.setAttribute("endDate", endDateStr);
 		request.setAttribute("salary", salaryStr);
+		request.setAttribute("todayDate", LocalDate.now().toString());
 		request.setAttribute("users", userDAO.getActiveUsersForDropdown());
 		request.setAttribute("contractTypes", contractTypeDAO.getActiveContractTypes());
 		request.getRequestDispatcher("/views/contract/contract-create.jsp").forward(request, response);

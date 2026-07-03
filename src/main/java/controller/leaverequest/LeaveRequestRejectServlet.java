@@ -29,23 +29,13 @@ public class LeaveRequestRejectServlet extends HttpServlet {
 			response.sendRedirect(request.getContextPath() + "/login");
 			return;
 		}
-		String redirectUrl = resolveRedirectUrl(request);
 
+		String redirectUrl = resolveRedirectUrl(request);
 		Long id = parseLong(request.getParameter("id"));
 		LeaveRequest leaveRequest = leaveRequestDAO.getById(id);
-		if (leaveRequest == null) {
-			session.setAttribute("errorMsg", "Không tìm thấy đơn nghỉ phép.");
-			response.sendRedirect(redirectUrl);
-			return;
-		}
-		if (!"PENDING".equals(leaveRequest.getStatus()) && !"APPROVED_LEVEL_1".equals(leaveRequest.getStatus())) {
-			session.setAttribute("errorMsg", "Chỉ có thể từ chối đơn đang chờ duyệt.");
-			response.sendRedirect(redirectUrl);
-			return;
-		}
-		if (shouldLimitToManagedEmployees(session)
-				&& !leaveRequestDAO.isRequesterManagedBy(leaveRequest.getId(), authUser.getId())) {
-			session.setAttribute("errorMsg", "Chỉ có thể từ chối đơn của nhân viên dưới quyền.");
+		String validationError = validateReject(session, authUser, leaveRequest);
+		if (validationError != null) {
+			session.setAttribute("errorMsg", validationError);
 			response.sendRedirect(redirectUrl);
 			return;
 		}
@@ -59,8 +49,28 @@ public class LeaveRequestRejectServlet extends HttpServlet {
 		response.sendRedirect(redirectUrl);
 	}
 
-	private boolean shouldLimitToManagedEmployees(HttpSession session) {
-		return hasPermission(session, "LEAVE_REQUEST_APPROVE_L1") && !hasPermission(session, "LEAVE_REQUEST_VIEW");
+	private String validateReject(HttpSession session, User authUser, LeaveRequest leaveRequest) {
+		if (leaveRequest == null) {
+			return "Không tìm thấy đơn nghỉ phép.";
+		}
+		if (authUser.getId() != null && authUser.getId().equals(leaveRequest.getUserId())) {
+			return "Không thể tự từ chối đơn nghỉ phép của chính mình.";
+		}
+		if ("PENDING".equals(leaveRequest.getStatus())) {
+			return isDirectManager(authUser, leaveRequest)
+					? null
+					: "Chỉ manager trực tiếp mới có thể từ chối đơn đang chờ duyệt.";
+		}
+		if ("APPROVED_LEVEL_1".equals(leaveRequest.getStatus())) {
+			return hasPermission(session, "LEAVE_REQUEST_APPROVE_L2")
+					? null
+					: "Chỉ người duyệt cuối mới có thể từ chối đơn đã qua cấp 1.";
+		}
+		return "Chỉ có thể từ chối đơn đang chờ duyệt.";
+	}
+
+	private boolean isDirectManager(User authUser, LeaveRequest leaveRequest) {
+		return authUser.getId() != null && authUser.getId().equals(leaveRequest.getRequesterManagerId());
 	}
 
 	@SuppressWarnings("unchecked")

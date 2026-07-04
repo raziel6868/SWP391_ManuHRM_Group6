@@ -1,7 +1,5 @@
 package controller.payroll;
 
-import java.io.IOException;
-import java.util.List;
 import dal.MonthlySalaryDAO;
 import dal.MonthlySheetDAO;
 import dal.PayrollDAO;
@@ -12,6 +10,11 @@ import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
+import java.io.IOException;
+import java.util.Calendar;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import model.MonthlySalary;
 import model.MonthlySheet;
 import model.Permission;
@@ -41,9 +44,9 @@ public class PayrollPreviewServlet extends HttpServlet {
 		moveFlash(session, request, "successMsg");
 		moveFlash(session, request, "errorMsg");
 
-		java.util.Calendar now = java.util.Calendar.getInstance();
-		int currentYear = now.get(java.util.Calendar.YEAR);
-		int currentMonth = now.get(java.util.Calendar.MONTH) + 1;
+		Calendar now = Calendar.getInstance();
+		int currentYear = now.get(Calendar.YEAR);
+		int currentMonth = now.get(Calendar.MONTH) + 1;
 
 		String yearParam = request.getParameter("year");
 		String monthParam = request.getParameter("month");
@@ -55,22 +58,42 @@ public class PayrollPreviewServlet extends HttpServlet {
 			try {
 				year = Integer.parseInt(yearParam);
 			} catch (NumberFormatException e) {
+				year = currentYear;
 			}
 		}
 		if (monthParam != null && !monthParam.isEmpty()) {
 			try {
 				month = Integer.parseInt(monthParam);
 			} catch (NumberFormatException e) {
+				month = currentMonth;
 			}
 		}
 
 		List<PayrollPreviewRow> previewRows = payrollDAO.buildPayrollPreview(year, month);
 		MonthlySheet sheet = monthlySheetDAO.getByYearMonth(year, month);
-		List<MonthlySalary> generatedSalaries = null;
+		List<MonthlySalary> generatedSalaries = sheet != null ? monthlySalaryDAO.getBySheet(sheet.getId()) : null;
 
-		if (sheet != null) {
-			generatedSalaries = monthlySalaryDAO.getBySheet(sheet.getId());
+		Map<Long, String> generatedStatusByUserId = new HashMap<>();
+		boolean hasGeneratedRows = generatedSalaries != null && !generatedSalaries.isEmpty();
+		boolean hasDraftPayroll = false;
+		boolean hasFinalOrPaidPayroll = false;
+
+		if (generatedSalaries != null) {
+			for (MonthlySalary salary : generatedSalaries) {
+				generatedStatusByUserId.put(salary.getUserId(), salary.getStatus());
+				if ("DRAFT".equals(salary.getStatus())) {
+					hasDraftPayroll = true;
+				}
+				if ("FINAL".equals(salary.getStatus()) || "PAID".equals(salary.getStatus())) {
+					hasFinalOrPaidPayroll = true;
+				}
+			}
 		}
+
+		boolean isMonthlySheetClosed = sheet != null && "CLOSED".equals(sheet.getStatus());
+		boolean canGeneratePayroll = !previewRows.isEmpty() && sheet != null && isMonthlySheetClosed
+				&& !hasFinalOrPaidPayroll;
+		boolean canClosePayroll = hasPermission(permissions, "PAYROLL_CLOSE") && hasGeneratedRows && hasDraftPayroll;
 
 		request.setAttribute("previewRows", previewRows);
 		request.setAttribute("generatedSalaries", generatedSalaries);
@@ -78,6 +101,13 @@ public class PayrollPreviewServlet extends HttpServlet {
 		request.setAttribute("selectedMonth", month);
 		request.setAttribute("sheet", sheet);
 		request.setAttribute("generatedSheetId", sheet != null ? sheet.getId() : null);
+		request.setAttribute("generatedStatusByUserId", generatedStatusByUserId);
+		request.setAttribute("hasGeneratedRows", hasGeneratedRows);
+		request.setAttribute("hasDraftPayroll", hasDraftPayroll);
+		request.setAttribute("hasFinalOrPaidPayroll", hasFinalOrPaidPayroll);
+		request.setAttribute("canGeneratePayroll", canGeneratePayroll);
+		request.setAttribute("canClosePayroll", canClosePayroll);
+		request.setAttribute("isMonthlySheetClosed", isMonthlySheetClosed);
 
 		request.getRequestDispatcher("/views/payroll/payroll-preview.jsp").forward(request, response);
 	}

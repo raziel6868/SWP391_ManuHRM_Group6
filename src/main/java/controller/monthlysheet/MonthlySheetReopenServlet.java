@@ -1,15 +1,16 @@
 package controller.monthlysheet;
 
 import java.io.IOException;
+import java.util.List;
+
+import dal.MonthlySheetDAO;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
-import dal.MonthlySheetDAO;
 import model.Permission;
-import java.util.List;
 
 @WebServlet(name = "MonthlySheetReopenServlet", urlPatterns = {"/monthly-sheet-reopen"})
 public class MonthlySheetReopenServlet extends HttpServlet {
@@ -31,7 +32,7 @@ public class MonthlySheetReopenServlet extends HttpServlet {
 
 		String idStr = request.getParameter("id");
 		if (idStr == null || idStr.trim().isEmpty()) {
-			session.setAttribute("errorMsg", "Không tìm thấy bảng lương.");
+			session.setAttribute("errorMsg", "Không tìm thấy bảng công tháng.");
 			response.sendRedirect(request.getContextPath() + "/monthly-sheet-list");
 			return;
 		}
@@ -42,12 +43,11 @@ public class MonthlySheetReopenServlet extends HttpServlet {
 
 			if (success) {
 				session.setAttribute("successMsg",
-						"Đã mở lại bảng công/tháng thành công. Có thể nhập công và sửa chấm công.");
+						"Đã mở lại bảng công tháng thành công. Có thể nhập công và sửa chấm công.");
 			} else {
 				session.setAttribute("errorMsg",
-						"Không thể mở lại bảng. Bảng có thể đang ở trạng thái đã mở hoặc không tồn tại.");
+						"Không thể mở lại bảng công tháng. Bảng có thể đang ở trạng thái mở hoặc không tồn tại.");
 			}
-
 		} catch (NumberFormatException e) {
 			session.setAttribute("errorMsg", "ID không hợp lệ.");
 		}
@@ -59,8 +59,8 @@ public class MonthlySheetReopenServlet extends HttpServlet {
 		if (permissions == null) {
 			return false;
 		}
-		for (Permission p : permissions) {
-			if (code.equals(p.getCode())) {
+		for (Permission permission : permissions) {
+			if (code.equals(permission.getCode())) {
 				return true;
 			}
 		}

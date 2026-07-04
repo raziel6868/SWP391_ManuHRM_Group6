@@ -41,7 +41,7 @@
                 <div class="d-flex justify-content-between align-items-end mb-4 flex-wrap gap-3 no-print">
                     <div>
                         <h2 class="h3 text-on-surface fw-bold mb-1">Phiếu lương</h2>
-                        <p class="body-md text-on-surface-variant mb-0">Chi tiết phiếu lương nhân viên.</p>
+                        <p class="body-md text-on-surface-variant mb-0">Chi tiết thu nhập, bảo hiểm, giảm trừ gia cảnh, thuế TNCN và lương thực nhận.</p>
                     </div>
                     <div class="d-flex gap-2">
                         <c:if test="${not empty sheet}">
@@ -66,7 +66,7 @@
                         </div>
                     </c:when>
                     <c:when test="${not empty salary}">
-                        <div class="card-premium" style="max-width: 680px;">
+                        <div class="card-premium" style="max-width: 760px;">
                             <div style="background: linear-gradient(135deg, var(--primary) 0%, var(--primary-fixed-dim) 100%); padding: 1.25rem 1.5rem; border-radius: 12px 12px 0 0;">
                                 <h4 class="mb-0 fw-bold text-white">PHIẾU LƯƠNG THÁNG ${salary.month}/${salary.year}</h4>
                                 <p class="mb-0 text-white-50" style="font-size: 0.875rem;">ManuHRM - Manufacturing HR Management</p>
@@ -83,7 +83,7 @@
                                     </div>
                                     <div class="col-md-6 text-md-end">
                                         <p class="mb-2 text-on-surface-variant" style="font-size: 0.8125rem;">Ngày in</p>
-                                        <p class="mb-3 fw-bold text-on-surface"><fmt:formatDate value="<%=new java.util.Date()%>" pattern="dd/MM/yyyy" /></p>
+                                        <p class="mb-3 fw-bold text-on-surface"><fmt:formatDate value="${printDate}" pattern="dd/MM/yyyy" /></p>
                                         <p class="mb-2 text-on-surface-variant" style="font-size: 0.8125rem;">Kỳ lương</p>
                                         <p class="mb-0 fw-bold text-on-surface">Tháng ${salary.month}/${salary.year}</p>
                                     </div>
@@ -94,24 +94,163 @@
                                 <table class="table table-premium mb-0">
                                     <tbody>
                                         <tr>
+                                            <td class="text-on-surface-variant">Lương cơ bản</td>
+                                            <td class="text-end fw-medium text-on-surface"><fmt:formatNumber value="${salary.baseSalary}" pattern="#,##0" /> VND</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="text-on-surface-variant">Ngày công chuẩn</td>
+                                            <td class="text-end fw-medium text-on-surface">${salary.standardWorkDays} ngày</td>
+                                        </tr>
+                                        <tr>
                                             <td class="text-on-surface-variant">Số ngày làm việc</td>
                                             <td class="text-end fw-medium text-on-surface">${salary.actualWorkDays} ngày</td>
                                         </tr>
                                         <tr>
-                                            <td class="text-on-surface-variant">Số giờ tăng ca</td>
-                                            <td class="text-end fw-medium text-on-surface">${salary.otHours} giờ</td>
+                                            <td class="text-on-surface-variant">Nghỉ phép có lương</td>
+                                            <td class="text-end fw-medium text-on-surface">${salary.paidLeaveDays} ngày</td>
                                         </tr>
                                         <tr>
-                                            <td class="text-on-surface-variant">Lương gross</td>
-                                            <td class="text-end fw-medium text-on-surface"><fmt:formatNumber value="${salary.grossSalary}" pattern="#,##0" /> VND</td>
+                                            <td class="text-on-surface-variant">Lương ngày công thực tế</td>
+                                            <td class="text-end fw-medium text-on-surface"><fmt:formatNumber value="${salary.proratedBaseSalary}" pattern="#,##0" /> VND</td>
                                         </tr>
                                         <tr>
-                                            <td class="text-on-surface-variant">Khấu trừ</td>
-                                            <td class="text-end fw-medium text-on-surface"><fmt:formatNumber value="${salary.deductions}" pattern="#,##0" /> VND</td>
+                                            <td class="text-on-surface-variant">Tiền nghỉ phép có lương</td>
+                                            <td class="text-end fw-medium text-on-surface"><fmt:formatNumber value="${salary.paidLeaveSalary}" pattern="#,##0" /> VND</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="text-on-surface-variant">Tiền làm thêm giờ</td>
+                                            <td class="text-end fw-medium text-on-surface"><fmt:formatNumber value="${salary.overtimePay}" pattern="#,##0" /> VND</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="text-on-surface-variant">Phụ cấp</td>
+                                            <td class="text-end fw-medium text-on-surface"><fmt:formatNumber value="${salary.totalAllowances}" pattern="#,##0" /> VND</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="fw-bold text-on-surface">Tổng thu nhập trước khấu trừ</td>
+                                            <td class="text-end fw-bold text-on-surface"><fmt:formatNumber value="${salary.grossIncome}" pattern="#,##0" /> VND</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="text-on-surface-variant">Lương làm căn cứ bảo hiểm</td>
+                                            <td class="text-end fw-medium text-on-surface"><fmt:formatNumber value="${salary.insuranceSalary}" pattern="#,##0" /> VND</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="text-on-surface-variant">Phụ cấp tính bảo hiểm</td>
+                                            <td class="text-end fw-medium text-on-surface"><fmt:formatNumber value="${salary.insuranceBasedAllowances}" pattern="#,##0" /> VND</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="text-on-surface-variant">BHXH</td>
+                                            <td class="text-end fw-medium text-on-surface"><fmt:formatNumber value="${salary.socialInsurance}" pattern="#,##0" /> VND</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="text-on-surface-variant">BHYT</td>
+                                            <td class="text-end fw-medium text-on-surface"><fmt:formatNumber value="${salary.healthInsurance}" pattern="#,##0" /> VND</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="text-on-surface-variant">BHTN</td>
+                                            <td class="text-end fw-medium text-on-surface"><fmt:formatNumber value="${salary.unemploymentInsurance}" pattern="#,##0" /> VND</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="fw-bold text-on-surface">Tổng bảo hiểm người lao động đóng</td>
+                                            <td class="text-end fw-bold text-on-surface"><fmt:formatNumber value="${salary.employeeInsurance}" pattern="#,##0" /> VND</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="text-on-surface-variant">Giảm trừ bản thân</td>
+                                            <td class="text-end fw-medium text-on-surface"><fmt:formatNumber value="${salary.personalDeduction}" pattern="#,##0" /> VND</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="text-on-surface-variant">Số người phụ thuộc</td>
+                                            <td class="text-end fw-medium text-on-surface">${salary.dependentCount}</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="text-on-surface-variant">Giảm trừ người phụ thuộc</td>
+                                            <td class="text-end fw-medium text-on-surface"><fmt:formatNumber value="${salary.dependentDeduction}" pattern="#,##0" /> VND</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="text-on-surface-variant">Phụ cấp không tính thuế</td>
+                                            <td class="text-end fw-medium text-on-surface"><fmt:formatNumber value="${salary.nonTaxableAllowances}" pattern="#,##0" /> VND</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="text-on-surface-variant">Thu nhập chịu thuế</td>
+                                            <td class="text-end fw-medium text-on-surface"><fmt:formatNumber value="${salary.taxableIncome}" pattern="#,##0" /> VND</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="text-on-surface-variant">Thuế TNCN</td>
+                                            <td class="text-end fw-medium text-on-surface"><fmt:formatNumber value="${salary.pitTax}" pattern="#,##0" /> VND</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="fw-bold text-on-surface">Tổng khấu trừ</td>
+                                            <td class="text-end fw-bold text-on-surface"><fmt:formatNumber value="${salary.deductions}" pattern="#,##0" /> VND</td>
                                         </tr>
                                         <tr style="background-color: var(--primary-container);">
-                                            <td class="fw-bold text-on-surface" style="border-bottom: none; padding: 0.875rem 1rem;">Thực lãnh</td>
+                                            <td class="fw-bold text-on-surface" style="border-bottom: none; padding: 0.875rem 1rem;">Lương thực nhận</td>
                                             <td class="text-end fw-bold text-on-surface" style="border-bottom: none; padding: 0.875rem 1rem; font-size: 1.125rem;"><fmt:formatNumber value="${salary.netSalary}" pattern="#,##0" /> VND</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div class="card-premium overflow-hidden mt-4" style="max-width: 760px;">
+                            <div class="p-3 bg-surface border-bottom border-outline-variant">
+                                <h3 class="h5 fw-bold mb-1">Diễn giải công thức lương thực nhận</h3>
+                                <p class="body-sm text-on-surface-variant mb-0">
+                                    Các bước dưới đây cho biết số thực nhận của phiếu lương được hình thành từ những khoản nào.
+                                </p>
+                            </div>
+                            <div class="table-responsive">
+                                <table class="table table-premium mb-0 w-100">
+                                    <thead>
+                                        <tr>
+                                            <th>Chỉ tiêu</th>
+                                            <th>Công thức áp dụng</th>
+                                            <th class="text-end">Giá trị kỳ này</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td class="fw-medium">Lương ngày công</td>
+                                            <td>${salary.actualWorkDays} / ${salary.standardWorkDays} x <fmt:formatNumber value="${salary.baseSalary}" pattern="#,##0" /></td>
+                                            <td class="text-end"><fmt:formatNumber value="${salary.proratedBaseSalary}" pattern="#,##0" /> VND</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="fw-medium">Lương nghỉ phép</td>
+                                            <td>${salary.paidLeaveDays} / ${salary.standardWorkDays} x <fmt:formatNumber value="${salary.baseSalary}" pattern="#,##0" /></td>
+                                            <td class="text-end"><fmt:formatNumber value="${salary.paidLeaveSalary}" pattern="#,##0" /> VND</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="fw-medium">Tiền OT</td>
+                                            <td>${salary.approvedOtHours} giờ x Đơn giá giờ x Hệ số OT của kỳ lương</td>
+                                            <td class="text-end"><fmt:formatNumber value="${salary.overtimePay}" pattern="#,##0" /> VND</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="fw-medium">Tổng trước khấu trừ</td>
+                                            <td><fmt:formatNumber value="${salary.proratedBaseSalary}" pattern="#,##0" /> + <fmt:formatNumber value="${salary.paidLeaveSalary}" pattern="#,##0" /> + <fmt:formatNumber value="${salary.overtimePay}" pattern="#,##0" /> + <fmt:formatNumber value="${salary.totalAllowances}" pattern="#,##0" /></td>
+                                            <td class="text-end fw-bold"><fmt:formatNumber value="${salary.grossIncome}" pattern="#,##0" /> VND</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="fw-medium">BH người lao động đóng</td>
+                                            <td><fmt:formatNumber value="${salary.socialInsurance}" pattern="#,##0" /> + <fmt:formatNumber value="${salary.healthInsurance}" pattern="#,##0" /> + <fmt:formatNumber value="${salary.unemploymentInsurance}" pattern="#,##0" /></td>
+                                            <td class="text-end"><fmt:formatNumber value="${salary.employeeInsurance}" pattern="#,##0" /> VND</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="fw-medium">Giảm trừ người phụ thuộc</td>
+                                            <td>${salary.dependentCount} người</td>
+                                            <td class="text-end"><fmt:formatNumber value="${salary.dependentDeduction}" pattern="#,##0" /> VND</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="fw-medium">Thu nhập chịu thuế</td>
+                                            <td>Max(0, <fmt:formatNumber value="${salary.grossIncome}" pattern="#,##0" /> - <fmt:formatNumber value="${salary.employeeInsurance}" pattern="#,##0" /> - <fmt:formatNumber value="${salary.personalDeduction}" pattern="#,##0" /> - <fmt:formatNumber value="${salary.dependentDeduction}" pattern="#,##0" /> - <fmt:formatNumber value="${salary.nonTaxableAllowances}" pattern="#,##0" />)</td>
+                                            <td class="text-end"><fmt:formatNumber value="${salary.taxableIncome}" pattern="#,##0" /> VND</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="fw-medium">Tổng khấu trừ</td>
+                                            <td><fmt:formatNumber value="${salary.employeeInsurance}" pattern="#,##0" /> + <fmt:formatNumber value="${salary.pitTax}" pattern="#,##0" /></td>
+                                            <td class="text-end fw-bold"><fmt:formatNumber value="${salary.deductions}" pattern="#,##0" /> VND</td>
+                                        </tr>
+                                        <tr style="background-color: var(--primary-container);">
+                                            <td class="fw-bold">Lương thực nhận</td>
+                                            <td class="fw-bold"><fmt:formatNumber value="${salary.grossIncome}" pattern="#,##0" /> - <fmt:formatNumber value="${salary.deductions}" pattern="#,##0" /></td>
+                                            <td class="text-end fw-bold" style="font-size: 1.05rem;"><fmt:formatNumber value="${salary.netSalary}" pattern="#,##0" /> VND</td>
                                         </tr>
                                     </tbody>
                                 </table>

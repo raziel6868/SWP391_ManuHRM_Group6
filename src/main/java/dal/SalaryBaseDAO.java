@@ -14,7 +14,7 @@ public class SalaryBaseDAO {
 	public List<SalaryBase> searchSalaryBases(Long departmentId, int offset, int limit) {
 		List<SalaryBase> salaryBases = new ArrayList<>();
 		StringBuilder sql = new StringBuilder("""
-				SELECT sb.id, sb.user_id, sb.base_salary, sb.effective_from, sb.effective_to,
+				SELECT sb.id, sb.user_id, sb.base_salary, sb.insurance_salary, sb.effective_from, sb.effective_to,
 				       sb.created_at, sb.updated_at,
 				       u.full_name AS user_full_name, u.employee_code, d.name AS department_name
 				FROM salary_bases sb
@@ -50,7 +50,7 @@ public class SalaryBaseDAO {
 
 	public SalaryBase getCurrentByUserId(Long userId) {
 		String sql = """
-				SELECT sb.id, sb.user_id, sb.base_salary, sb.effective_from, sb.effective_to,
+				SELECT sb.id, sb.user_id, sb.base_salary, sb.insurance_salary, sb.effective_from, sb.effective_to,
 				       sb.created_at, sb.updated_at,
 				       u.full_name AS user_full_name, u.employee_code, d.name AS department_name
 				FROM salary_bases sb
@@ -75,28 +75,44 @@ public class SalaryBaseDAO {
 		return null;
 	}
 
-	public boolean upsert(Long userId, BigDecimal baseSalary, java.sql.Date effectiveFrom) {
+	public boolean upsert(Long userId, BigDecimal baseSalary, BigDecimal insuranceSalary, java.sql.Date effectiveFrom) {
 		String checkSql = "SELECT id FROM salary_bases WHERE user_id = ? AND effective_to IS NULL";
-		String updateSql = "UPDATE salary_bases SET base_salary = ?, effective_from = ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ? AND effective_to IS NULL";
-		String insertSql = "INSERT INTO salary_bases (user_id, base_salary, effective_from, created_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP)";
+		String updateSql = """
+				UPDATE salary_bases
+				SET base_salary = ?, insurance_salary = ?, effective_from = ?, updated_at = CURRENT_TIMESTAMP
+				WHERE user_id = ? AND effective_to IS NULL
+				""";
+		String insertSql = """
+				INSERT INTO salary_bases (user_id, base_salary, insurance_salary, effective_from, created_at)
+				VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+				""";
 
 		try (Connection conn = DBContext.getConnection()) {
 			try (PreparedStatement checkPs = conn.prepareStatement(checkSql)) {
 				checkPs.setLong(1, userId);
 				try (ResultSet rs = checkPs.executeQuery()) {
 					if (rs.next()) {
-						Long existingId = rs.getLong("id");
 						try (PreparedStatement updatePs = conn.prepareStatement(updateSql)) {
 							updatePs.setBigDecimal(1, baseSalary);
-							updatePs.setDate(2, effectiveFrom);
-							updatePs.setLong(3, userId);
+							if (insuranceSalary != null) {
+								updatePs.setBigDecimal(2, insuranceSalary);
+							} else {
+								updatePs.setNull(2, java.sql.Types.DECIMAL);
+							}
+							updatePs.setDate(3, effectiveFrom);
+							updatePs.setLong(4, userId);
 							return updatePs.executeUpdate() > 0;
 						}
 					} else {
 						try (PreparedStatement insertPs = conn.prepareStatement(insertSql)) {
 							insertPs.setLong(1, userId);
 							insertPs.setBigDecimal(2, baseSalary);
-							insertPs.setDate(3, effectiveFrom);
+							if (insuranceSalary != null) {
+								insertPs.setBigDecimal(3, insuranceSalary);
+							} else {
+								insertPs.setNull(3, java.sql.Types.DECIMAL);
+							}
+							insertPs.setDate(4, effectiveFrom);
 							return insertPs.executeUpdate() > 0;
 						}
 					}
@@ -120,6 +136,7 @@ public class SalaryBaseDAO {
 		sb.setId(rs.getLong("id"));
 		sb.setUserId(rs.getLong("user_id"));
 		sb.setBaseSalary(rs.getBigDecimal("base_salary"));
+		sb.setInsuranceSalary(rs.getBigDecimal("insurance_salary"));
 		sb.setEffectiveFrom(rs.getDate("effective_from"));
 		sb.setEffectiveTo(rs.getDate("effective_to"));
 		sb.setCreatedAt(rs.getTimestamp("created_at"));

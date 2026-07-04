@@ -17,7 +17,9 @@ import java.time.YearMonth;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeSet;
 import model.AttendanceRecord;
+import model.MonthlySheet;
 import util.AttendanceImportUtil;
 import util.AttendanceImportUtil.AttendanceImportException;
 
@@ -37,8 +39,11 @@ public class AttendanceImportServlet extends HttpServlet {
 		moveFlashMessage(session, request, "errorMsg");
 
 		LocalDate today = LocalDate.now();
-		request.setAttribute("selectedYear", today.getYear());
-		request.setAttribute("selectedMonth", today.getMonthValue());
+		int selectedYear = parseInt(request.getParameter("year"), today.getYear());
+		int selectedMonth = parseInt(request.getParameter("month"), today.getMonthValue());
+
+		request.setAttribute("selectedYear", selectedYear);
+		request.setAttribute("selectedMonth", selectedMonth);
 		request.setAttribute("availableMonths", buildAvailableMonths(today));
 		request.getRequestDispatcher("/views/attendance/attendance-import.jsp").forward(request, response);
 	}
@@ -63,8 +68,11 @@ public class AttendanceImportServlet extends HttpServlet {
 			forwardWithError(request, response, List.of("Không thể import chấm công cho tháng tương lai."));
 			return;
 		}
-		if (monthlySheetDAO.isPeriodClosed(year, month)) {
-			forwardWithError(request, response, List.of("Không thể nhập công cho tháng đã đóng."));
+
+		String status = monthlySheetDAO.getStatusByYearMonth(year, month);
+		if (status != null && !"OPEN".equals(status)) {
+			forwardWithError(request, response,
+					List.of("Không thể nhập công cho tháng đang ở trạng thái " + status + "."));
 			return;
 		}
 
@@ -83,6 +91,7 @@ public class AttendanceImportServlet extends HttpServlet {
 			List<AttendanceRecord> records = importUtil.parseExcel(inputStream, year, month);
 			boolean success = attendanceDAO.batchUpsertByMonth(year, month, records);
 			if (success) {
+				monthlySheetDAO.getOrCreate(year, month);
 				request.getSession().setAttribute("successMsg",
 						"Import chấm công thành công " + records.size() + " dòng.");
 				response.sendRedirect(request.getContextPath() + "/attendance-list?year=" + year + "&month=" + month);
@@ -95,31 +104,38 @@ public class AttendanceImportServlet extends HttpServlet {
 	}
 
 	/**
-	 * Tạo danh sách các tháng có thể import: từ 12 tháng trước đến tháng hiện tại,
-	 * bỏ qua tháng đã CLOSED. Key = "yyyy-M", Value = label hiển thị.
+	 * Tạo danh sách các tháng có thể import: - 12 tháng gần nhất nếu kỳ đó chưa
+	 * khóa - cộng thêm mọi monthly sheet đang OPEN để các kỳ vừa reopen cũng hiện
+	 * lại
 	 */
 	private Map<String, String> buildAvailableMonths(LocalDate today) {
-		Map<String, String> result = new LinkedHashMap<>();
 		YearMonth current = YearMonth.from(today);
+		TreeSet<YearMonth> periods = new TreeSet<>();
+
 		for (int i = 11; i >= 0; i--) {
 			YearMonth ym = current.minusMonths(i);
-			if (!monthlySheetDAO.isPeriodClosed(ym.getYear(), ym.getMonthValue())) {
-				String key = ym.getYear() + "-" + ym.getMonthValue();
-				String label = "Tháng " + ym.getMonthValue() + "/" + ym.getYear();
-				result.put(key, label);
+			if (monthlySheetDAO.isEditablePeriod(ym.getYear(), ym.getMonthValue())) {
+				periods.add(ym);
 			}
+		}
+
+		for (MonthlySheet sheet : monthlySheetDAO.getAll()) {
+			if (!"OPEN".equals(sheet.getStatus())) {
+				continue;
+			}
+			YearMonth ym = YearMonth.of(sheet.getYear(), sheet.getMonth());
+			if (!ym.isAfter(current)) {
+				periods.add(ym);
+			}
+		}
+
+		Map<String, String> result = new LinkedHashMap<>();
+		for (YearMonth ym : periods) {
+			String key = ym.getYear() + "-" + ym.getMonthValue();
+			String label = "Tháng " + ym.getMonthValue() + "/" + ym.getYear();
+			result.put(key, label);
 		}
 		return result;
-	}
-
-	private boolean isSamePeriod(List<AttendanceRecord> records, int year, int month) {
-		for (AttendanceRecord record : records) {
-			LocalDate date = record.getDate().toLocalDate();
-			if (date.getYear() != year || date.getMonthValue() != month) {
-				return false;
-			}
-		}
-		return true;
 	}
 
 	private void forwardWithError(HttpServletRequest request, HttpServletResponse response, List<String> errors)

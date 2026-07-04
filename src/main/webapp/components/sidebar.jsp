@@ -13,6 +13,7 @@
 
 <c:set var="hasContractTypeView" value="${false}" />
 <c:set var="hasContractView" value="${false}" />
+<c:set var="hasContractMyView" value="${false}" />
 
 <c:set var="hasLeaveTypeView" value="${false}" />
 <c:set var="hasLeaveBalanceView" value="${false}" />
@@ -70,6 +71,10 @@
         <c:when test="${permission.code == 'CONTRACT_VIEW'}">
             <c:set var="hasContractView" value="${true}" />
             <c:set var="contractViewUrl" value="${permission.urlPattern}" />
+        </c:when>
+        <c:when test="${permission.code == 'CONTRACT_MY_VIEW'}">
+            <c:set var="hasContractMyView" value="${true}" />
+            <c:set var="contractMyViewUrl" value="${permission.urlPattern}" />
         </c:when>
         <c:when test="${permission.code == 'LEAVE_TYPE_VIEW'}">
             <c:set var="hasLeaveTypeView" value="${true}" />
@@ -171,7 +176,7 @@
 <c:set var="hasMenuPermission" value="${hasSystemMenu or hasContractMenu or hasLeaveMenu or hasShiftMenu or hasAttendanceMenu or hasPayrollMenu or hasReportMenu}" />
 
 <c:set var="systemMenuOpen" value="${currentPath == '/user-list' or currentPath == '/user-create' or currentPath == '/user-update' or currentPath == '/user-detail' or currentPath == '/role-list' or currentPath == '/role-create' or currentPath == '/role-update' or currentPath == '/role-permission' or currentPath == '/department-list' or currentPath == '/department-create' or currentPath == '/department-update' or currentPath == '/job-title-list' or currentPath == '/job-title-create' or currentPath == '/job-title-update' or currentPath == '/holiday-list' or currentPath == '/holiday-create' or currentPath == '/holiday-update'}" />
-<c:set var="contractMenuOpen" value="${currentPath == '/contract-type-list' or currentPath == '/contract-type-create' or currentPath == '/contract-type-update' or currentPath == '/contract-list' or currentPath == '/contract-create' or currentPath == '/contract-detail' or currentPath == '/contract-update' or currentPath == '/contract-upload' or currentPath == '/contract-renew' or currentPath == '/contract-terminate' or currentPath == '/contract-expiry'}" />
+<c:set var="contractMenuOpen" value="${currentPath == '/contract-type-list' or currentPath == '/contract-type-create' or currentPath == '/contract-type-update' or currentPath == '/contract-list' or currentPath == '/my-contract' or currentPath == '/contract-create' or currentPath == '/contract-detail' or currentPath == '/contract-update' or currentPath == '/contract-upload' or currentPath == '/contract-renew' or currentPath == '/contract-terminate' or currentPath == '/contract-expiry'}" />
 <c:set var="leaveMenuOpen" value="${currentPath == '/leave-type-list' or currentPath == '/leave-type-create' or currentPath == '/leave-type-update' or currentPath == '/leave-balance-list' or currentPath == '/leave-balance-setup' or currentPath == '/leave-request-my' or currentPath == '/leave-request-create' or currentPath == '/leave-request-list'}" />
 <c:set var="shiftMenuOpen" value="${currentPath == '/shift-list' or currentPath == '/shift-create' or currentPath == '/shift-update' or currentPath == '/shift-assignment-list' or currentPath == '/shift-assignment-assign' or currentPath == '/shift-assignment-bulk' or currentPath == '/shift-calendar' or currentPath == '/my-shift'}" />
 <c:set var="attendanceMenuOpen" value="${currentPath == '/attendance-list' or currentPath == '/attendance-import' or currentPath == '/attendance-my' or currentPath == '/attendance-correction-list' or currentPath == '/overtime-list' or currentPath == '/overtime-request'}" />
@@ -247,6 +252,10 @@
                     <c:if test="${hasContractView}">
                         <c:url var="menuUrl" value="${contractViewUrl}" />
                         <a class="${currentPath == contractViewUrl ? 'sidebar-subitem active' : 'sidebar-subitem'}" href="${menuUrl}">Hợp đồng</a>
+                    </c:if>
+                    <c:if test="${hasContractMyView}">
+                        <c:url var="menuUrl" value="${contractMyViewUrl}" />
+                        <a class="${currentPath == contractMyViewUrl or currentPath == '/contract-detail' ? 'sidebar-subitem active' : 'sidebar-subitem'}" href="${menuUrl}">Hợp đồng cá nhân</a>
                     </c:if>
                     <c:if test="${hasContractTypeView}">
                         <c:url var="menuUrl" value="${contractTypeViewUrl}" />

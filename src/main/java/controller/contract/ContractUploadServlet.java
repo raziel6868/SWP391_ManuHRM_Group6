@@ -92,7 +92,7 @@ public class ContractUploadServlet extends HttpServlet {
 			response.sendRedirect(request.getContextPath() + "/contract-list");
 			return;
 		}
-		if (!Contract.Status.ACTIVE.name().equals(contract.getStatus())) {
+		if (!isUploadableStatus(contract.getStatus())) {
 			session.setAttribute("errorMsg", "Chỉ có thể tải lên PDF cho hợp đồng đang hiệu lực.");
 			response.sendRedirect(request.getContextPath() + "/contract-detail?id=" + id);
 			return;
@@ -148,6 +148,10 @@ public class ContractUploadServlet extends HttpServlet {
 		request.setAttribute("errorMsg", message);
 		request.setAttribute("contract", contract);
 		request.getRequestDispatcher("/views/contract/contract-upload.jsp").forward(request, response);
+	}
+
+	private boolean isUploadableStatus(String status) {
+		return Contract.Status.ACTIVE.name().equals(status) || Contract.Status.EXPIRING_SOON.name().equals(status);
 	}
 
 	private boolean isAllowedMime(String contentType) {

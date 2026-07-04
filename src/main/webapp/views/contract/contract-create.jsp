@@ -60,7 +60,8 @@
                         <div class="col-12 col-md-6">
                             <label for="startDate" class="form-label fw-medium">Ngày bắt đầu <span class="text-danger">*</span></label>
                             <input type="date" id="startDate" name="startDate" value="${startDate}"
-                                class="input-premium w-100" required />
+                                min="${todayDate}" max="${todayDate}" class="input-premium w-100" required />
+                            <div class="form-text">Chỉ được chọn ngày hiện tại khi tạo hợp đồng mới.</div>
                         </div>
                         <div class="col-12 col-md-6">
                             <label for="endDate" class="form-label fw-medium">Ngày kết thúc</label>

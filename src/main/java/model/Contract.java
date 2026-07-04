@@ -7,7 +7,7 @@ import java.sql.Timestamp;
 public class Contract {
 
 	public enum Status {
-		ACTIVE, EXPIRED, PENDING_RENEWAL, TERMINATED
+		ACTIVE, EXPIRING_SOON, EXPIRED, PENDING_RENEWAL, TERMINATED
 	}
 
 	private Long id;

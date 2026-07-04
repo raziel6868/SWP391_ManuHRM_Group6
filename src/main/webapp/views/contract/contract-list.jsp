@@ -62,6 +62,35 @@
                     </div>
                 </div>
 
+                <c:if test="${not empty pendingRenewalContracts}">
+                    <div class="card-premium p-3 mb-4" style="border-left: 4px solid #f59e0b;">
+                        <div class="d-flex justify-content-between align-items-center gap-2 flex-wrap mb-2">
+                            <div>
+                                <div class="label-md text-on-surface-variant">Yêu cầu gia hạn đang chờ HR xử lý</div>
+                                <div class="fw-bold text-on-surface">Có ${pendingRenewalCount} hợp đồng đang chờ duyệt gia hạn</div>
+                            </div>
+                            <a href="${ctx}/contract-list?status=PENDING_RENEWAL" class="btn btn-sm btn-light border">Xem tất cả</a>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-sm mb-0">
+                                <tbody>
+                                    <c:forEach var="p" items="${pendingRenewalContracts}">
+                                        <tr>
+                                            <td class="fw-medium">${p.fullName}</td>
+                                            <td>${p.employeeCode}</td>
+                                            <td>${p.contractTypeName}</td>
+                                            <td>${p.endDate}</td>
+                                            <td class="text-end">
+                                                <a href="${ctx}/contract-renew?id=${p.id}" class="btn btn-sm btn-primary">Duyệt gia hạn</a>
+                                            </td>
+                                        </tr>
+                                    </c:forEach>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </c:if>
+
                 <div class="card-premium overflow-hidden d-flex flex-column mb-4 w-100">
                     <div class="p-3 bg-surface border-bottom border-outline-variant d-flex flex-wrap gap-2 align-items-center">
                         <form action="${ctx}/contract-list" method="GET"
@@ -85,6 +114,7 @@
                                     <option value="${s.name()}" ${selectedStatus == s.name() ? 'selected' : ''}>
                                         <c:choose>
                                             <c:when test="${s.name() == 'ACTIVE'}">Đang hiệu lực</c:when>
+                                            <c:when test="${s.name() == 'EXPIRING_SOON'}">Sắp hết hạn</c:when>
                                             <c:when test="${s.name() == 'EXPIRED'}">Hết hạn</c:when>
                                             <c:when test="${s.name() == 'PENDING_RENEWAL'}">Chờ gia hạn</c:when>
                                             <c:when test="${s.name() == 'TERMINATED'}">Đã chấm dứt</c:when>
@@ -147,6 +177,9 @@
                                             <c:choose>
                                                 <c:when test="${c.status == 'ACTIVE'}">
                                                     <span class="badge" style="background-color: #d1fae5; color: #065f46;">Đang hiệu lực</span>
+                                                </c:when>
+                                                <c:when test="${c.status == 'EXPIRING_SOON'}">
+                                                    <span class="badge" style="background-color: #fef3c7; color: #92400e;">Sắp hết hạn</span>
                                                 </c:when>
                                                 <c:when test="${c.status == 'EXPIRED'}">
                                                     <span class="badge" style="background-color: #e5e7eb; color: #374151;">Hết hạn</span>

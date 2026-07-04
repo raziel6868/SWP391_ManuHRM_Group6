@@ -30,6 +30,9 @@ TRUNCATE TABLE roles;
 TRUNCATE TABLE departments;
 SET FOREIGN_KEY_CHECKS = 1;
 
+ALTER TABLE contracts
+    MODIFY COLUMN status ENUM('ACTIVE', 'EXPIRING_SOON', 'EXPIRED', 'PENDING_RENEWAL', 'TERMINATED') NOT NULL DEFAULT 'ACTIVE';
+
 -- =========================================================
 -- Organization master data
 -- =========================================================
@@ -111,6 +114,8 @@ INSERT INTO permissions (id, code, name, url_pattern, module) VALUES
 (36, 'CONTRACT_RENEW',          'Gia hạn hợp đồng',          '/contract-renew',          'CONTRACT'),
 (37, 'CONTRACT_UPLOAD',         'Tải lên hợp đồng PDF',      '/contract-upload',         'CONTRACT'),
 (38, 'CONTRACT_STATUS',         'Thay đổi trạng thái hợp đồng', '/contract-status',       'CONTRACT'),
+(87, 'CONTRACT_RENEW_REQUEST',  'Gửi yêu cầu gia hạn hợp đồng', '/contract-renew-request', 'CONTRACT'),
+(88, 'CONTRACT_MY_VIEW',        'Xem hợp đồng cá nhân',      '/my-contract',             'CONTRACT'),
 -- Leave
 (39, 'LEAVE_BALANCE_VIEW',      'Xem số dư phép năm',         '/leave-balance-list',      'LEAVE'),
 (40, 'LEAVE_BALANCE_SETUP',     'Cài đặt quota phép năm',     '/leave-balance-setup',     'LEAVE'),
@@ -210,7 +215,7 @@ INSERT INTO role_permissions (role_id, permission_id) VALUES
 (1, 53), (1, 54), (1, 55), (1, 56), (1, 57), (1, 58), (1, 59),
 (1, 60), (1, 61), (1, 62), (1, 63), (1, 64), (1, 65), (1, 66),
 (1, 67), (1, 68), (1, 69), (1, 70), (1, 71), (1, 72), (1, 73),
-(1, 74), (1, 75), (1, 76), (1, 77), (1, 83), (1, 84), (1, 85), (1, 86),
+(1, 74), (1, 75), (1, 76), (1, 77), (1, 83), (1, 84), (1, 85), (1, 86), (1, 87),
 -- Holiday permissions for SYSADMIN
 (1, 78), (1, 79), (1, 80), (1, 81);
 
@@ -246,6 +251,7 @@ INSERT INTO role_permissions (role_id, permission_id) VALUES
 
 -- EMPLOYEE: self-service scope only
 INSERT INTO role_permissions (role_id, permission_id) VALUES
+(4, 33), (4, 87), (4, 88),
 (4, 42), (4, 43), (4, 44),
 (4, 52), (4, 54), (4, 66),
 (4, 86);
@@ -291,6 +297,39 @@ WHERE NOT EXISTS (SELECT 1 FROM role_permissions WHERE role_id = 3 AND permissio
 INSERT INTO role_permissions (role_id, permission_id)
 SELECT 4, 86
 WHERE NOT EXISTS (SELECT 1 FROM role_permissions WHERE role_id = 4 AND permission_id = 86);
+
+INSERT INTO permissions (id, code, name, url_pattern, module)
+SELECT 87, 'CONTRACT_RENEW_REQUEST', 'Request contract renewal', '/contract-renew-request', 'CONTRACT'
+WHERE NOT EXISTS (SELECT 1 FROM permissions WHERE code = 'CONTRACT_RENEW_REQUEST');
+
+INSERT INTO permissions (id, code, name, url_pattern, module)
+SELECT 88, 'CONTRACT_MY_VIEW', 'View my contract', '/my-contract', 'CONTRACT'
+WHERE NOT EXISTS (SELECT 1 FROM permissions WHERE code = 'CONTRACT_MY_VIEW');
+
+-- Personal contract detail + renewal request for self-service roles
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT 3, 33
+WHERE NOT EXISTS (SELECT 1 FROM role_permissions WHERE role_id = 3 AND permission_id = 33);
+
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT 3, 87
+WHERE NOT EXISTS (SELECT 1 FROM role_permissions WHERE role_id = 3 AND permission_id = 87);
+
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT 3, 88
+WHERE NOT EXISTS (SELECT 1 FROM role_permissions WHERE role_id = 3 AND permission_id = 88);
+
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT 4, 33
+WHERE NOT EXISTS (SELECT 1 FROM role_permissions WHERE role_id = 4 AND permission_id = 33);
+
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT 4, 87
+WHERE NOT EXISTS (SELECT 1 FROM role_permissions WHERE role_id = 4 AND permission_id = 87);
+
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT 4, 88
+WHERE NOT EXISTS (SELECT 1 FROM role_permissions WHERE role_id = 4 AND permission_id = 88);
 
 -- =========================================================
 -- Iter 1 master data
@@ -354,7 +393,19 @@ VALUES
 -- =========================================================
 
 INSERT INTO contracts (user_id, contract_type_id, start_date, end_date, salary, file_path, status) VALUES
-(8, 2, '2024-01-01', '2027-12-31', 8000000, '/contracts/worker_a_an_full_time.pdf', 'ACTIVE');
+(1, 2, '2024-01-01', '2029-12-31', 35000000, '/contracts/director_minhanh_full_time.pdf', 'ACTIVE'),
+(4, 2, '2024-01-01', '2029-12-31', 28000000, '/contracts/hr_manager_lan_full_time.pdf', 'ACTIVE'),
+(5, 2, '2024-01-01', '2029-12-31', 16000000, '/contracts/hr_staff_hoa_full_time.pdf', 'ACTIVE'),
+(6, 2, '2024-01-01', '2029-12-31', 15500000, '/contracts/hr_staff_trang_full_time.pdf', 'ACTIVE'),
+(7, 2, '2024-01-01', '2029-12-31', 18000000, '/contracts/sup_a_tuan_full_time.pdf', 'ACTIVE'),
+(8, 2, '2024-01-01', '2029-12-31', 8000000, '/contracts/worker_a_an_full_time.pdf', 'ACTIVE'),
+(9, 2, '2024-01-01', '2029-12-31', 8200000, '/contracts/worker_a_binh_full_time.pdf', 'ACTIVE'),
+(10, 2, '2024-01-01', '2029-12-31', 18000000, '/contracts/sup_b_hung_full_time.pdf', 'ACTIVE'),
+(11, 2, '2024-01-01', '2029-12-31', 8100000, '/contracts/worker_b_cuong_full_time.pdf', 'ACTIVE'),
+(12, 2, '2024-01-01', '2029-12-31', 8000000, '/contracts/worker_b_dung_full_time.pdf', 'ACTIVE'),
+(13, 2, '2024-01-01', '2029-12-31', 18000000, '/contracts/sup_c_phuc_full_time.pdf', 'ACTIVE'),
+(14, 2, '2024-01-01', '2029-12-31', 8050000, '/contracts/worker_c_hai_full_time.pdf', 'ACTIVE'),
+(15, 2, '2024-01-01', '2029-12-31', 8000000, '/contracts/worker_c_kiet_full_time.pdf', 'ACTIVE');
 
 INSERT INTO leave_balances (user_id, leave_type_id, year, total_days, used_days) VALUES
 (8, 1, 2026, 12, 2);

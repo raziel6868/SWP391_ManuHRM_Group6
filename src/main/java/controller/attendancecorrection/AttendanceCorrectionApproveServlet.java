@@ -3,6 +3,7 @@ package controller.attendancecorrection;
 import dal.AttendanceCorrectionDAO;
 import dal.AttendanceDAO;
 import dal.DBContext;
+import dal.MonthlySheetDAO;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
@@ -12,7 +13,9 @@ import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.util.List;
 import model.AttendanceCorrection;
+import model.Permission;
 import model.User;
 
 @WebServlet(name = "AttendanceCorrectionApproveServlet", urlPatterns = {"/attendance-correction-approve"})
@@ -20,6 +23,7 @@ public class AttendanceCorrectionApproveServlet extends HttpServlet {
 
 	private final AttendanceCorrectionDAO correctionDAO = new AttendanceCorrectionDAO();
 	private final AttendanceDAO attendanceDAO = new AttendanceDAO();
+	private final MonthlySheetDAO monthlySheetDAO = new MonthlySheetDAO();
 
 	@Override
 	protected void doPost(HttpServletRequest request, HttpServletResponse response)
@@ -30,6 +34,10 @@ public class AttendanceCorrectionApproveServlet extends HttpServlet {
 		User authUser = (User) session.getAttribute("authUser");
 		if (authUser == null || authUser.getId() == null) {
 			response.sendRedirect(request.getContextPath() + "/login");
+			return;
+		}
+		if (!hasPermission(session, "ATTENDANCE_CORRECTION_APPROVE")) {
+			response.sendError(HttpServletResponse.SC_FORBIDDEN);
 			return;
 		}
 
@@ -48,6 +56,22 @@ public class AttendanceCorrectionApproveServlet extends HttpServlet {
 			response.sendRedirect(redirectUrl);
 			return;
 		}
+
+		int year = correction.getAttendanceDate().toLocalDate().getYear();
+		int month = correction.getAttendanceDate().toLocalDate().getMonthValue();
+		if (!monthlySheetDAO.isHrCorrectionWindow(year, month)) {
+			session.setAttribute("errorMsg", "HR chỉ được xử lý điều chỉnh khi bảng công đang chờ HR duyệt.");
+			response.sendRedirect(redirectUrl);
+			return;
+		}
+
+		if (!"APPROVED".equals(correction.getSupervisorStatus())) {
+			session.setAttribute("errorMsg",
+					"Yêu cầu này chưa được quản đốc xác nhận. HR chỉ có thể duyệt sau khi quản đốc đã duyệt.");
+			response.sendRedirect(redirectUrl);
+			return;
+		}
+
 		if (!"PENDING".equals(correction.getStatus())) {
 			session.setAttribute("errorMsg", "Yêu cầu này đã được xử lý trước đó.");
 			response.sendRedirect(redirectUrl);
@@ -82,7 +106,6 @@ public class AttendanceCorrectionApproveServlet extends HttpServlet {
 			conn.commit();
 			session.setAttribute("successMsg",
 					"Đã duyệt yêu cầu điều chỉnh công cho " + correction.getEmployeeName() + ".");
-
 		} catch (SQLException e) {
 			rollback(conn);
 			System.err.println("AttendanceCorrectionApproveServlet.doPost() ERROR: " + e.getMessage());
@@ -103,6 +126,20 @@ public class AttendanceCorrectionApproveServlet extends HttpServlet {
 		} catch (NumberFormatException e) {
 			return null;
 		}
+	}
+
+	@SuppressWarnings("unchecked")
+	private boolean hasPermission(HttpSession session, String code) {
+		List<Permission> permissions = (List<Permission>) session.getAttribute("permissions");
+		if (permissions == null) {
+			return false;
+		}
+		for (Permission permission : permissions) {
+			if (code.equals(permission.getCode())) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	private void rollback(Connection conn) {

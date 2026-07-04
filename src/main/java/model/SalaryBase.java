@@ -9,6 +9,7 @@ public class SalaryBase {
 	private Long id;
 	private Long userId;
 	private BigDecimal baseSalary;
+	private BigDecimal insuranceSalary;
 	private Date effectiveFrom;
 	private Date effectiveTo;
 	private Timestamp createdAt;
@@ -39,6 +40,14 @@ public class SalaryBase {
 
 	public void setBaseSalary(BigDecimal baseSalary) {
 		this.baseSalary = baseSalary;
+	}
+
+	public BigDecimal getInsuranceSalary() {
+		return insuranceSalary;
+	}
+
+	public void setInsuranceSalary(BigDecimal insuranceSalary) {
+		this.insuranceSalary = insuranceSalary;
 	}
 
 	public Date getEffectiveFrom() {

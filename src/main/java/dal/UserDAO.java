@@ -500,4 +500,35 @@ public class UserDAO {
 		}
 		return user;
 	}
+
+	/**
+	 * Lấy danh sách nhân viên cấp dưới trực tiếp của một quản đốc. Dùng cho màn
+	 * hình bảng công quản đốc để lọc dropdown nhân viên.
+	 */
+	public List<User> findByManagerId(Long managerId) {
+		List<User> list = new ArrayList<>();
+		if (managerId == null)
+			return list;
+		String sql = """
+				SELECT u.*, d.name AS department_name, r.name AS role_name,
+				       r.display_name AS role_display_name, r.hierarchy_level,
+				       jt.name AS job_title_name
+				FROM users u
+				LEFT JOIN departments d ON u.department_id = d.id
+				LEFT JOIN roles r ON u.role_id = r.id
+				LEFT JOIN job_titles jt ON u.job_title_id = jt.id
+				WHERE u.manager_id = ? AND u.is_active = TRUE
+				ORDER BY u.full_name ASC
+				""";
+		try (Connection conn = DBContext.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+			ps.setLong(1, managerId);
+			try (ResultSet rs = ps.executeQuery()) {
+				while (rs.next())
+					list.add(mapRow(rs));
+			}
+		} catch (SQLException e) {
+			System.err.println("UserDAO.findByManagerId() ERROR: " + e.getMessage());
+		}
+		return list;
+	}
 }

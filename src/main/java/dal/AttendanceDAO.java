@@ -113,6 +113,45 @@ public class AttendanceDAO {
 		return records;
 	}
 
+	public List<AttendanceRecord> searchByUserIdsAndMonth(List<Long> userIds, int year, int month) {
+		List<AttendanceRecord> records = new ArrayList<>();
+		if (userIds == null || userIds.isEmpty()) {
+			return records;
+		}
+
+		StringBuilder sql = new StringBuilder("""
+				SELECT ar.id, ar.user_id, u.employee_code, u.full_name AS employee_name,
+				       ar.date, ar.shift_id, s.name AS shift_name,
+				       ar.check_in, ar.check_out, ar.working_hours, ar.status,
+				       ar.import_batch_id, ar.created_at, ar.updated_at
+				FROM attendance_records ar
+				JOIN users u ON ar.user_id = u.id
+				LEFT JOIN shifts s ON ar.shift_id = s.id
+				WHERE YEAR(ar.date) = ? AND MONTH(ar.date) = ?
+				  AND ar.user_id IN (
+				""");
+		appendPlaceholders(sql, userIds.size());
+		sql.append(") ORDER BY u.employee_code ASC, ar.date DESC");
+
+		try (Connection conn = DBContext.getConnection();
+				PreparedStatement ps = conn.prepareStatement(sql.toString())) {
+			ps.setInt(1, year);
+			ps.setInt(2, month);
+			for (int i = 0; i < userIds.size(); i++) {
+				ps.setLong(i + 3, userIds.get(i));
+			}
+			try (ResultSet rs = ps.executeQuery()) {
+				while (rs.next()) {
+					records.add(mapRecord(rs));
+				}
+			}
+		} catch (SQLException e) {
+			System.err.println("AttendanceDAO.searchByUserIdsAndMonth() ERROR: " + e.getMessage());
+		}
+
+		return records;
+	}
+
 	public int countByMonth(int year, int month, Long departmentId) {
 		StringBuilder sql = new StringBuilder("""
 				SELECT COUNT(*)
@@ -346,6 +385,15 @@ public class AttendanceDAO {
 	private void setParams(PreparedStatement ps, List<Object> params) throws SQLException {
 		for (int i = 0; i < params.size(); i++) {
 			ps.setObject(i + 1, params.get(i));
+		}
+	}
+
+	private void appendPlaceholders(StringBuilder sql, int count) {
+		for (int i = 0; i < count; i++) {
+			if (i > 0) {
+				sql.append(", ");
+			}
+			sql.append("?");
 		}
 	}
 

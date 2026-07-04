@@ -9,7 +9,15 @@ SET FOREIGN_KEY_CHECKS = 0;
 TRUNCATE TABLE password_resets;
 TRUNCATE TABLE holidays;
 TRUNCATE TABLE audit_logs;
+TRUNCATE TABLE employee_allowances;
+TRUNCATE TABLE employee_dependents;
+TRUNCATE TABLE allowance_types;
+TRUNCATE TABLE personal_tax_brackets;
+TRUNCATE TABLE personal_tax_settings;
+TRUNCATE TABLE insurance_rates;
+TRUNCATE TABLE payroll_settings;
 TRUNCATE TABLE monthly_salaries;
+TRUNCATE TABLE monthly_sheet_approvals;
 TRUNCATE TABLE monthly_sheets;
 TRUNCATE TABLE salary_bases;
 TRUNCATE TABLE overtime_records;
@@ -99,7 +107,7 @@ INSERT INTO permissions (id, code, name, url_pattern, module) VALUES
 (31, 'CONTRACT_TYPE_STATUS', 'Kích hoạt/Vô hiệu Loại hợp đồng',  '/contract-type-status', 'CONTRACT_TYPE');
 
 -- =========================================================
--- Iter 2 + Iter 3 Permissions (IDs 32-77)
+-- Iter 2 + Iter 3 Permissions (IDs 32-112)
 -- =========================================================
 
 INSERT INTO permissions (id, code, name, url_pattern, module) VALUES
@@ -166,7 +174,35 @@ INSERT INTO permissions (id, code, name, url_pattern, module) VALUES
 (80, 'HOLIDAY_UPDATE',          'Cập nhật ngày nghỉ lễ',    '/holiday-update',         'HOLIDAY'),
 (81, 'HOLIDAY_DELETE',          'Xóa ngày nghỉ lễ',          '/holiday-delete',         'HOLIDAY'),
 (83, 'CONTRACT_TERMINATE',      'Chấm dứt hợp đồng',         '/contract-terminate',     'CONTRACT'),
-(84, 'CONTRACT_EXPIRY',        'Xem hợp đồng hết hạn',     '/contract-expiry',        'CONTRACT');
+(84, 'CONTRACT_EXPIRY',         'Xem hợp đồng hết hạn',      '/contract-expiry',        'CONTRACT'),
+-- Payroll close + payroll configuration
+(87, 'PAYROLL_CLOSE',           'Chốt bảng lương',           '/payroll-close',                'PAYROLL'),
+(88, 'ALLOWANCE_TYPE_VIEW',     'Xem loại phụ cấp',          '/allowance-type-list',          'ALLOWANCE'),
+(89, 'ALLOWANCE_TYPE_CREATE',   'Tạo loại phụ cấp',          '/allowance-type-create',        'ALLOWANCE'),
+(90, 'ALLOWANCE_TYPE_UPDATE',   'Cập nhật loại phụ cấp',     '/allowance-type-update',        'ALLOWANCE'),
+(91, 'ALLOWANCE_TYPE_STATUS',   'Khóa/Mở loại phụ cấp',      '/allowance-type-status',        'ALLOWANCE'),
+(92, 'EMPLOYEE_ALLOWANCE_VIEW', 'Xem phụ cấp nhân viên',     '/employee-allowance-list',      'ALLOWANCE'),
+(93, 'EMPLOYEE_ALLOWANCE_SETUP','Thiết lập phụ cấp NV',      '/employee-allowance-setup',     'ALLOWANCE'),
+(94, 'EMPLOYEE_ALLOWANCE_STATUS','Khóa/Mở phụ cấp NV',       '/employee-allowance-status',    'ALLOWANCE'),
+(95, 'INSURANCE_RATE_VIEW',     'Xem mức đóng bảo hiểm',     '/insurance-rate-list',          'INSURANCE'),
+(96, 'INSURANCE_RATE_SETUP',    'Thiết lập mức đóng BH',     '/insurance-rate-setup',         'INSURANCE'),
+(97, 'PERSONAL_TAX_SETTING_VIEW', 'Xem giảm trừ gia cảnh',   '/personal-tax-setting-list',    'TAX'),
+(98, 'PERSONAL_TAX_SETTING_SETUP','Thiết lập giảm trừ GC',   '/personal-tax-setting-setup',   'TAX'),
+(99, 'PERSONAL_TAX_BRACKET_VIEW', 'Xem biểu thuế lũy tiến',  '/personal-tax-bracket-list',    'TAX'),
+(100,'PERSONAL_TAX_BRACKET_SETUP','Thiết lập biểu thuế',     '/personal-tax-bracket-setup',   'TAX'),
+(101,'EMPLOYEE_DEPENDENT_VIEW', 'Xem người phụ thuộc',       '/employee-dependent-list',      'DEPENDENT'),
+(102,'EMPLOYEE_DEPENDENT_SETUP','Thiết lập người phụ thuộc', '/employee-dependent-setup',     'DEPENDENT'),
+(103,'EMPLOYEE_DEPENDENT_STATUS','Khóa/Mở người phụ thuộc',  '/employee-dependent-status',    'DEPENDENT'),
+-- Monthly sheet workflow + supervisor correction
+(104,'MONTHLY_SHEET_SUBMIT',     'Gửi duyệt bảng công tháng',         '/monthly-sheet-submit',                'PAYROLL'),
+(105,'MONTHLY_SHEET_SUPERVISOR_VIEW', 'Xem bảng công cần quản đốc duyệt', '/monthly-sheet-supervisor',     'PAYROLL'),
+(106,'MONTHLY_SHEET_SUPERVISOR_APPROVE', 'Quản đốc xác nhận bảng công',   '/monthly-sheet-supervisor-approve', 'PAYROLL'),
+(107,'MONTHLY_SHEET_HR_APPROVE', 'HR chốt bảng công',                 '/monthly-sheet-hr-approve',            'PAYROLL'),
+(108,'MONTHLY_SHEET_DIRECTOR_APPROVE', 'Giám đốc đóng sổ bảng công',  '/monthly-sheet-director-approve',      'PAYROLL'),
+(109,'ATTENDANCE_CORRECTION_SUPERVISOR_APPROVE', 'Quản đốc duyệt điều chỉnh công', '/attendance-correction-supervisor-approve', 'ATTENDANCE'),
+(110,'MONTHLY_SHEET_REJECT',     'Từ chối bảng công tháng',           '/monthly-sheet-reject',                'PAYROLL'),
+(111,'PAYROLL_SETTING_VIEW',     'Xem cấu hình payroll',              '/payroll-setting-list',                'PAYROLL'),
+(112,'PAYROLL_SETTING_SETUP',    'Thiết lập cấu hình payroll',        '/payroll-setting-setup',               'PAYROLL');
 
 -- =========================================================
 -- Iter 1 Role Permissions (Explicit)
@@ -211,6 +247,9 @@ INSERT INTO role_permissions (role_id, permission_id) VALUES
 (1, 60), (1, 61), (1, 62), (1, 63), (1, 64), (1, 65), (1, 66),
 (1, 67), (1, 68), (1, 69), (1, 70), (1, 71), (1, 72), (1, 73),
 (1, 74), (1, 75), (1, 76), (1, 77), (1, 83), (1, 84), (1, 85), (1, 86),
+(1, 87), (1, 88), (1, 89), (1, 90), (1, 91), (1, 92), (1, 93), (1, 94),
+(1, 95), (1, 96), (1, 97), (1, 98), (1, 99), (1, 100), (1, 101), (1, 102), (1, 103),
+(1, 104), (1, 105), (1, 106), (1, 107), (1, 108), (1, 109), (1, 110), (1, 111), (1, 112),
 -- Holiday permissions for SYSADMIN
 (1, 78), (1, 79), (1, 80), (1, 81);
 
@@ -228,9 +267,14 @@ INSERT INTO role_permissions (role_id, permission_id) VALUES
 -- Overtime
 (2, 58), (2, 60), (2, 61),
 -- Salary / Payroll
-(2, 62), (2, 63), (2, 64), (2, 65), (2, 66),
+(2, 62), (2, 63), (2, 64), (2, 65), (2, 66), (2, 87),
+(2, 88), (2, 89), (2, 90), (2, 91),
+(2, 92), (2, 93), (2, 94),
+(2, 95), (2, 96),
+(2, 97), (2, 98), (2, 99), (2, 100),
+(2, 101), (2, 102), (2, 103), (2, 111), (2, 112),
 -- Monthly Sheet
-(2, 67), (2, 68), (2, 69),
+(2, 67), (2, 68), (2, 69), (2, 104), (2, 107), (2, 108), (2, 110),
 -- Reports
 (2, 70), (2, 71), (2, 72), (2, 73), (2, 74), (2, 75),
 -- Audit permissions belong to SYSADMIN (IT Manager) only
@@ -241,8 +285,9 @@ INSERT INTO role_permissions (role_id, permission_id) VALUES
 -- PRODUCTION_SUPERVISOR: exact operational scope
 INSERT INTO role_permissions (role_id, permission_id) VALUES
 (3, 41), (3, 45), (3, 47),
-(3, 48), (3, 51), (3, 57), (3, 55), (3, 56), (3, 85), (3, 86),
-(3, 58), (3, 59);
+(3, 48), (3, 51), (3, 57), (3, 85), (3, 86),
+(3, 58), (3, 59),
+(3, 105), (3, 106), (3, 109);
 
 -- EMPLOYEE: self-service scope only
 INSERT INTO role_permissions (role_id, permission_id) VALUES
@@ -353,42 +398,78 @@ VALUES
 -- Iter 2 + Iter 3 sample data
 -- =========================================================
 
+INSERT INTO payroll_settings
+    (standard_work_days, standard_work_hours_per_day, normal_overtime_rate, effective_from, effective_to)
+VALUES
+    (26.00, 8.00, 1.50, '2024-01-01', NULL);
+
+INSERT INTO insurance_rates
+    (social_insurance_employee_rate, health_insurance_employee_rate, unemployment_insurance_employee_rate,
+     social_insurance_employer_rate, health_insurance_employer_rate, unemployment_insurance_employer_rate,
+     social_health_insurance_cap, unemployment_insurance_cap, effective_from, effective_to)
+VALUES
+    (0.0800, 0.0150, 0.0100, 0.1750, 0.0300, 0.0100, 46800000.00, 99200000.00, '2024-01-01', NULL);
+
+INSERT INTO personal_tax_settings
+    (personal_deduction, dependent_deduction, effective_from, effective_to)
+VALUES
+    (11000000.00, 4400000.00, '2024-01-01', NULL);
+
+INSERT INTO personal_tax_brackets
+    (bracket_order, income_from, income_to, tax_rate, effective_from, effective_to)
+VALUES
+    (1,        0.00,  5000000.00, 0.0500, '2024-01-01', NULL),
+    (2,  5000000.00, 10000000.00, 0.1000, '2024-01-01', NULL),
+    (3, 10000000.00, 18000000.00, 0.1500, '2024-01-01', NULL),
+    (4, 18000000.00, 32000000.00, 0.2000, '2024-01-01', NULL),
+    (5, 32000000.00, 52000000.00, 0.2500, '2024-01-01', NULL),
+    (6, 52000000.00, 80000000.00, 0.3000, '2024-01-01', NULL),
+    (7, 80000000.00,        NULL, 0.3500, '2024-01-01', NULL);
+
+INSERT INTO allowance_types
+    (id, code, name, description, is_taxable, is_insurance_based, is_active)
+VALUES
+    (1, 'MEAL', 'Phụ cấp ăn trưa', 'Phụ cấp ăn ca cố định hàng tháng', FALSE, FALSE, TRUE),
+    (2, 'POSITION', 'Phụ cấp vị trí', 'Phụ cấp vị trí tính vào thu nhập và căn cứ bảo hiểm', TRUE, TRUE, TRUE),
+    (3, 'PHONE', 'Phụ cấp điện thoại', 'Phụ cấp điện thoại khoán cố định hàng tháng', FALSE, FALSE, TRUE);
+
 INSERT INTO contracts (user_id, contract_type_id, start_date, end_date, salary, file_path, status) VALUES
 (8, 2, '2024-01-01', '2027-12-31', 8000000, '/contracts/worker_a_an_full_time.pdf', 'ACTIVE');
 
-INSERT INTO leave_balances (user_id, leave_type_id, year, total_days, used_days) VALUES
-(8, 1, 2026, 12, 2);
+-- Attendance, correction, OT and payroll rows are intentionally not seeded
+-- here so the demo flow can start clean from Excel import.
+-- Keep one OPEN monthly sheet for 6/2026 so the HR monthly-sheet screen has
+-- a visible baseline right after DB reset.
 
-INSERT INTO leave_requests (user_id, leave_type_id, start_date, end_date, days, reason, status) VALUES
-(8, 1, '2026-06-20', '2026-06-22', 3, 'Nghỉ phép năm định kỳ', 'PENDING');
+INSERT INTO monthly_sheets (year, month, status) VALUES
+(2026, 6, 'OPEN');
 
-INSERT INTO shift_assignments (user_id, shift_id, date) VALUES
-(8, 2, '2026-06-15');
+INSERT INTO salary_bases (user_id, base_salary, insurance_salary, effective_from) VALUES
+(1, 35000000.00, NULL, '2024-01-01'),
+(2, 22000000.00, NULL, '2024-01-01'),
+(3, 14000000.00, NULL, '2024-01-01'),
+(4, 28000000.00, NULL, '2024-01-01'),
+(5, 16000000.00, NULL, '2024-01-01'),
+(6, 15500000.00, NULL, '2024-01-01'),
+(7, 18000000.00, NULL, '2024-01-01'),
+(8, 8000000.00, NULL, '2024-01-01'),
+(9, 8200000.00, NULL, '2024-01-01'),
+(10, 18000000.00, NULL, '2024-01-01'),
+(11, 8100000.00, NULL, '2024-01-01'),
+(12, 8000000.00, NULL, '2024-01-01'),
+(13, 18000000.00, NULL, '2024-01-01'),
+(14, 8050000.00, NULL, '2024-01-01'),
+(15, 8000000.00, NULL, '2024-01-01');
 
-INSERT INTO attendance_records (user_id, date, shift_id, check_in, check_out, working_hours, status, import_batch_id) VALUES
-(8, '2026-06-15', 2, '06:02:00', '14:05:00', 8.0, 'NORMAL', 'BATCH-202606');
-
-INSERT INTO attendance_corrections (attendance_record_id, requested_by, new_check_in, new_check_out, reason, status) VALUES
-(1, 8, '06:00:00', '14:00:00', 'Chấm công sai giờ', 'PENDING');
-
-INSERT INTO overtime_records (user_id, date, requested_hours, reason, status) VALUES
-(8, '2026-06-14', 2, 'Sản xuất tăng cường đơn hàng', 'PENDING');
-
-INSERT INTO salary_bases (user_id, base_salary, effective_from) VALUES
-(8, 8000000, '2024-01-01');
-
--- For worker_a_an (user_id=8) needs salary base for payroll preview calculation.
--- EMPLOYEE role has PAYSLIP_VIEW permission (ID 66) and monthly_salaries row at line 309;
--- salary base enables end-to-end demo of payslip-view flow per Phase 6 success criteria.
-
-INSERT INTO monthly_sheets (year, month, status, closed_at, closed_by) VALUES
-(2026, 6, 'CLOSED', '2026-06-30 23:59:59', 4);
-
-INSERT INTO monthly_salaries (monthly_sheet_id, user_id, actual_work_days, ot_hours, gross_salary, deductions, net_salary, status) VALUES
-(1, 8, 22, 0, 8000000, 0, 8000000, 'FINAL');
+INSERT INTO employee_allowances
+    (user_id, allowance_type_id, amount, effective_from, effective_to, is_active)
+VALUES
+    (8, 1, 500000.00, '2024-01-01', NULL, TRUE),
+    (8, 2, 1000000.00, '2024-01-01', NULL, TRUE),
+    (8, 3, 300000.00, '2024-01-01', NULL, TRUE);
 
 INSERT INTO audit_logs (event_code, entity_type, entity_id, actor_id, actor_name, changed_fields, ip_address) VALUES
-('SYSTEM_RESET', 'DATABASE', 1, 2, 'it_manager_khoa', 'Reset to Iter 3 baseline', '127.0.0.1');
+('SYSTEM_RESET', 'DATABASE', 1, 2, 'it_manager_khoa', 'Reset to Iter 3 baseline for manual attendance import and payroll demo', '127.0.0.1');
 
 -- =========================================================
 -- Holiday sample data

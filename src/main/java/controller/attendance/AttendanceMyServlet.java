@@ -1,5 +1,6 @@
 package controller.attendance;
 
+import dal.AttendanceCorrectionDAO;
 import dal.AttendanceDAO;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
@@ -17,6 +18,7 @@ import model.User;
 public class AttendanceMyServlet extends HttpServlet {
 
 	private final AttendanceDAO attendanceDAO = new AttendanceDAO();
+	private final AttendanceCorrectionDAO correctionDAO = new AttendanceCorrectionDAO();
 
 	@Override
 	protected void doGet(HttpServletRequest request, HttpServletResponse response)
@@ -36,10 +38,22 @@ public class AttendanceMyServlet extends HttpServlet {
 		int month = parseInt(request.getParameter("month"), today.getMonthValue());
 
 		List<AttendanceRecord> records = attendanceDAO.searchByUserAndMonth(authUser.getId(), year, month);
+		System.out.println("[DEBUG] userId=" + authUser.getId() + " year=" + year + " month=" + month + " recordCount="
+				+ records.size());
 
 		request.setAttribute("records", records);
 		request.setAttribute("selectedYear", year);
 		request.setAttribute("selectedMonth", month);
+		request.setAttribute("myCorrections", correctionDAO.searchByEmployee(authUser.getId(), 0, 20));
+
+		// Prev / next month for calendar navigation arrows
+		java.time.YearMonth ym = java.time.YearMonth.of(year, month);
+		java.time.YearMonth prev = ym.minusMonths(1);
+		java.time.YearMonth next = ym.plusMonths(1);
+		request.setAttribute("prevYear", prev.getYear());
+		request.setAttribute("prevMonth", prev.getMonthValue());
+		request.setAttribute("nextYear", next.getYear());
+		request.setAttribute("nextMonth", next.getMonthValue());
 		request.getRequestDispatcher("/views/attendance/attendance-my.jsp").forward(request, response);
 	}
 

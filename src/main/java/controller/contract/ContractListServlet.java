@@ -11,6 +11,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import model.Contract;
 import model.Permission;
+import model.User;
 
 import java.io.IOException;
 import java.util.List;
@@ -45,6 +46,15 @@ public class ContractListServlet extends HttpServlet {
 		String keyword = request.getParameter("keyword");
 		String status = request.getParameter("status");
 		String pageStr = request.getParameter("page");
+		User authUser = (User) session.getAttribute("authUser");
+		boolean canViewAllContracts = hasAnyPerm(session, "CONTRACT_CREATE", "CONTRACT_UPDATE", "CONTRACT_RENEW",
+				"CONTRACT_UPLOAD", "CONTRACT_TERMINATE");
+		if (!canViewAllContracts) {
+			response.sendError(HttpServletResponse.SC_FORBIDDEN);
+			return;
+		}
+		contractDAO.refreshLifecycleStatuses();
+		Long ownerUserId = canViewAllContracts || authUser == null ? null : authUser.getId();
 
 		int page = 1;
 		if (pageStr != null && !pageStr.isEmpty() && pageStr.matches("\\d+")) {
@@ -55,28 +65,36 @@ public class ContractListServlet extends HttpServlet {
 		}
 		int offset = (page - 1) * PAGE_SIZE;
 
-		List<ContractListItem> contracts = contractDAO.searchContracts(keyword, status, offset, PAGE_SIZE);
-		int total = contractDAO.countContracts(keyword, status);
+		List<ContractListItem> contracts = contractDAO.searchContracts(keyword, status, ownerUserId, offset, PAGE_SIZE);
+		int total = contractDAO.countContracts(keyword, status, ownerUserId);
 		int totalPages = total == 0 ? 0 : (int) Math.ceil((double) total / PAGE_SIZE);
 		if (totalPages > 0 && page > totalPages) {
 			page = totalPages;
 			offset = (page - 1) * PAGE_SIZE;
-			contracts = contractDAO.searchContracts(keyword, status, offset, PAGE_SIZE);
+			contracts = contractDAO.searchContracts(keyword, status, ownerUserId, offset, PAGE_SIZE);
 		}
 
 		// Expose per-action permissions so the JSP can decide which buttons to render.
-		request.setAttribute("hasContractDetailPerm", hasPerm(session, "CONTRACT_VIEW"));
+		request.setAttribute("hasContractDetailPerm", hasPerm(session, "CONTRACT_DETAIL"));
 		request.setAttribute("hasContractCreatePerm", hasPerm(session, "CONTRACT_CREATE"));
 		request.setAttribute("hasContractUploadPerm", hasPerm(session, "CONTRACT_UPLOAD"));
 		request.setAttribute("hasContractRenewPerm", hasPerm(session, "CONTRACT_RENEW"));
 		request.setAttribute("hasContractTerminatePerm", hasPerm(session, "CONTRACT_TERMINATE"));
+		request.setAttribute("hasContractRenewRequestPerm", hasPerm(session, "CONTRACT_RENEW_REQUEST"));
+		request.setAttribute("personalContractView", ownerUserId != null);
 
 		// Quick counts for the small KPI strip on top of the list.
-		request.setAttribute("activeCount", contractDAO.countContracts(null, Contract.Status.ACTIVE.name()));
+		request.setAttribute("activeCount",
+				contractDAO.countContracts(null, Contract.Status.ACTIVE.name(), ownerUserId));
 		request.setAttribute("pendingRenewalCount",
-				contractDAO.countContracts(null, Contract.Status.PENDING_RENEWAL.name()));
-		request.setAttribute("expiringSoonCount", contractDAO.countExpiringSoon(30));
-		request.setAttribute("terminatedCount", contractDAO.countContracts(null, Contract.Status.TERMINATED.name()));
+				contractDAO.countContracts(null, Contract.Status.PENDING_RENEWAL.name(), ownerUserId));
+		request.setAttribute("expiringSoonCount", contractDAO.countExpiringSoon(30, ownerUserId));
+		request.setAttribute("terminatedCount",
+				contractDAO.countContracts(null, Contract.Status.TERMINATED.name(), ownerUserId));
+		if (hasPerm(session, "CONTRACT_RENEW")) {
+			request.setAttribute("pendingRenewalContracts",
+					contractDAO.searchContracts(null, Contract.Status.PENDING_RENEWAL.name(), null, 0, 5));
+		}
 
 		request.setAttribute("contracts", contracts);
 		request.setAttribute("currentPage", page);
@@ -102,6 +120,15 @@ public class ContractListServlet extends HttpServlet {
 		}
 		for (Permission p : perms) {
 			if (code.equals(p.getCode())) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	private boolean hasAnyPerm(HttpSession session, String... codes) {
+		for (String code : codes) {
+			if (hasPerm(session, code)) {
 				return true;
 			}
 		}

@@ -38,6 +38,9 @@ TRUNCATE TABLE roles;
 TRUNCATE TABLE departments;
 SET FOREIGN_KEY_CHECKS = 1;
 
+ALTER TABLE contracts
+    MODIFY COLUMN status ENUM('ACTIVE', 'EXPIRING_SOON', 'EXPIRED', 'PENDING_RENEWAL', 'TERMINATED') NOT NULL DEFAULT 'ACTIVE';
+
 -- =========================================================
 -- Organization master data
 -- =========================================================
@@ -107,7 +110,7 @@ INSERT INTO permissions (id, code, name, url_pattern, module) VALUES
 (31, 'CONTRACT_TYPE_STATUS', 'Kích hoạt/Vô hiệu Loại hợp đồng',  '/contract-type-status', 'CONTRACT_TYPE');
 
 -- =========================================================
--- Iter 2 + Iter 3 Permissions (IDs 32-112)
+-- Iter 2 + Iter 3 Permissions (IDs 32-114)
 -- =========================================================
 
 INSERT INTO permissions (id, code, name, url_pattern, module) VALUES
@@ -119,6 +122,8 @@ INSERT INTO permissions (id, code, name, url_pattern, module) VALUES
 (36, 'CONTRACT_RENEW',          'Gia hạn hợp đồng',          '/contract-renew',          'CONTRACT'),
 (37, 'CONTRACT_UPLOAD',         'Tải lên hợp đồng PDF',      '/contract-upload',         'CONTRACT'),
 (38, 'CONTRACT_STATUS',         'Thay đổi trạng thái hợp đồng', '/contract-status',       'CONTRACT'),
+(87, 'CONTRACT_RENEW_REQUEST',  'Gửi yêu cầu gia hạn hợp đồng', '/contract-renew-request', 'CONTRACT'),
+(88, 'CONTRACT_MY_VIEW',        'Xem hợp đồng cá nhân',      '/my-contract',             'CONTRACT'),
 -- Leave
 (39, 'LEAVE_BALANCE_VIEW',      'Xem số dư phép năm',         '/leave-balance-list',      'LEAVE'),
 (40, 'LEAVE_BALANCE_SETUP',     'Cài đặt quota phép năm',     '/leave-balance-setup',     'LEAVE'),
@@ -176,33 +181,33 @@ INSERT INTO permissions (id, code, name, url_pattern, module) VALUES
 (83, 'CONTRACT_TERMINATE',      'Chấm dứt hợp đồng',         '/contract-terminate',     'CONTRACT'),
 (84, 'CONTRACT_EXPIRY',         'Xem hợp đồng hết hạn',      '/contract-expiry',        'CONTRACT'),
 -- Payroll close + payroll configuration
-(87, 'PAYROLL_CLOSE',           'Chốt bảng lương',           '/payroll-close',                'PAYROLL'),
-(88, 'ALLOWANCE_TYPE_VIEW',     'Xem loại phụ cấp',          '/allowance-type-list',          'ALLOWANCE'),
-(89, 'ALLOWANCE_TYPE_CREATE',   'Tạo loại phụ cấp',          '/allowance-type-create',        'ALLOWANCE'),
-(90, 'ALLOWANCE_TYPE_UPDATE',   'Cập nhật loại phụ cấp',     '/allowance-type-update',        'ALLOWANCE'),
-(91, 'ALLOWANCE_TYPE_STATUS',   'Khóa/Mở loại phụ cấp',      '/allowance-type-status',        'ALLOWANCE'),
-(92, 'EMPLOYEE_ALLOWANCE_VIEW', 'Xem phụ cấp nhân viên',     '/employee-allowance-list',      'ALLOWANCE'),
-(93, 'EMPLOYEE_ALLOWANCE_SETUP','Thiết lập phụ cấp NV',      '/employee-allowance-setup',     'ALLOWANCE'),
-(94, 'EMPLOYEE_ALLOWANCE_STATUS','Khóa/Mở phụ cấp NV',       '/employee-allowance-status',    'ALLOWANCE'),
-(95, 'INSURANCE_RATE_VIEW',     'Xem mức đóng bảo hiểm',     '/insurance-rate-list',          'INSURANCE'),
-(96, 'INSURANCE_RATE_SETUP',    'Thiết lập mức đóng BH',     '/insurance-rate-setup',         'INSURANCE'),
-(97, 'PERSONAL_TAX_SETTING_VIEW', 'Xem giảm trừ gia cảnh',   '/personal-tax-setting-list',    'TAX'),
-(98, 'PERSONAL_TAX_SETTING_SETUP','Thiết lập giảm trừ GC',   '/personal-tax-setting-setup',   'TAX'),
-(99, 'PERSONAL_TAX_BRACKET_VIEW', 'Xem biểu thuế lũy tiến',  '/personal-tax-bracket-list',    'TAX'),
-(100,'PERSONAL_TAX_BRACKET_SETUP','Thiết lập biểu thuế',     '/personal-tax-bracket-setup',   'TAX'),
-(101,'EMPLOYEE_DEPENDENT_VIEW', 'Xem người phụ thuộc',       '/employee-dependent-list',      'DEPENDENT'),
-(102,'EMPLOYEE_DEPENDENT_SETUP','Thiết lập người phụ thuộc', '/employee-dependent-setup',     'DEPENDENT'),
-(103,'EMPLOYEE_DEPENDENT_STATUS','Khóa/Mở người phụ thuộc',  '/employee-dependent-status',    'DEPENDENT'),
+(89, 'PAYROLL_CLOSE',           'Chốt bảng lương',           '/payroll-close',                'PAYROLL'),
+(90, 'ALLOWANCE_TYPE_VIEW',     'Xem loại phụ cấp',          '/allowance-type-list',          'ALLOWANCE'),
+(91, 'ALLOWANCE_TYPE_CREATE',   'Tạo loại phụ cấp',          '/allowance-type-create',        'ALLOWANCE'),
+(92, 'ALLOWANCE_TYPE_UPDATE',   'Cập nhật loại phụ cấp',     '/allowance-type-update',        'ALLOWANCE'),
+(93, 'ALLOWANCE_TYPE_STATUS',   'Khóa/Mở loại phụ cấp',      '/allowance-type-status',        'ALLOWANCE'),
+(94, 'EMPLOYEE_ALLOWANCE_VIEW', 'Xem phụ cấp nhân viên',     '/employee-allowance-list',      'ALLOWANCE'),
+(95, 'EMPLOYEE_ALLOWANCE_SETUP','Thiết lập phụ cấp NV',      '/employee-allowance-setup',     'ALLOWANCE'),
+(96, 'EMPLOYEE_ALLOWANCE_STATUS','Khóa/Mở phụ cấp NV',       '/employee-allowance-status',    'ALLOWANCE'),
+(97, 'INSURANCE_RATE_VIEW',     'Xem mức đóng bảo hiểm',     '/insurance-rate-list',          'INSURANCE'),
+(98, 'INSURANCE_RATE_SETUP',    'Thiết lập mức đóng BH',     '/insurance-rate-setup',         'INSURANCE'),
+(99, 'PERSONAL_TAX_SETTING_VIEW', 'Xem giảm trừ gia cảnh',   '/personal-tax-setting-list',    'TAX'),
+(100,'PERSONAL_TAX_SETTING_SETUP','Thiết lập giảm trừ GC',   '/personal-tax-setting-setup',   'TAX'),
+(101,'PERSONAL_TAX_BRACKET_VIEW', 'Xem biểu thuế lũy tiến',  '/personal-tax-bracket-list',    'TAX'),
+(102,'PERSONAL_TAX_BRACKET_SETUP','Thiết lập biểu thuế',     '/personal-tax-bracket-setup',   'TAX'),
+(103,'EMPLOYEE_DEPENDENT_VIEW', 'Xem người phụ thuộc',       '/employee-dependent-list',      'DEPENDENT'),
+(104,'EMPLOYEE_DEPENDENT_SETUP','Thiết lập người phụ thuộc', '/employee-dependent-setup',     'DEPENDENT'),
+(105,'EMPLOYEE_DEPENDENT_STATUS','Khóa/Mở người phụ thuộc',  '/employee-dependent-status',    'DEPENDENT'),
 -- Monthly sheet workflow + supervisor correction
-(104,'MONTHLY_SHEET_SUBMIT',     'Gửi duyệt bảng công tháng',         '/monthly-sheet-submit',                'PAYROLL'),
-(105,'MONTHLY_SHEET_SUPERVISOR_VIEW', 'Xem bảng công cần quản đốc duyệt', '/monthly-sheet-supervisor',     'PAYROLL'),
-(106,'MONTHLY_SHEET_SUPERVISOR_APPROVE', 'Quản đốc xác nhận bảng công',   '/monthly-sheet-supervisor-approve', 'PAYROLL'),
-(107,'MONTHLY_SHEET_HR_APPROVE', 'HR chốt bảng công',                 '/monthly-sheet-hr-approve',            'PAYROLL'),
-(108,'MONTHLY_SHEET_DIRECTOR_APPROVE', 'Giám đốc đóng sổ bảng công',  '/monthly-sheet-director-approve',      'PAYROLL'),
-(109,'ATTENDANCE_CORRECTION_SUPERVISOR_APPROVE', 'Quản đốc duyệt điều chỉnh công', '/attendance-correction-supervisor-approve', 'ATTENDANCE'),
-(110,'MONTHLY_SHEET_REJECT',     'Từ chối bảng công tháng',           '/monthly-sheet-reject',                'PAYROLL'),
-(111,'PAYROLL_SETTING_VIEW',     'Xem cấu hình payroll',              '/payroll-setting-list',                'PAYROLL'),
-(112,'PAYROLL_SETTING_SETUP',    'Thiết lập cấu hình payroll',        '/payroll-setting-setup',               'PAYROLL');
+(106,'MONTHLY_SHEET_SUBMIT',     'Gửi duyệt bảng công tháng',         '/monthly-sheet-submit',                'PAYROLL'),
+(107,'MONTHLY_SHEET_SUPERVISOR_VIEW', 'Xem bảng công cần quản đốc duyệt', '/monthly-sheet-supervisor',     'PAYROLL'),
+(108,'MONTHLY_SHEET_SUPERVISOR_APPROVE', 'Quản đốc xác nhận bảng công',   '/monthly-sheet-supervisor-approve', 'PAYROLL'),
+(109,'MONTHLY_SHEET_HR_APPROVE', 'HR chốt bảng công',                 '/monthly-sheet-hr-approve',            'PAYROLL'),
+(110,'MONTHLY_SHEET_DIRECTOR_APPROVE', 'Giám đốc đóng sổ bảng công',  '/monthly-sheet-director-approve',      'PAYROLL'),
+(111,'ATTENDANCE_CORRECTION_SUPERVISOR_APPROVE', 'Quản đốc duyệt điều chỉnh công', '/attendance-correction-supervisor-approve', 'ATTENDANCE'),
+(112,'MONTHLY_SHEET_REJECT',     'Từ chối bảng công tháng',           '/monthly-sheet-reject',                'PAYROLL'),
+(113,'PAYROLL_SETTING_VIEW',     'Xem cấu hình payroll',              '/payroll-setting-list',                'PAYROLL'),
+(114,'PAYROLL_SETTING_SETUP',    'Thiết lập cấu hình payroll',        '/payroll-setting-setup',               'PAYROLL');
 
 -- =========================================================
 -- Iter 1 Role Permissions (Explicit)
@@ -250,6 +255,7 @@ INSERT INTO role_permissions (role_id, permission_id) VALUES
 (1, 87), (1, 88), (1, 89), (1, 90), (1, 91), (1, 92), (1, 93), (1, 94),
 (1, 95), (1, 96), (1, 97), (1, 98), (1, 99), (1, 100), (1, 101), (1, 102), (1, 103),
 (1, 104), (1, 105), (1, 106), (1, 107), (1, 108), (1, 109), (1, 110), (1, 111), (1, 112),
+(1, 113), (1, 114),
 -- Holiday permissions for SYSADMIN
 (1, 78), (1, 79), (1, 80), (1, 81);
 
@@ -267,14 +273,14 @@ INSERT INTO role_permissions (role_id, permission_id) VALUES
 -- Overtime
 (2, 58), (2, 60), (2, 61),
 -- Salary / Payroll
-(2, 62), (2, 63), (2, 64), (2, 65), (2, 66), (2, 87),
-(2, 88), (2, 89), (2, 90), (2, 91),
-(2, 92), (2, 93), (2, 94),
-(2, 95), (2, 96),
-(2, 97), (2, 98), (2, 99), (2, 100),
-(2, 101), (2, 102), (2, 103), (2, 111), (2, 112),
+(2, 62), (2, 63), (2, 64), (2, 65), (2, 66), (2, 89),
+(2, 90), (2, 91), (2, 92), (2, 93),
+(2, 94), (2, 95), (2, 96),
+(2, 97), (2, 98),
+(2, 99), (2, 100), (2, 101), (2, 102),
+(2, 103), (2, 104), (2, 105), (2, 113), (2, 114),
 -- Monthly Sheet
-(2, 67), (2, 68), (2, 69), (2, 104), (2, 107), (2, 108), (2, 110),
+(2, 67), (2, 68), (2, 69), (2, 106), (2, 109), (2, 110), (2, 112),
 -- Reports
 (2, 70), (2, 71), (2, 72), (2, 73), (2, 74), (2, 75),
 -- Audit permissions belong to SYSADMIN (IT Manager) only
@@ -287,10 +293,11 @@ INSERT INTO role_permissions (role_id, permission_id) VALUES
 (3, 41), (3, 45), (3, 47),
 (3, 48), (3, 51), (3, 57), (3, 85), (3, 86),
 (3, 58), (3, 59),
-(3, 105), (3, 106), (3, 109);
+(3, 107), (3, 108), (3, 111);
 
 -- EMPLOYEE: self-service scope only
 INSERT INTO role_permissions (role_id, permission_id) VALUES
+(4, 33), (4, 87), (4, 88),
 (4, 42), (4, 43), (4, 44),
 (4, 52), (4, 54), (4, 66),
 (4, 86);
@@ -336,6 +343,39 @@ WHERE NOT EXISTS (SELECT 1 FROM role_permissions WHERE role_id = 3 AND permissio
 INSERT INTO role_permissions (role_id, permission_id)
 SELECT 4, 86
 WHERE NOT EXISTS (SELECT 1 FROM role_permissions WHERE role_id = 4 AND permission_id = 86);
+
+INSERT INTO permissions (id, code, name, url_pattern, module)
+SELECT 87, 'CONTRACT_RENEW_REQUEST', 'Request contract renewal', '/contract-renew-request', 'CONTRACT'
+WHERE NOT EXISTS (SELECT 1 FROM permissions WHERE code = 'CONTRACT_RENEW_REQUEST');
+
+INSERT INTO permissions (id, code, name, url_pattern, module)
+SELECT 88, 'CONTRACT_MY_VIEW', 'View my contract', '/my-contract', 'CONTRACT'
+WHERE NOT EXISTS (SELECT 1 FROM permissions WHERE code = 'CONTRACT_MY_VIEW');
+
+-- Personal contract detail + renewal request for self-service roles
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT 3, 33
+WHERE NOT EXISTS (SELECT 1 FROM role_permissions WHERE role_id = 3 AND permission_id = 33);
+
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT 3, 87
+WHERE NOT EXISTS (SELECT 1 FROM role_permissions WHERE role_id = 3 AND permission_id = 87);
+
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT 3, 88
+WHERE NOT EXISTS (SELECT 1 FROM role_permissions WHERE role_id = 3 AND permission_id = 88);
+
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT 4, 33
+WHERE NOT EXISTS (SELECT 1 FROM role_permissions WHERE role_id = 4 AND permission_id = 33);
+
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT 4, 87
+WHERE NOT EXISTS (SELECT 1 FROM role_permissions WHERE role_id = 4 AND permission_id = 87);
+
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT 4, 88
+WHERE NOT EXISTS (SELECT 1 FROM role_permissions WHERE role_id = 4 AND permission_id = 88);
 
 -- =========================================================
 -- Iter 1 master data
@@ -434,7 +474,19 @@ VALUES
     (3, 'PHONE', 'Phụ cấp điện thoại', 'Phụ cấp điện thoại khoán cố định hàng tháng', FALSE, FALSE, TRUE);
 
 INSERT INTO contracts (user_id, contract_type_id, start_date, end_date, salary, file_path, status) VALUES
-(8, 2, '2024-01-01', '2027-12-31', 8000000, '/contracts/worker_a_an_full_time.pdf', 'ACTIVE');
+(1, 2, '2024-01-01', '2029-12-31', 35000000, '/contracts/director_minhanh_full_time.pdf', 'ACTIVE'),
+(4, 2, '2024-01-01', '2029-12-31', 28000000, '/contracts/hr_manager_lan_full_time.pdf', 'ACTIVE'),
+(5, 2, '2024-01-01', '2029-12-31', 16000000, '/contracts/hr_staff_hoa_full_time.pdf', 'ACTIVE'),
+(6, 2, '2024-01-01', '2029-12-31', 15500000, '/contracts/hr_staff_trang_full_time.pdf', 'ACTIVE'),
+(7, 2, '2024-01-01', '2029-12-31', 18000000, '/contracts/sup_a_tuan_full_time.pdf', 'ACTIVE'),
+(8, 2, '2024-01-01', '2029-12-31', 8000000, '/contracts/worker_a_an_full_time.pdf', 'ACTIVE'),
+(9, 2, '2024-01-01', '2029-12-31', 8200000, '/contracts/worker_a_binh_full_time.pdf', 'ACTIVE'),
+(10, 2, '2024-01-01', '2029-12-31', 18000000, '/contracts/sup_b_hung_full_time.pdf', 'ACTIVE'),
+(11, 2, '2024-01-01', '2029-12-31', 8100000, '/contracts/worker_b_cuong_full_time.pdf', 'ACTIVE'),
+(12, 2, '2024-01-01', '2029-12-31', 8000000, '/contracts/worker_b_dung_full_time.pdf', 'ACTIVE'),
+(13, 2, '2024-01-01', '2029-12-31', 18000000, '/contracts/sup_c_phuc_full_time.pdf', 'ACTIVE'),
+(14, 2, '2024-01-01', '2029-12-31', 8050000, '/contracts/worker_c_hai_full_time.pdf', 'ACTIVE'),
+(15, 2, '2024-01-01', '2029-12-31', 8000000, '/contracts/worker_c_kiet_full_time.pdf', 'ACTIVE');
 
 -- Attendance, correction, OT and payroll rows are intentionally not seeded
 -- here so the demo flow can start clean from Excel import.

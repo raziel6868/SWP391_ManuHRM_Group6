@@ -152,7 +152,7 @@ INSERT INTO permissions (id, code, name, url_pattern, module) VALUES
 (58, 'OT_VIEW',                 'Xem tăng ca',                 '/overtime-list',           'OVERTIME'),
 (59, 'OT_REQUEST',              'Yêu cầu tăng ca',            '/overtime-request',        'OVERTIME'),
 (60, 'OT_APPROVE',              'Duyệt tăng ca',              '/overtime-approve',        'OVERTIME'),
-(61, 'OT_REJECT',               'Từ chối tăng ca',           '/overtime-reject',         'OVERTIME'),
+(61, 'OT_CANCEL',               'Hủy tăng ca',                '/overtime-reject',         'OVERTIME'),
 -- Salary / Payroll
 (62, 'SALARY_BASE_VIEW',        'Xem lương cơ bản',           '/salary-base-list',        'SALARY'),
 (63, 'SALARY_BASE_SETUP',       'Cài đặt lương cơ bản',      '/salary-base-setup',       'SALARY'),
@@ -207,7 +207,9 @@ INSERT INTO permissions (id, code, name, url_pattern, module) VALUES
 (111,'ATTENDANCE_CORRECTION_SUPERVISOR_APPROVE', 'Quản đốc duyệt điều chỉnh công', '/attendance-correction-supervisor-approve', 'ATTENDANCE'),
 (112,'MONTHLY_SHEET_REJECT',     'Từ chối bảng công tháng',           '/monthly-sheet-reject',                'PAYROLL'),
 (113,'PAYROLL_SETTING_VIEW',     'Xem cấu hình payroll',              '/payroll-setting-list',                'PAYROLL'),
-(114,'PAYROLL_SETTING_SETUP',    'Thiết lập cấu hình payroll',        '/payroll-setting-setup',               'PAYROLL');
+(114,'PAYROLL_SETTING_SETUP',    'Thiết lập cấu hình payroll',        '/payroll-setting-setup',               'PAYROLL'),
+(115, 'OT_UPDATE',               'Sửa tăng ca',                 '/overtime-edit',           'OVERTIME');
+
 
 -- =========================================================
 -- Iter 1 Role Permissions (Explicit)
@@ -255,7 +257,7 @@ INSERT INTO role_permissions (role_id, permission_id) VALUES
 (1, 87), (1, 88), (1, 89), (1, 90), (1, 91), (1, 92), (1, 93), (1, 94),
 (1, 95), (1, 96), (1, 97), (1, 98), (1, 99), (1, 100), (1, 101), (1, 102), (1, 103),
 (1, 104), (1, 105), (1, 106), (1, 107), (1, 108), (1, 109), (1, 110), (1, 111), (1, 112),
-(1, 113), (1, 114),
+(1, 113), (1, 114), (1, 115),
 -- Holiday permissions for SYSADMIN
 (1, 78), (1, 79), (1, 80), (1, 81);
 
@@ -271,7 +273,7 @@ INSERT INTO role_permissions (role_id, permission_id) VALUES
 -- Attendance
 (2, 51), (2, 53), (2, 55), (2, 56), (2, 57),
 -- Overtime
-(2, 58), (2, 60), (2, 61),
+(2, 58),
 -- Salary / Payroll
 (2, 62), (2, 63), (2, 64), (2, 65), (2, 66), (2, 89),
 (2, 90), (2, 91), (2, 92), (2, 93),
@@ -292,7 +294,7 @@ INSERT INTO role_permissions (role_id, permission_id) VALUES
 INSERT INTO role_permissions (role_id, permission_id) VALUES
 (3, 41), (3, 45), (3, 47),
 (3, 48), (3, 51), (3, 57), (3, 85), (3, 86),
-(3, 58), (3, 59),
+(3, 58), (3, 59), (3, 61), (3, 115),
 (3, 107), (3, 108), (3, 111);
 
 -- EMPLOYEE: self-service scope only

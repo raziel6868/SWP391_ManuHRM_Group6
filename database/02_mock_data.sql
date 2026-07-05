@@ -208,8 +208,8 @@ INSERT INTO permissions (id, code, name, url_pattern, module) VALUES
 (112,'MONTHLY_SHEET_REJECT',     'Từ chối bảng công tháng',           '/monthly-sheet-reject',                'PAYROLL'),
 (113,'PAYROLL_SETTING_VIEW',     'Xem cấu hình payroll',              '/payroll-setting-list',                'PAYROLL'),
 (114,'PAYROLL_SETTING_SETUP',    'Thiết lập cấu hình payroll',        '/payroll-setting-setup',               'PAYROLL'),
-(115, 'OT_UPDATE',               'Sửa tăng ca',                 '/overtime-edit',           'OVERTIME');
-
+(115, 'OT_UPDATE',               'Sửa tăng ca',                 '/overtime-edit',           'OVERTIME'),
+(116, 'OT_MY_VIEW',              'Xem tăng ca của tôi',         '/my-overtime',             'OVERTIME');
 
 -- =========================================================
 -- Iter 1 Role Permissions (Explicit)
@@ -378,6 +378,10 @@ WHERE NOT EXISTS (SELECT 1 FROM role_permissions WHERE role_id = 4 AND permissio
 INSERT INTO role_permissions (role_id, permission_id)
 SELECT 4, 88
 WHERE NOT EXISTS (SELECT 1 FROM role_permissions WHERE role_id = 4 AND permission_id = 88);
+
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT 4, 116
+WHERE NOT EXISTS (SELECT 1 FROM role_permissions WHERE role_id = 4 AND permission_id = 116);
 
 -- =========================================================
 -- Iter 1 master data

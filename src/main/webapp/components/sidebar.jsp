@@ -29,6 +29,7 @@
 <c:set var="hasAttendanceMyView" value="${false}" />
 <c:set var="hasAttendanceCorrectionView" value="${false}" />
 <c:set var="hasOtView" value="${false}" />
+<c:set var="hasOtMyView" value="${false}" />
 
 <c:set var="hasMonthlySheetView" value="${false}" />
 <c:set var="hasMonthlySheetSupervisorView" value="${false}" />
@@ -131,6 +132,10 @@
             <c:set var="hasOtView" value="${true}" />
             <c:set var="otViewUrl" value="${permission.urlPattern}" />
         </c:when>
+        <c:when test="${permission.code == 'OT_MY_VIEW'}">
+            <c:set var="hasOtMyView" value="${true}" />
+            <c:set var="otMyViewUrl" value="${permission.urlPattern}" />
+        </c:when>
         <c:when test="${permission.code == 'MONTHLY_SHEET_VIEW'}">
             <c:set var="hasMonthlySheetView" value="${true}" />
             <c:set var="monthlySheetViewUrl" value="${permission.urlPattern}" />
@@ -210,8 +215,7 @@
 <c:set var="hasContractMenu" value="${hasContractTypeView or hasContractView}" />
 <c:set var="hasLeaveMenu" value="${hasLeaveTypeView or hasLeaveBalanceView or hasLeaveMyView or hasLeaveRequestView or hasLeaveRequestApproveL1}" />
 <c:set var="hasShiftMenu" value="${hasShiftView or hasShiftCalendarView or hasMyShiftView}" />
-<c:set var="hasAttendanceMenu" value="${hasAttendanceView or hasAttendanceMyView or hasAttendanceCorrectionView or hasOtView}" />
-<c:set var="hasPayrollMenu" value="${hasMonthlySheetView or hasMonthlySheetSupervisorView or hasSalaryBaseSetup or hasPayrollView or hasPayslipView or hasAllowanceTypeView or hasEmployeeAllowanceView or hasInsuranceRateView or hasPersonalTaxSettingView or hasPersonalTaxBracketView or hasEmployeeDependentView or hasPayrollSettingView}" />
+<c:set var="hasAttendanceMenu" value="${hasAttendanceView or hasAttendanceMyView or hasAttendanceCorrectionView or hasOtView or hasOtMyView}" /><c:set var="hasPayrollMenu" value="${hasMonthlySheetView or hasMonthlySheetSupervisorView or hasSalaryBaseSetup or hasPayrollView or hasPayslipView or hasAllowanceTypeView or hasEmployeeAllowanceView or hasInsuranceRateView or hasPersonalTaxSettingView or hasPersonalTaxBracketView or hasEmployeeDependentView or hasPayrollSettingView}" />
 <c:set var="hasReportMenu" value="${hasReportAttendance or hasReportLeave or hasReportHeadcount or hasReportContract or hasReportPayroll or hasReportOt}" />
 <c:set var="hasMenuPermission" value="${hasSystemMenu or hasContractMenu or hasLeaveMenu or hasShiftMenu or hasAttendanceMenu or hasPayrollMenu or hasReportMenu}" />
 
@@ -390,6 +394,10 @@
                     <c:if test="${hasOtView}">
                         <c:url var="menuUrl" value="${otViewUrl}" />
                         <a class="${currentPath == otViewUrl ? 'sidebar-subitem active' : 'sidebar-subitem'}" href="${menuUrl}">Tăng ca</a>
+                    </c:if>
+                    <c:if test="${hasOtMyView}">
+                        <c:url var="menuUrl" value="${otMyViewUrl}" />
+                        <a class="${currentPath == otMyViewUrl ? 'sidebar-subitem active' : 'sidebar-subitem'}" href="${menuUrl}">Tăng ca của tôi</a>
                     </c:if>
                 </div>
             </div>

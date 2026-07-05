@@ -68,19 +68,48 @@
                         </p>
                     </div>
                     <c:if test="${canRequest}">
-                        <form id="otImportForm" action="${pageContext.request.contextPath}/overtime-request"
-                              method="POST" enctype="multipart/form-data" style="display:none;">
-                            <input type="hidden" name="year" value="${selectedYear}" />
-                            <input type="hidden" name="month" value="${selectedMonth}" />
-                            <input type="file" name="excelFile" id="otImportFileInput" accept=".xlsx" />
-                        </form>
                         <button type="button"
                                 class="btn-primary-gradient text-decoration-none px-3 py-2 d-flex align-items-center gap-2 shadow-sm border-0 flex-shrink-0"
-                                onclick="document.getElementById('otImportFileInput').click()">
+                                onclick="document.getElementById('otImportModal').classList.add('show')">
                             <span class="material-symbols-outlined" style="font-size: 1.125rem;">upload_file</span>
                             Tạo yêu cầu OT
                         </button>
                     </c:if>
+                </div>
+
+                <div class="row g-4 mb-4">
+                    <div class="col-md-6">
+                        <div class="card-premium overflow-hidden h-100">
+                            <div class="card-body p-3">
+                                <div class="d-flex align-items-center gap-3">
+                                    <div class="rounded-circle d-flex align-items-center justify-content-center"
+                                         style="width: 48px; height: 48px; background: linear-gradient(135deg, #e0e7ff, #c7d2fe);">
+                                        <span class="material-symbols-outlined" style="color: #3730a3;">calendar_month</span>
+                                    </div>
+                                    <div>
+                                        <p class="text-on-surface-variant mb-0" style="font-size: 0.75rem;">Số ngày có OT</p>
+                                        <h3 class="mb-0 fw-bold text-primary">${otDays}</h3>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card-premium overflow-hidden h-100">
+                            <div class="card-body p-3">
+                                <div class="d-flex align-items-center gap-3">
+                                    <div class="rounded-circle d-flex align-items-center justify-content-center"
+                                         style="width: 48px; height: 48px; background: linear-gradient(135deg, #dcfce7, #bbf7d0);">
+                                        <span class="material-symbols-outlined" style="color: #166534;">schedule</span>
+                                    </div>
+                                    <div>
+                                        <p class="text-on-surface-variant mb-0" style="font-size: 0.75rem;">Tổng số giờ OT trong tháng</p>
+                                        <h3 class="mb-0 fw-bold" style="color: #166534;"><fmt:formatNumber value="${totalHoursAll}" pattern="0.##" />h</h3>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="card-premium overflow-hidden d-flex flex-column mb-4 w-100">
@@ -100,6 +129,19 @@
                                 <input type="number" name="year" value="${selectedYear}"
                                        class="form-control input-premium" min="2020" max="2100" />
                             </div>
+                            <c:if test="${viewAll}">
+                                <div style="width: 160px;">
+                                    <label class="form-label text-on-surface fw-medium mb-1">Phòng ban</label>
+                                    <select name="departmentId" class="form-select input-premium">
+                                        <option value="">Tất cả phòng ban</option>
+                                        <c:forEach var="dept" items="${departments}">
+                                            <option value="${dept.id}" ${selectedDepartmentId == dept.id ? 'selected' : ''}>
+                                                <c:out value="${dept.name}" />
+                                            </option>
+                                        </c:forEach>
+                                    </select>
+                                </div>
+                            </c:if>
                             <div style="width: 130px;">
                                 <label class="form-label text-on-surface fw-medium mb-1">Tìm nhân viên</label>
                                 <input type="text" name="keyword" value="${keyword}"
@@ -107,6 +149,20 @@
                             </div>
                             <button type="submit" class="btn btn-primary px-4">Xem</button>
                         </form>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center p-3 bg-surface border-bottom border-outline-variant">
+                        <h5 class="mb-0 fw-semibold">Bảng OT tháng ${selectedMonth}/${selectedYear}</h5>
+                        <div class="d-flex gap-2">
+                            <a href="${pageContext.request.contextPath}/overtime-list?year=${prevYear}&month=${prevMonth}&keyword=${keyword}&departmentId=${selectedDepartmentId}"
+                               class="btn btn-sm btn-light border text-on-surface-variant">
+                                <span class="material-symbols-outlined">chevron_left</span>
+                            </a>
+                            <a href="${pageContext.request.contextPath}/overtime-list?year=${nextYear}&month=${nextMonth}&keyword=${keyword}&departmentId=${selectedDepartmentId}"
+                               class="btn btn-sm btn-light border text-on-surface-variant">
+                                <span class="material-symbols-outlined">chevron_right</span>
+                            </a>
+                        </div>
                     </div>
 
                     <div class="table-responsive">
@@ -208,15 +264,71 @@
         .ot-cell-link:hover {
             text-decoration: underline;
         }
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-overlay.show {
+            display: flex;
+        }
+        .modal-content {
+            background: var(--surface, #fff);
+            border-radius: 12px;
+            max-width: 480px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
     </style>
 
     <script>
-        document.getElementById('otImportFileInput')?.addEventListener('change', function () {
-            if (this.files && this.files.length > 0) {
-                document.getElementById('otImportForm').submit();
+        function closeOtModalOnOverlay(event) {
+            if (event.target.id === 'otImportModal') {
+                document.getElementById('otImportModal').classList.remove('show');
             }
-        });
+        }
     </script>
+
+    <c:if test="${canRequest}">
+        <div id="otImportModal" class="modal-overlay" onclick="closeOtModalOnOverlay(event)">
+            <div class="modal-content card-premium">
+                <div class="d-flex justify-content-between align-items-center p-3 border-bottom">
+                    <h5 class="mb-0">Import Excel</h5>
+                    <button type="button" class="btn-close" onclick="document.getElementById('otImportModal').classList.remove('show')"></button>
+                </div>
+                <div class="p-4">
+                    <form action="${pageContext.request.contextPath}/overtime-request" method="POST"
+                          enctype="multipart/form-data">
+                        <input type="hidden" name="year" value="${selectedYear}" />
+                        <input type="hidden" name="month" value="${selectedMonth}" />
+                        <div class="mb-3">
+                            <label class="form-label text-on-surface fw-medium mb-2">Chọn file Excel (.xlsx)</label>
+                            <input type="file" name="excelFile" class="form-control" accept=".xlsx" required />
+                        </div>
+                        <div class="d-flex gap-2 justify-content-end mt-4">
+                            <button type="button" class="btn btn-light border"
+                                    onclick="document.getElementById('otImportModal').classList.remove('show')">
+                                Hủy
+                            </button>
+                            <button type="submit" class="btn btn-primary">
+                                <span class="material-symbols-outlined me-1">upload</span>
+                                Import
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </c:if>
 
     <jsp:include page="/components/foot.jsp" />
 </body>

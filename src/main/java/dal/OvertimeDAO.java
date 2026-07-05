@@ -135,6 +135,33 @@ public class OvertimeDAO {
 	}
 
 	/**
+	 * Lấy toàn bộ OT đang hiệu lực (APPROVED) của CHÍNH 1 nhân viên trong 1 tháng,
+	 * dùng cho trang "Tăng ca của tôi" (nhân viên tự xem lịch OT cá nhân dạng
+	 * calendar).
+	 */
+	public List<OvertimeRecord> getActiveByUserAndMonth(Long userId, int year, int month) {
+		List<OvertimeRecord> list = new ArrayList<>();
+		String sql = SELECT_BASE
+				+ " WHERE ot.user_id = ? AND ot.status = 'APPROVED' AND YEAR(ot.date) = ? AND MONTH(ot.date) = ?"
+				+ " ORDER BY ot.date ASC";
+
+		try (Connection conn = DBContext.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+			ps.setLong(1, userId);
+			ps.setInt(2, year);
+			ps.setInt(3, month);
+			try (ResultSet rs = ps.executeQuery()) {
+				while (rs.next()) {
+					list.add(mapRow(rs));
+				}
+			}
+		} catch (SQLException e) {
+			System.err.println("OvertimeDAO.getActiveByUserAndMonth() ERROR: " + e.getMessage());
+		}
+
+		return list;
+	}
+
+	/**
 	 * Lấy toàn bộ OT đang hiệu lực (APPROVED) trong 1 tháng để hiển thị dạng lưới
 	 * (nhân viên x ngày). Nếu managerId != null thì chỉ lấy nhân viên dưới quyền
 	 * quản đốc đó; null nghĩa là xem toàn bộ (dành cho HR/Sysadmin xem, không

@@ -1,5 +1,6 @@
 package controller.overtime;
 
+import dal.DepartmentDAO;
 import dal.OvertimeDAO;
 import dal.UserDAO;
 import jakarta.servlet.ServletException;
@@ -16,6 +17,7 @@ import java.time.ZoneId;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import model.Department;
 import model.OvertimeRecord;
 import model.Permission;
 import model.User;
@@ -33,6 +35,7 @@ public class OvertimeListServlet extends HttpServlet {
 
 	private final OvertimeDAO overtimeDAO = new OvertimeDAO();
 	private final UserDAO userDAO = new UserDAO();
+	private final DepartmentDAO departmentDAO = new DepartmentDAO();
 
 	@Override
 	protected void doGet(HttpServletRequest request, HttpServletResponse response)
@@ -70,6 +73,8 @@ public class OvertimeListServlet extends HttpServlet {
 			}
 		}
 
+		Long departmentId = parseLong(request.getParameter("departmentId"));
+
 		// authRank <= 2 (EMPLOYEE/PRODUCTION_SUPERVISOR): chỉ xem nhân viên dưới quyền
 		// mình.
 		// Rank cao hơn (HR_MANAGER/SYSADMIN): xem toàn bộ, chỉ để theo dõi (không có
@@ -80,7 +85,14 @@ public class OvertimeListServlet extends HttpServlet {
 		boolean canRequest = hasPermission(session, "OT_REQUEST");
 		boolean canUpdate = hasPermission(session, "OT_UPDATE");
 
-		List<User> employees = userDAO.searchUsers(keyword, null, null, true, null, 0, 1000, managerId);
+		// Filter phòng ban chỉ có ý nghĩa khi xem toàn bộ (HR/Sysadmin); quản đốc
+		// đã bị scope theo managerId nên bỏ qua departmentId nếu có truyền lên.
+		boolean viewAll = managerId == null;
+		Long effectiveDepartmentId = viewAll ? departmentId : null;
+		List<Department> departments = viewAll ? departmentDAO.getActiveDepartments() : null;
+
+		List<User> employees = userDAO.searchUsers(keyword, effectiveDepartmentId, null, true, null, 0, 1000,
+				managerId);
 
 		YearMonth yearMonth = YearMonth.of(year, month);
 		int daysInMonth = yearMonth.lengthOfMonth();
@@ -116,6 +128,32 @@ public class OvertimeListServlet extends HttpServlet {
 		request.setAttribute("keyword", keyword);
 		request.setAttribute("canRequest", canRequest);
 		request.setAttribute("canUpdate", canUpdate);
+		request.setAttribute("viewAll", viewAll);
+		request.setAttribute("departments", departments);
+		request.setAttribute("selectedDepartmentId", effectiveDepartmentId);
+
+		// Thống kê nhanh + mũi tên tiến/lùi tháng (giống trang my-overtime)
+		BigDecimal totalHoursAll = BigDecimal.ZERO;
+		for (BigDecimal t : totals.values()) {
+			totalHoursAll = totalHoursAll.add(t);
+		}
+		// "Số ngày có OT" = số ngày lịch riêng biệt có ít nhất 1 người OT,
+		// không cộng dồn theo số lượt nhân viên OT trong cùng 1 ngày.
+		java.util.Set<java.sql.Date> distinctOtDates = new java.util.HashSet<>();
+		for (OvertimeRecord r : records) {
+			distinctOtDates.add(r.getDate());
+		}
+		int prevMonth = month == 1 ? 12 : month - 1;
+		int prevYear = month == 1 ? year - 1 : year;
+		int nextMonth = month == 12 ? 1 : month + 1;
+		int nextYear = month == 12 ? year + 1 : year;
+
+		request.setAttribute("otDays", distinctOtDates.size());
+		request.setAttribute("totalHoursAll", totalHoursAll);
+		request.setAttribute("prevYear", prevYear);
+		request.setAttribute("prevMonth", prevMonth);
+		request.setAttribute("nextYear", nextYear);
+		request.setAttribute("nextMonth", nextMonth);
 
 		request.getRequestDispatcher("/views/overtime/overtime-list.jsp").forward(request, response);
 	}
@@ -142,6 +180,17 @@ public class OvertimeListServlet extends HttpServlet {
 			return Integer.parseInt(value.trim());
 		} catch (NumberFormatException e) {
 			return defaultValue;
+		}
+	}
+
+	private Long parseLong(String value) {
+		if (value == null || value.isBlank()) {
+			return null;
+		}
+		try {
+			return Long.parseLong(value.trim());
+		} catch (NumberFormatException e) {
+			return null;
 		}
 	}
 

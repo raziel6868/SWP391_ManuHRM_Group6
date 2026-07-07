@@ -9,6 +9,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.sql.Date;
 import java.sql.Time;
+import java.time.DayOfWeek;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -19,6 +20,7 @@ import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import model.AttendanceRecord;
@@ -33,6 +35,20 @@ import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.ss.usermodel.WorkbookFactory;
 
+/**
+ * Import Excel chấm công. Khác với bản cũ (all-or-nothing, xóa sạch cả tháng
+ * rồi insert lại từ đầu), file này xử lý ĐỘC LẬP từng dòng — giống cách làm với
+ * OvertimeImportUtil: - Dòng hợp lệ, (nhân viên, ngày) CHƯA có trong DB →
+ * insert. - Dòng mà (nhân viên, ngày) đã có trong DB và giờ checkin/checkout
+ * GIỐNG HỆT → bỏ qua, tính là "trùng" (không phải lỗi). - Dòng mà (nhân viên,
+ * ngày) đã có trong DB nhưng giờ KHÁC → conflict, gộp chung vào nhóm lỗi (không
+ * ghi đè dữ liệu cũ) — muốn sửa dữ liệu đã có phải dùng chức năng "Yêu cầu
+ * chỉnh sửa công", không sửa qua import.
+ *
+ * Không còn phụ thuộc phân ca (shift_assignments) — công ty đã bỏ phân ca, luôn
+ * dùng ca mặc định (findDefaultShift(), là ca "OFFICE" 08:00–17:00, break 60
+ * phút) để tính trạng thái đi muộn và giờ công.
+ */
 public class AttendanceImportUtil {
 
 	private static final int LATE_THRESHOLD_MINUTES = 15;
@@ -55,12 +71,22 @@ public class AttendanceImportUtil {
 		this.overtimeDAO = overtimeDAO;
 	}
 
-	public List<AttendanceRecord> parseExcel(InputStream inputStream, int year, int month)
+	/**
+	 * Đọc và xử lý file Excel chấm công. year/month là kỳ đã chọn trên UI (phải
+	 * chưa chốt công — servlet kiểm tra trước khi gọi hàm này).
+	 *
+	 * Chỉ ném AttendanceImportException khi lỗi ở cấp toàn bộ file (không đọc được
+	 * / không có dòng dữ liệu nào). Lỗi từng dòng không làm dừng việc xử lý các
+	 * dòng còn lại — được gom vào AttendanceImportResult.
+	 */
+	public AttendanceImportResult importExcel(InputStream inputStream, int year, int month)
 			throws AttendanceImportException {
-		List<AttendanceRecord> records = new ArrayList<>();
-		List<String> errors = new ArrayList<>();
+		AttendanceImportResult result = new AttendanceImportResult();
 		Set<String> importedKeys = new HashSet<>();
 		String importBatchId = UUID.randomUUID().toString();
+		boolean hasAnyDataRow = false;
+
+		Shift shift = attendanceDAO.findDefaultShift();
 
 		try (Workbook workbook = WorkbookFactory.create(inputStream)) {
 			Sheet sheet = workbook.getSheetAt(0);
@@ -71,89 +97,116 @@ public class AttendanceImportUtil {
 				if (row == null || isBlankRow(row, formatter)) {
 					continue;
 				}
-
+				hasAnyDataRow = true;
 				int displayRow = rowIndex + 1;
+				result.totalDataRows++;
+
 				String employeeCode = readText(row.getCell(0), formatter);
 				LocalDate date = readDate(row.getCell(1), formatter);
 				LocalTime checkIn = readTime(row.getCell(2), formatter);
 				LocalTime checkOut = readTime(row.getCell(3), formatter);
 
-				// Chỉ bắt buộc employeeCode và date
-				validateRequired(errors, displayRow, employeeCode, date);
-				if (employeeCode == null || date == null) {
+				if (employeeCode == null) {
+					result.addError(displayRow, "Thiếu mã nhân viên.");
+					continue;
+				}
+				if (date == null) {
+					result.addError(displayRow, "Ngày không hợp lệ. Định dạng gợi ý: yyyy-MM-dd.");
 					continue;
 				}
 
-				// Kiem tra ngay co thuoc dung thang/nam duoc chon khong
-				// Phai check som truoc conflict check de tranh bao conflict cua thang khac
 				if (date.getYear() != year || date.getMonthValue() != month) {
-					errors.add("Dong " + displayRow + ": Ngay " + date + " khong thuoc thang " + month + "/" + year
-							+ " da chon.");
+					result.addError(displayRow,
+							"Ngày " + date + " không thuộc tháng " + month + "/" + year + " đã chọn.");
 					continue;
 				}
 
-				// checkIn có giá trị → checkOut bắt buộc phải có và phải sau checkIn
-				// checkIn null → ABSENT, hợp lệ, không báo lỗi
+				LocalDate today = LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh"));
+				if (date.isAfter(today)) {
+					result.addError(displayRow,
+							"Ngày " + date + " là ngày trong tương lai, chưa thể có dữ liệu chấm công.");
+					continue;
+				}
+
+				DayOfWeek dow = date.getDayOfWeek();
+				if (dow == DayOfWeek.SATURDAY || dow == DayOfWeek.SUNDAY) {
+					result.addError(displayRow,
+							"Ngày " + date + " là " + (dow == DayOfWeek.SATURDAY ? "Thứ 7" : "Chủ nhật")
+									+ ", công ty làm việc T2-T6 nên không thể nhập chấm công ngày này.");
+					continue;
+				}
+
+				// checkIn có giá trị → checkOut bắt buộc phải có và phải sau checkIn.
+				// checkIn null → ABSENT, hợp lệ, không báo lỗi.
 				if (checkIn != null) {
 					if (checkOut == null) {
-						errors.add("Dòng " + displayRow + ": Có giờ vào nhưng thiếu giờ ra. Định dạng gợi ý: HH:mm.");
+						result.addError(displayRow, "Có giờ vào nhưng thiếu giờ ra. Định dạng gợi ý: HH:mm.");
 						continue;
 					}
 					if (!checkOut.isAfter(checkIn)) {
-						errors.add("Dòng " + displayRow + ": Giờ ra phải lớn hơn giờ vào.");
+						result.addError(displayRow, "Giờ ra phải lớn hơn giờ vào.");
 						continue;
 					}
 				}
 
 				String key = employeeCode.toUpperCase() + "|" + date;
 				if (!importedKeys.add(key)) {
-					errors.add("Dòng " + displayRow + ": Trùng dữ liệu nhân viên/ngày trong file.");
+					result.addError(displayRow, "Trùng dữ liệu nhân viên/ngày với 1 dòng khác trong cùng file.");
 					continue;
 				}
 
 				Long userId = attendanceDAO.findActiveUserIdByEmployeeCode(employeeCode);
 				if (userId == null) {
-					errors.add("Dòng " + displayRow + ": Không tìm thấy nhân viên đang hoạt động có mã " + employeeCode
-							+ ".");
+					result.addError(displayRow, "Không tìm thấy nhân viên đang hoạt động có mã " + employeeCode + ".");
+					continue;
+				}
+
+				if (shift == null) {
+					result.addError(displayRow, "Không tìm được ca làm mặc định nào trong hệ thống.");
 					continue;
 				}
 
 				Date sqlDate = Date.valueOf(date);
+				Time newCheckIn = checkIn != null ? Time.valueOf(checkIn) : null;
+				Time newCheckOut = checkOut != null ? Time.valueOf(checkOut) : null;
 
-				// Tim ca duoc phan cong chinh xac (khong fallback default shift)
-				Shift assignedShift = attendanceDAO.findAssignedShiftOnly(userId, sqlDate);
-
-				// Conflict 3: Co checkin nhung khong co shift assignment
-				if (assignedShift == null && checkIn != null) {
-					errors.add("Dòng " + displayRow + " [" + employeeCode + " - " + date
-							+ "]: Conflict ATTENDANCE_WITHOUT_SHIFT_ASSIGNMENT — nhân viên không có phân ca"
-							+ " ngày này nhưng file Excel vẫn có dữ liệu chấm công."
-							+ " Vui lòng xoá dòng này khỏi file Excel rồi import lại.");
+				// ── Đã có dữ liệu chấm công ngày này trong DB chưa? ──
+				AttendanceRecord existing = attendanceDAO.findByUserAndDate(userId, sqlDate);
+				if (existing != null) {
+					boolean same = Objects.equals(existing.getCheckIn(), newCheckIn)
+							&& Objects.equals(existing.getCheckOut(), newCheckOut);
+					if (same) {
+						result.addDuplicate(displayRow, "Nhân viên " + employeeCode + " đã có chấm công ngày " + date
+								+ " giống hệt dữ liệu này trong hệ thống.");
+					} else {
+						result.addError(displayRow,
+								"Nhân viên " + employeeCode + " đã có chấm công ngày " + date
+										+ " nhưng KHÁC dữ liệu trong file (giờ vào/ra không khớp)."
+										+ " Không ghi đè — nếu cần sửa, dùng chức năng \"Yêu cầu chỉnh sửa công\".");
+					}
 					continue;
 				}
 
-				// Khong co shift assignment va khong co checkin: ghi ABSENT voi default shift
-				Shift shift = assignedShift != null ? assignedShift : attendanceDAO.findDefaultShift();
-				if (shift == null) {
-					errors.add("Dòng " + displayRow + ": Không tìm được ca làm nào trong hệ thống.");
+				// ── Conflict: có leave APPROVED nhưng vẫn có chấm công ──
+				if (checkIn != null && leaveRequestDAO.hasApprovedLeaveOnDate(userId, sqlDate)) {
+					result.addError(displayRow, "Nhân viên " + employeeCode + " đã có đơn nghỉ phép được duyệt ngày "
+							+ date + " nhưng file vẫn có dữ liệu chấm công.");
 					continue;
 				}
 
-				// Conflict 4: Co shift assignment nhung checkin sai khung gio ca (+/- 2 tieng)
-				if (assignedShift != null && checkIn != null && assignedShift.getStartTime() != null
-						&& assignedShift.getEndTime() != null
-						&& !Boolean.TRUE.equals(assignedShift.getIsNightShift())) {
-					LocalTime shiftStart = assignedShift.getStartTime().toLocalTime();
-					LocalTime shiftEnd = assignedShift.getEndTime().toLocalTime();
-					LocalTime windowStart = shiftStart.minusHours(2);
-					boolean wrongShift = checkIn.isBefore(windowStart) || checkIn.isAfter(shiftEnd);
-					if (wrongShift) {
-						errors.add("Dòng " + displayRow + " [" + employeeCode + " - " + date
-								+ "]: Conflict WRONG_SHIFT_ATTENDANCE — nhân viên được phân ca "
-								+ assignedShift.getName() + " (" + shiftStart + "–" + shiftEnd + ")"
-								+ " nhưng giờ vào trong file là " + checkIn + "."
-								+ " Vui lòng kiểm tra lại dữ liệu trong file Excel.");
-						continue;
+				// ── Conflict: có OT APPROVED nhưng checkout không đủ muộn ──
+				if (checkIn != null && checkOut != null) {
+					OvertimeRecord approvedOT = overtimeDAO.findApprovedOTForUserAndDate(userId, sqlDate);
+					if (approvedOT != null && approvedOT.getApprovedHours() != null && shift.getEndTime() != null) {
+						long otMinutes = approvedOT.getApprovedHours().multiply(BigDecimal.valueOf(60)).longValue();
+						LocalTime expectedCheckout = shift.getEndTime().toLocalTime().plusMinutes(otMinutes);
+						if (checkOut.isBefore(expectedCheckout)) {
+							result.addError(displayRow,
+									"Nhân viên " + employeeCode + " có OT " + approvedOT.getApprovedHours()
+											+ "h được duyệt ngày " + date + " nhưng giờ ra trong file là " + checkOut
+											+ " (cần đến " + expectedCheckout + " trở đi).");
+							continue;
+						}
 					}
 				}
 
@@ -162,66 +215,32 @@ public class AttendanceImportUtil {
 				record.setEmployeeCode(employeeCode);
 				record.setDate(sqlDate);
 				record.setShiftId(shift.getId());
-				record.setCheckIn(checkIn != null ? Time.valueOf(checkIn) : null);
-				record.setCheckOut(checkOut != null ? Time.valueOf(checkOut) : null);
+				record.setCheckIn(newCheckIn);
+				record.setCheckOut(newCheckOut);
 				record.setWorkingHours(checkIn != null && checkOut != null
 						? calculateWorkingHours(checkIn, checkOut, shift.getBreakMinutes())
 						: null);
 				record.setStatus(resolveStatus(checkIn, shift.getStartTime()));
 				record.setImportBatchId(importBatchId);
 
-				// ── Conflict check 1: Có leave APPROVED nhưng vẫn có attendance ──
-				if (checkIn != null && leaveRequestDAO.hasApprovedLeaveOnDate(userId, sqlDate)) {
-					errors.add("Dòng " + displayRow + " [" + employeeCode + " - " + date
-							+ "]: Conflict ATTENDANCE_ON_APPROVED_LEAVE — nhân viên đã có đơn nghỉ phép"
-							+ " được duyệt ngày này nhưng file Excel vẫn có dữ liệu chấm công."
-							+ " Vui lòng xoá dòng này khỏi file Excel rồi import lại.");
-					continue;
+				boolean inserted = attendanceDAO.insert(record);
+				if (inserted) {
+					result.successCount++;
+				} else {
+					result.addError(displayRow, "Không thể lưu dòng này. Vui lòng thử lại.");
 				}
-
-				// ── Conflict check 2: Có OT APPROVED nhưng checkout không đủ muộn ──
-				if (checkIn != null && checkOut != null) {
-					OvertimeRecord approvedOT = overtimeDAO.findApprovedOTForUserAndDate(userId, sqlDate);
-					if (approvedOT != null && approvedOT.getApprovedHours() != null && shift.getEndTime() != null) {
-						long otMinutes = approvedOT.getApprovedHours().multiply(BigDecimal.valueOf(60)).longValue();
-						LocalTime expectedCheckout = shift.getEndTime().toLocalTime().plusMinutes(otMinutes);
-						if (checkOut.isBefore(expectedCheckout)) {
-							errors.add("Dòng " + displayRow + " [" + employeeCode + " - " + date
-									+ "]: Conflict APPROVED_OT_WITHOUT_MATCHING_ATTENDANCE — nhân viên có OT "
-									+ approvedOT.getApprovedHours() + "h được duyệt nhưng giờ ra trong file là "
-									+ checkOut + " (cần đến " + expectedCheckout + " trở đi)."
-									+ " Vui lòng sửa lại giờ ra trong file Excel rồi import lại.");
-							continue;
-						}
-					}
-				}
-
-				records.add(record);
 			}
 		} catch (IOException e) {
-			throw new AttendanceImportException(
-					List.of("Không thể đọc file Excel. Vui lòng kiểm tra lại file tải lên."));
+			throw new AttendanceImportException("Không thể đọc file Excel. Vui lòng kiểm tra lại file tải lên.");
 		} catch (Exception e) {
-			throw new AttendanceImportException(List.of("File Excel không hợp lệ hoặc không đúng định dạng .xlsx."));
+			throw new AttendanceImportException("File Excel không hợp lệ hoặc không đúng định dạng .xlsx.");
 		}
 
-		if (!errors.isEmpty()) {
-			throw new AttendanceImportException(errors);
-		}
-		if (records.isEmpty()) {
-			throw new AttendanceImportException(List.of("File không có dòng dữ liệu hợp lệ để import."));
+		if (!hasAnyDataRow) {
+			throw new AttendanceImportException("File không có dòng dữ liệu nào để import.");
 		}
 
-		return records;
-	}
-
-	private void validateRequired(List<String> errors, int rowNumber, String employeeCode, LocalDate date) {
-		if (employeeCode == null) {
-			errors.add("Dòng " + rowNumber + ": Thiếu mã nhân viên.");
-		}
-		if (date == null) {
-			errors.add("Dòng " + rowNumber + ": Ngày không hợp lệ. Định dạng gợi ý: yyyy-MM-dd.");
-		}
+		return result;
 	}
 
 	private boolean isBlankRow(Row row, DataFormatter formatter) {
@@ -304,6 +323,10 @@ public class AttendanceImportUtil {
 		return BigDecimal.valueOf(minutes).divide(BigDecimal.valueOf(60), 2, RoundingMode.HALF_UP);
 	}
 
+	/**
+	 * Ca mặc định (findDefaultShift) luôn là "OFFICE" 08:00–17:00 → đi muộn quá 15
+	 * phút mới tính LATE.
+	 */
 	private String resolveStatus(LocalTime checkIn, Time shiftStartTime) {
 		if (checkIn == null) {
 			return "ABSENT";
@@ -315,16 +338,53 @@ public class AttendanceImportUtil {
 		return checkIn.isAfter(lateTime) ? "LATE" : "NORMAL";
 	}
 
-	public static class AttendanceImportException extends Exception {
-		private final List<String> errors;
+	/**
+	 * Kết quả import: đếm số dòng thành công / trùng / lỗi (bao gồm cả conflict) +
+	 * chi tiết.
+	 */
+	public static class AttendanceImportResult {
+		private int totalDataRows;
+		private int successCount;
+		private final List<String> errorMessages = new ArrayList<>();
+		private final List<String> duplicateMessages = new ArrayList<>();
 
-		public AttendanceImportException(List<String> errors) {
-			super("Attendance import validation failed");
-			this.errors = errors;
+		public void addError(int row, String message) {
+			errorMessages.add("Dòng " + row + ": " + message);
 		}
 
-		public List<String> getErrors() {
-			return errors;
+		public void addDuplicate(int row, String message) {
+			duplicateMessages.add("Dòng " + row + ": " + message);
+		}
+
+		public int getTotalDataRows() {
+			return totalDataRows;
+		}
+
+		public int getSuccessCount() {
+			return successCount;
+		}
+
+		public int getDuplicateCount() {
+			return duplicateMessages.size();
+		}
+
+		public int getErrorCount() {
+			return errorMessages.size();
+		}
+
+		public List<String> getErrorMessages() {
+			return errorMessages;
+		}
+
+		public List<String> getDuplicateMessages() {
+			return duplicateMessages;
+		}
+	}
+
+	/** Chỉ ném khi lỗi ở cấp toàn bộ file (không đọc được / không có dữ liệu). */
+	public static class AttendanceImportException extends Exception {
+		public AttendanceImportException(String message) {
+			super(message);
 		}
 	}
 }

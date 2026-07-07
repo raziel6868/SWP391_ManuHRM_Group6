@@ -1,5 +1,6 @@
 package controller.leaverequest;
 
+import dal.AttendanceDAO;
 import dal.DBContext;
 import dal.LeaveBalanceDAO;
 import dal.LeaveRequestDAO;
@@ -22,6 +23,7 @@ public class LeaveRequestApproveServlet extends HttpServlet {
 
 	private final LeaveBalanceDAO leaveBalanceDAO = new LeaveBalanceDAO();
 	private final LeaveRequestDAO leaveRequestDAO = new LeaveRequestDAO();
+	private final AttendanceDAO attendanceDAO = new AttendanceDAO();
 
 	@Override
 	protected void doPost(HttpServletRequest request, HttpServletResponse response)
@@ -76,6 +78,11 @@ public class LeaveRequestApproveServlet extends HttpServlet {
 		}
 		if (leaveRequest.getStartDate() == null || leaveRequest.getDays() == null) {
 			return "Dữ liệu đơn nghỉ phép không hợp lệ.";
+		}
+		if (attendanceDAO.hasAnyAttendanceInRange(leaveRequest.getUserId(), leaveRequest.getStartDate(),
+				leaveRequest.getEndDate())) {
+			return "Nhân viên đã có dữ liệu chấm công trong khoảng ngày xin nghỉ này — không thể duyệt."
+					+ " Vui lòng kiểm tra lại chấm công trước khi duyệt đơn.";
 		}
 		return null;
 	}

@@ -1,5 +1,6 @@
 package controller.overtime;
 
+import dal.AttendanceDAO;
 import dal.MonthlySheetDAO;
 import dal.OvertimeDAO;
 import dal.UserDAO;
@@ -11,7 +12,9 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.time.LocalTime;
 import java.util.List;
+import model.AttendanceRecord;
 import model.OvertimeRecord;
 import model.Permission;
 import model.User;
@@ -31,10 +34,12 @@ public class OvertimeEditServlet extends HttpServlet {
 	private static final BigDecimal MAX_HOURS_PER_DAY = new BigDecimal("3");
 	private static final BigDecimal MAX_HOURS_PER_MONTH = new BigDecimal("40");
 	private static final BigDecimal MAX_HOURS_PER_YEAR = new BigDecimal("200");
+	private static final LocalTime STANDARD_SHIFT_END = LocalTime.of(17, 0);
 
 	private final OvertimeDAO overtimeDAO = new OvertimeDAO();
 	private final UserDAO userDAO = new UserDAO();
 	private final MonthlySheetDAO monthlySheetDAO = new MonthlySheetDAO();
+	private final AttendanceDAO attendanceDAO = new AttendanceDAO();
 
 	@Override
 	protected void doGet(HttpServletRequest request, HttpServletResponse response)
@@ -140,6 +145,28 @@ public class OvertimeEditServlet extends HttpServlet {
 					+ "h/ngày (ca hành chính 7:00-17:00, OT không được quá 20:00).");
 			response.sendRedirect(request.getContextPath() + "/overtime-edit?id=" + id);
 			return;
+		}
+
+		// Nếu ngày đó đã có chấm công thật, re-check giống lúc tạo (validate 2
+		// chiều với AttendanceImportUtil để tránh trạng thái mâu thuẫn).
+		AttendanceRecord existingAttendance = attendanceDAO.findByUserAndDate(record.getUserId(), record.getDate());
+		if (existingAttendance != null && existingAttendance.getCheckIn() == null) {
+			session.setAttribute("errorMsg",
+					"Nhân viên được ghi nhận VẮNG MẶT ngày " + record.getDate() + ", không thể có OT ngày này.");
+			response.sendRedirect(request.getContextPath() + "/overtime-edit?id=" + id);
+			return;
+		}
+		if (existingAttendance != null && existingAttendance.getCheckOut() != null) {
+			long otMinutes = hours.multiply(BigDecimal.valueOf(60)).longValue();
+			LocalTime expectedCheckout = STANDARD_SHIFT_END.plusMinutes(otMinutes);
+			if (existingAttendance.getCheckOut().toLocalTime().isBefore(expectedCheckout)) {
+				session.setAttribute("errorMsg",
+						"Nhân viên đã chấm công ra lúc " + existingAttendance.getCheckOut().toLocalTime() + " ngày "
+								+ record.getDate() + ", không đủ hỗ trợ " + hours + "h OT (cần ra từ "
+								+ expectedCheckout + " trở đi).");
+				response.sendRedirect(request.getContextPath() + "/overtime-edit?id=" + id);
+				return;
+			}
 		}
 
 		BigDecimal monthTotal = overtimeDAO.sumHoursInMonth(record.getUserId(), recYear, recMonth, id);

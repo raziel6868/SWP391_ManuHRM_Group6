@@ -1,5 +1,6 @@
 package util;
 
+import dal.AttendanceDAO;
 import dal.MonthlySheetDAO;
 import dal.OvertimeDAO;
 import dal.UserDAO;
@@ -9,6 +10,7 @@ import java.math.BigDecimal;
 import java.sql.Date;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
@@ -16,6 +18,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import model.AttendanceRecord;
 import model.User;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellType;
@@ -46,19 +49,23 @@ public class OvertimeImportUtil {
 	private static final BigDecimal MAX_HOURS_PER_DAY = new BigDecimal("3");
 	private static final BigDecimal MAX_HOURS_PER_MONTH = new BigDecimal("40");
 	private static final BigDecimal MAX_HOURS_PER_YEAR = new BigDecimal("200");
+	private static final LocalTime STANDARD_SHIFT_END = LocalTime.of(17, 0);
 
 	private final UserDAO userDAO;
 	private final OvertimeDAO overtimeDAO;
 	private final MonthlySheetDAO monthlySheetDAO;
+	private final AttendanceDAO attendanceDAO;
 
 	public OvertimeImportUtil() {
-		this(new UserDAO(), new OvertimeDAO(), new MonthlySheetDAO());
+		this(new UserDAO(), new OvertimeDAO(), new MonthlySheetDAO(), new AttendanceDAO());
 	}
 
-	public OvertimeImportUtil(UserDAO userDAO, OvertimeDAO overtimeDAO, MonthlySheetDAO monthlySheetDAO) {
+	public OvertimeImportUtil(UserDAO userDAO, OvertimeDAO overtimeDAO, MonthlySheetDAO monthlySheetDAO,
+			AttendanceDAO attendanceDAO) {
 		this.userDAO = userDAO;
 		this.overtimeDAO = overtimeDAO;
 		this.monthlySheetDAO = monthlySheetDAO;
+		this.attendanceDAO = attendanceDAO;
 	}
 
 	/**
@@ -160,6 +167,26 @@ public class OvertimeImportUtil {
 					result.addDuplicate(displayRow, "Nhân viên " + targetUser.getFullName() + " (" + employeeCode
 							+ ") đã có OT ngày " + date + " trong hệ thống.");
 					continue;
+				}
+
+				// Nếu ngày đó đã có chấm công thật (đã import trước đó), giờ ra phải đủ
+				// hỗ trợ số giờ OT đang xin (ngược lại với conflict check bên
+				// AttendanceImportUtil — validate 2 chiều để tránh trạng thái mâu thuẫn).
+				AttendanceRecord existingAttendance = attendanceDAO.findByUserAndDate(targetUser.getId(), sqlDate);
+				if (existingAttendance != null && existingAttendance.getCheckIn() == null) {
+					result.addError(displayRow, "Nhân viên " + employeeCode + " được ghi nhận VẮNG MẶT ngày " + date
+							+ ", không thể tạo OT cho ngày này.");
+					continue;
+				}
+				if (existingAttendance != null && existingAttendance.getCheckOut() != null) {
+					long otMinutes = hours.multiply(BigDecimal.valueOf(60)).longValue();
+					LocalTime expectedCheckout = STANDARD_SHIFT_END.plusMinutes(otMinutes);
+					if (existingAttendance.getCheckOut().toLocalTime().isBefore(expectedCheckout)) {
+						result.addError(displayRow, "Nhân viên " + employeeCode + " đã chấm công ra lúc "
+								+ existingAttendance.getCheckOut().toLocalTime() + " ngày " + date
+								+ ", không đủ hỗ trợ " + hours + "h OT (cần ra từ " + expectedCheckout + " trở đi).");
+						continue;
+					}
 				}
 
 				BigDecimal monthTotal = overtimeDAO.sumHoursInMonth(targetUser.getId(), year, month, null);

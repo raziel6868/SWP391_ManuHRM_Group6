@@ -36,7 +36,7 @@ public class AttendanceCorrectionSupervisorApproveServlet extends HttpServlet {
 		String action = request.getParameter("action");
 		Long id = parseLong(request.getParameter("id"));
 		String rejectReason = request.getParameter("rejectReason");
-		String redirectUrl = request.getContextPath() + "/monthly-sheet-supervisor";
+		String redirectUrl = buildRedirectUrl(request);
 
 		if (id == null) {
 			session.setAttribute("errorMsg", "Yêu cầu điều chỉnh không hợp lệ.");
@@ -58,7 +58,6 @@ public class AttendanceCorrectionSupervisorApproveServlet extends HttpServlet {
 
 		int year = correction.getAttendanceDate().toLocalDate().getYear();
 		int month = correction.getAttendanceDate().toLocalDate().getMonthValue();
-		redirectUrl += "?year=" + year + "&month=" + month;
 
 		if (!monthlySheetDAO.isSupervisorCorrectionWindow(year, month)) {
 			session.setAttribute("errorMsg",
@@ -110,6 +109,24 @@ public class AttendanceCorrectionSupervisorApproveServlet extends HttpServlet {
 		} catch (NumberFormatException e) {
 			return null;
 		}
+	}
+
+	/**
+	 * Luôn quay lại đúng /attendance-correction-list?tab=supervisor, giữ nguyên
+	 * status/page hiện tại (nếu có) để không bị mất filter sau khi duyệt/từ chối.
+	 */
+	private String buildRedirectUrl(HttpServletRequest request) {
+		StringBuilder url = new StringBuilder(request.getContextPath())
+				.append("/attendance-correction-list?tab=supervisor");
+		String status = request.getParameter("status");
+		if (status != null && !status.isBlank()) {
+			url.append("&status=").append(status.trim().toUpperCase());
+		}
+		String page = request.getParameter("page");
+		if (page != null && !page.isBlank()) {
+			url.append("&page=").append(page.trim());
+		}
+		return url.toString();
 	}
 
 	@SuppressWarnings("unchecked")

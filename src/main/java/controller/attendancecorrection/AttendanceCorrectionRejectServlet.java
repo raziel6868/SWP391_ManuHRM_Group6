@@ -38,7 +38,7 @@ public class AttendanceCorrectionRejectServlet extends HttpServlet {
 
 		Long id = parseLong(request.getParameter("id"));
 		String rejectReason = request.getParameter("rejectReason");
-		String redirectUrl = request.getContextPath() + "/attendance-correction-list";
+		String redirectUrl = buildRedirectUrl(request);
 
 		if (id == null) {
 			session.setAttribute("errorMsg", "Yêu cầu điều chỉnh không hợp lệ.");
@@ -99,6 +99,23 @@ public class AttendanceCorrectionRejectServlet extends HttpServlet {
 		} catch (NumberFormatException e) {
 			return null;
 		}
+	}
+
+	/**
+	 * Luôn quay lại đúng /attendance-correction-list?tab=hr, giữ nguyên status/page
+	 * hiện tại (nếu có) để không bị mất filter sau khi từ chối.
+	 */
+	private String buildRedirectUrl(HttpServletRequest request) {
+		StringBuilder url = new StringBuilder(request.getContextPath()).append("/attendance-correction-list?tab=hr");
+		String status = request.getParameter("status");
+		if (status != null && !status.isBlank()) {
+			url.append("&status=").append(status.trim().toUpperCase());
+		}
+		String page = request.getParameter("page");
+		if (page != null && !page.isBlank()) {
+			url.append("&page=").append(page.trim());
+		}
+		return url.toString();
 	}
 
 	@SuppressWarnings("unchecked")

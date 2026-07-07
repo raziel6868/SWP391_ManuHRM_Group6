@@ -32,8 +32,21 @@ public class AttendanceCorrectionListServlet extends HttpServlet {
 		boolean isHR = hasPermission(session, "ATTENDANCE_CORRECTION_APPROVE");
 
 		// Tab đang xem: "supervisor" (quản đốc duyệt bước 1) hoặc "hr" (HR duyệt bước
-		// 2)
-		String tab = "supervisor".equals(request.getParameter("tab")) && isSupervisor ? "supervisor" : "hr";
+		// 2). Nếu tham số tab không hợp lệ hoặc không có, mặc định theo đúng quyền
+		// thực sự của user (ưu tiên supervisor nếu họ có quyền đó) thay vì luôn rơi
+		// về "hr" — tránh trường hợp quản đốc (không có quyền HR) bị đưa nhầm sang
+		// view của HR khi vào trang lần đầu từ menu.
+		String requestedTab = request.getParameter("tab");
+		String tab;
+		if ("supervisor".equals(requestedTab) && isSupervisor) {
+			tab = "supervisor";
+		} else if ("hr".equals(requestedTab) && isHR) {
+			tab = "hr";
+		} else if (isSupervisor) {
+			tab = "supervisor";
+		} else {
+			tab = "hr";
+		}
 
 		String status = normalizeStatus(request.getParameter("status"));
 		int currentPage = parsePage(request.getParameter("page"));

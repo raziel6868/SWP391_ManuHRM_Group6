@@ -1,5 +1,6 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 <%@ taglib prefix="c" uri="jakarta.tags.core" %>
+<%@ taglib prefix="fn" uri="jakarta.tags.functions" %>
 <!DOCTYPE html>
 <html lang="vi">
 <head>
@@ -28,19 +29,15 @@
                     </div>
                 </c:if>
 
-                <c:if test="${not empty importSuccessCount}">
-                    <div class="alert alert-success d-flex align-items-center gap-2 mb-3" role="alert">
-                        <span class="material-symbols-outlined">check_circle</span>
-                        Import xong: <strong class="mx-1">${importSuccessCount}</strong> thành công
-                        <c:if test="${importDuplicateCount > 0}">
-                            , <strong class="mx-1">${importDuplicateCount}</strong> trùng (đã bỏ qua)
-                        </c:if>
-                        <c:if test="${importErrorCount > 0}">
-                            , <strong class="mx-1">${importErrorCount}</strong> lỗi (đã bỏ qua)
-                        </c:if>
+                <c:if test="${importFailed}">
+                    <div class="alert alert-danger d-flex align-items-center gap-2 mb-2" role="alert">
+                        <span class="material-symbols-outlined">error</span>
+                        Import thất bại: <strong class="mx-1">${fn:length(importErrorMessages)}</strong>
+                        / <strong class="mx-1">${importTotalDataRows}</strong> dòng dữ liệu bị lỗi.
+                        Không có dòng nào được lưu — vui lòng sửa file rồi import lại.
                     </div>
                     <c:if test="${not empty importErrorMessages}">
-                        <div class="alert alert-danger mb-2" role="alert" style="max-height: 180px; overflow-y: auto;">
+                        <div class="alert alert-danger mb-2" role="alert" style="max-height: 220px; overflow-y: auto;">
                             <small>
                                 <c:forEach var="err" items="${importErrorMessages}">
                                     <div><c:out value="${err}" /></div>
@@ -48,6 +45,25 @@
                             </small>
                         </div>
                     </c:if>
+                    <c:if test="${not empty importDuplicateMessages}">
+                        <div class="alert mb-3" role="alert" style="background-color:#fef3c7; color:#92400e; max-height: 150px; overflow-y: auto;">
+                            <small>
+                                <c:forEach var="dup" items="${importDuplicateMessages}">
+                                    <div><c:out value="${dup}" /></div>
+                                </c:forEach>
+                            </small>
+                        </div>
+                    </c:if>
+                </c:if>
+
+                <c:if test="${not empty importSuccessCount}">
+                    <div class="alert alert-success d-flex align-items-center gap-2 mb-3" role="alert">
+                        <span class="material-symbols-outlined">check_circle</span>
+                        Import xong: <strong class="mx-1">${importSuccessCount}</strong> thành công
+                        <c:if test="${importDuplicateCount > 0}">
+                            , <strong class="mx-1">${importDuplicateCount}</strong> trùng (đã bỏ qua)
+                        </c:if>
+                    </div>
                     <c:if test="${not empty importDuplicateMessages}">
                         <div class="alert mb-3" role="alert" style="background-color:#fef3c7; color:#92400e; max-height: 150px; overflow-y: auto;">
                             <small>

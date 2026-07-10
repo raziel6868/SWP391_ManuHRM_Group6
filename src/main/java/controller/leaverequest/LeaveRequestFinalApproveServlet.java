@@ -3,6 +3,7 @@ package controller.leaverequest;
 import dal.DBContext;
 import dal.LeaveBalanceDAO;
 import dal.LeaveRequestDAO;
+import dal.OvertimeDAO;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
@@ -22,6 +23,7 @@ public class LeaveRequestFinalApproveServlet extends HttpServlet {
 
 	private final LeaveBalanceDAO leaveBalanceDAO = new LeaveBalanceDAO();
 	private final LeaveRequestDAO leaveRequestDAO = new LeaveRequestDAO();
+	private final OvertimeDAO overtimeDAO = new OvertimeDAO();
 
 	@Override
 	protected void doPost(HttpServletRequest request, HttpServletResponse response)
@@ -71,6 +73,11 @@ public class LeaveRequestFinalApproveServlet extends HttpServlet {
 			}
 
 			if (requestUpdated && balanceUpdated) {
+				// Nhân viên đã được duyệt cuối nghỉ ngày này -> hủy hết OT đã duyệt
+				// trước đó trùng ngày (tránh trạng thái mâu thuẫn vừa nghỉ vừa có OT).
+				// Cùng transaction với việc duyệt leave để đảm bảo nhất quán.
+				overtimeDAO.cancelApprovedInRange(conn, leaveRequest.getUserId(), leaveRequest.getStartDate(),
+						leaveRequest.getEndDate(), approverId);
 				conn.commit();
 				return true;
 			}

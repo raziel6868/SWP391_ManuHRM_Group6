@@ -81,17 +81,24 @@ public class AttendanceImportServlet extends HttpServlet {
 
 		try (InputStream inputStream = filePart.getInputStream()) {
 			AttendanceImportResult result = importUtil.importExcel(inputStream, year, month);
+			// Thành công (all-or-nothing): mọi dòng hợp lệ đã được insert hết.
 			if (result.getSuccessCount() > 0) {
-				// Đảm bảo có monthly_sheets cho kỳ này (giữ nguyên hành vi cũ).
 				monthlySheetDAO.getOrCreate(year, month);
 			}
 			session.setAttribute("importSuccessCount", result.getSuccessCount());
 			session.setAttribute("importDuplicateCount", result.getDuplicateCount());
-			session.setAttribute("importErrorCount", result.getErrorCount());
-			session.setAttribute("importErrorMessages", result.getErrorMessages());
 			session.setAttribute("importDuplicateMessages", result.getDuplicateMessages());
 		} catch (AttendanceImportException e) {
-			session.setAttribute("errorMsg", e.getMessage());
+			if (e.getTotalDataRows() > 0) {
+				// Có dòng lỗi validate -> hủy toàn bộ, không insert dòng nào.
+				session.setAttribute("importFailed", true);
+				session.setAttribute("importTotalDataRows", e.getTotalDataRows());
+				session.setAttribute("importErrorMessages", e.getErrors());
+				session.setAttribute("importDuplicateMessages", e.getDuplicateMessages());
+			} else {
+				// Lỗi cấp file (không đọc được / không có dữ liệu / lỗi DB khi insert).
+				session.setAttribute("errorMsg", e.getMessage());
+			}
 		}
 
 		redirectBack(request, response, year, month);

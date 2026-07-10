@@ -4,6 +4,7 @@ import dal.AttendanceDAO;
 import dal.DBContext;
 import dal.LeaveBalanceDAO;
 import dal.LeaveRequestDAO;
+import dal.OvertimeDAO;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
@@ -24,6 +25,7 @@ public class LeaveRequestApproveServlet extends HttpServlet {
 	private final LeaveBalanceDAO leaveBalanceDAO = new LeaveBalanceDAO();
 	private final LeaveRequestDAO leaveRequestDAO = new LeaveRequestDAO();
 	private final AttendanceDAO attendanceDAO = new AttendanceDAO();
+	private final OvertimeDAO overtimeDAO = new OvertimeDAO();
 
 	@Override
 	protected void doPost(HttpServletRequest request, HttpServletResponse response)
@@ -53,6 +55,16 @@ public class LeaveRequestApproveServlet extends HttpServlet {
 				: processDirectApproval(id, authUser.getId(), leaveRequest);
 
 		if (success) {
+			if (!isEmployeeRequest) {
+				// processDirectApproval KHÔNG có bước duyệt cuối ở HR nữa -> đây đã là
+				// quyết định CUỐI CÙNG, an toàn để hủy OT trùng ngày ngay tại đây.
+				// Ngược lại, đơn của nhân viên (isEmployeeRequest) mới chỉ là duyệt CẤP 1
+				// -> chưa hủy vội, đợi HR duyệt cuối (LeaveRequestFinalApproveServlet) mới
+				// hủy, tránh trường hợp HR từ chối ở bước 2 mà OT đã bị hủy không khôi
+				// phục lại được.
+				overtimeDAO.cancelApprovedInRange(leaveRequest.getUserId(), leaveRequest.getStartDate(),
+						leaveRequest.getEndDate(), authUser.getId());
+			}
 			session.setAttribute("successMsg",
 					isEmployeeRequest
 							? "Duyệt cấp 1 đơn nghỉ phép thành công. Đơn sẽ được chuyển đến HR để duyệt cuối."

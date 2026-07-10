@@ -39,18 +39,23 @@ public class OvertimeDAO {
 				""";
 
 		try (Connection conn = DBContext.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
-			ps.setLong(1, userId);
-			ps.setDate(2, date);
-			ps.setBigDecimal(3, hours);
-			ps.setBigDecimal(4, hours);
-			ps.setString(5, reason);
-			ps.setLong(6, creatorId);
-			return ps.executeUpdate() > 0;
+			return insertAutoApproved(ps, userId, date, hours, reason, creatorId);
 		} catch (SQLException e) {
 			System.err.println("OvertimeDAO.insertAutoApproved() ERROR: " + e.getMessage());
 		}
 
 		return false;
+	}
+
+	private boolean insertAutoApproved(PreparedStatement ps, Long userId, java.sql.Date date, BigDecimal hours,
+			String reason, Long creatorId) throws SQLException {
+		ps.setLong(1, userId);
+		ps.setDate(2, date);
+		ps.setBigDecimal(3, hours);
+		ps.setBigDecimal(4, hours);
+		ps.setString(5, reason);
+		ps.setLong(6, creatorId);
+		return ps.executeUpdate() > 0;
 	}
 
 	/**
@@ -103,14 +108,62 @@ public class OvertimeDAO {
 				""";
 
 		try (Connection conn = DBContext.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
-			ps.setLong(1, cancelledBy);
-			ps.setLong(2, id);
-			return ps.executeUpdate() > 0;
+			return cancel(ps, id, cancelledBy);
 		} catch (SQLException e) {
 			System.err.println("OvertimeDAO.cancel() ERROR: " + e.getMessage());
 		}
 
 		return false;
+	}
+
+	private boolean cancel(PreparedStatement ps, Long id, Long cancelledBy) throws SQLException {
+		ps.setLong(1, cancelledBy);
+		ps.setLong(2, id);
+		return ps.executeUpdate() > 0;
+	}
+
+	/**
+	 * Bản không transaction của cancelApprovedInRange — tự mở connection riêng.
+	 * Dùng ở những chỗ việc hủy OT không bắt buộc phải cùng transaction với thao
+	 * tác khác (ví dụ duyệt cấp 1 đơn nghỉ phép, vốn cũng không transaction).
+	 */
+	public int cancelApprovedInRange(Long userId, java.sql.Date startDate, java.sql.Date endDate, Long cancelledBy) {
+		try (Connection conn = DBContext.getConnection()) {
+			return cancelApprovedInRange(conn, userId, startDate, endDate, cancelledBy);
+		} catch (SQLException e) {
+			System.err.println("OvertimeDAO.cancelApprovedInRange() ERROR: " + e.getMessage());
+			return 0;
+		}
+	}
+
+	/**
+	 * Tự động hủy (REJECTED) toàn bộ OT đã APPROVED của 1 nhân viên trong khoảng
+	 * ngày [startDate, endDate] — dùng khi đơn nghỉ phép của nhân viên đó vừa được
+	 * duyệt trùng ngày, tránh trạng thái mâu thuẫn (vừa nghỉ vừa có OT). Dùng chung
+	 * 1 Connection do caller quản lý transaction (commit/rollback ở caller, cùng
+	 * transaction với việc duyệt leave).
+	 *
+	 * @return số bản ghi OT đã bị hủy.
+	 */
+	public int cancelApprovedInRange(Connection conn, Long userId, java.sql.Date startDate, java.sql.Date endDate,
+			Long cancelledBy) throws SQLException {
+		if (userId == null || startDate == null || endDate == null || cancelledBy == null) {
+			return 0;
+		}
+		String sql = """
+				UPDATE overtime_records
+				SET status      = 'REJECTED',
+				    approver_id = ?,
+				    updated_at  = CURRENT_TIMESTAMP
+				WHERE user_id = ? AND date BETWEEN ? AND ? AND status = 'APPROVED'
+				""";
+		try (PreparedStatement ps = conn.prepareStatement(sql)) {
+			ps.setLong(1, cancelledBy);
+			ps.setLong(2, userId);
+			ps.setDate(3, startDate);
+			ps.setDate(4, endDate);
+			return ps.executeUpdate();
+		}
 	}
 
 	public OvertimeRecord getById(Long id) {

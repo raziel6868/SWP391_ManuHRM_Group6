@@ -1,6 +1,7 @@
 package util;
 
 import dal.AttendanceDAO;
+import dal.LeaveRequestDAO;
 import dal.MonthlySheetDAO;
 import dal.OvertimeDAO;
 import dal.UserDAO;
@@ -30,11 +31,10 @@ import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.ss.usermodel.WorkbookFactory;
 
 /**
- * Import Excel cho yêu cầu OT của quản đốc. Khác với AttendanceImportUtil
- * (all-or-nothing), file này xử lý ĐỘC LẬP từng dòng: dòng hợp lệ được insert
- * (tự động APPROVED) ngay, dòng trùng dữ liệu đã có trong DB thì bỏ qua, dòng
- * lỗi dữ liệu/vi phạm rule thì bỏ qua và ghi nhận lỗi — không có dòng nào chặn
- * các dòng khác.
+ * Import Excel cho yêu cầu OT của quản đốc. Xử lý ĐỘC LẬP từng dòng — giống
+ * cách làm gốc trước đây: dòng hợp lệ insert (tự động APPROVED) ngay, dòng
+ * trùng dữ liệu đã có trong DB thì bỏ qua, dòng lỗi dữ liệu/vi phạm rule thì bỏ
+ * qua và ghi nhận lỗi — không có dòng nào chặn các dòng khác trong cùng file.
  *
  * Không còn phụ thuộc phân ca (shift_assignments) — công ty đã bỏ phân ca, toàn
  * bộ nhân viên làm ca hành chính cố định T2-T6, 7:00-17:00. Vì vậy rule "không
@@ -55,17 +55,24 @@ public class OvertimeImportUtil {
 	private final OvertimeDAO overtimeDAO;
 	private final MonthlySheetDAO monthlySheetDAO;
 	private final AttendanceDAO attendanceDAO;
+	private final LeaveRequestDAO leaveRequestDAO;
 
 	public OvertimeImportUtil() {
-		this(new UserDAO(), new OvertimeDAO(), new MonthlySheetDAO(), new AttendanceDAO());
+		this(new UserDAO(), new OvertimeDAO(), new MonthlySheetDAO(), new AttendanceDAO(), new LeaveRequestDAO());
 	}
 
 	public OvertimeImportUtil(UserDAO userDAO, OvertimeDAO overtimeDAO, MonthlySheetDAO monthlySheetDAO,
 			AttendanceDAO attendanceDAO) {
+		this(userDAO, overtimeDAO, monthlySheetDAO, attendanceDAO, new LeaveRequestDAO());
+	}
+
+	public OvertimeImportUtil(UserDAO userDAO, OvertimeDAO overtimeDAO, MonthlySheetDAO monthlySheetDAO,
+			AttendanceDAO attendanceDAO, LeaveRequestDAO leaveRequestDAO) {
 		this.userDAO = userDAO;
 		this.overtimeDAO = overtimeDAO;
 		this.monthlySheetDAO = monthlySheetDAO;
 		this.attendanceDAO = attendanceDAO;
+		this.leaveRequestDAO = leaveRequestDAO;
 	}
 
 	/**
@@ -146,8 +153,8 @@ public class OvertimeImportUtil {
 
 				String key = employeeCode.toUpperCase() + "|" + date;
 				if (!importedKeys.add(key)) {
-					result.addDuplicate(displayRow, "Trùng nhân viên/ngày với 1 dòng khác trong cùng file ("
-							+ employeeCode + " - " + date + ").");
+					result.addError(displayRow, "Trùng nhân viên/ngày với 1 dòng khác trong cùng file (" + employeeCode
+							+ " - " + date + ").");
 					continue;
 				}
 
@@ -166,6 +173,13 @@ public class OvertimeImportUtil {
 				if (overtimeDAO.existsActiveForUserAndDate(targetUser.getId(), sqlDate, null)) {
 					result.addDuplicate(displayRow, "Nhân viên " + targetUser.getFullName() + " (" + employeeCode
 							+ ") đã có OT ngày " + date + " trong hệ thống.");
+					continue;
+				}
+
+				// ── Conflict: nhân viên có đơn nghỉ phép ĐÃ DUYỆT trùng ngày OT ──
+				if (leaveRequestDAO.hasApprovedLeaveOnDate(targetUser.getId(), sqlDate)) {
+					result.addError(displayRow, "Nhân viên " + employeeCode + " đã có đơn nghỉ phép được duyệt ngày "
+							+ date + ", không thể tạo OT cho ngày này.");
 					continue;
 				}
 

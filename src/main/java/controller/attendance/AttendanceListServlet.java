@@ -260,18 +260,25 @@ public class AttendanceListServlet extends HttpServlet {
 	/** Nhận kết quả import từ AttendanceImportServlet (flash qua session). */
 	private void moveImportFlash(HttpSession session, HttpServletRequest request) {
 		Object successCount = session.getAttribute("importSuccessCount");
-		if (successCount == null) {
-			return;
+		if (successCount != null) {
+			request.setAttribute("importSuccessCount", successCount);
+			request.setAttribute("importDuplicateCount", session.getAttribute("importDuplicateCount"));
+			request.setAttribute("importDuplicateMessages", session.getAttribute("importDuplicateMessages"));
+			session.removeAttribute("importSuccessCount");
+			session.removeAttribute("importDuplicateCount");
+			session.removeAttribute("importDuplicateMessages");
 		}
-		request.setAttribute("importSuccessCount", successCount);
-		request.setAttribute("importDuplicateCount", session.getAttribute("importDuplicateCount"));
-		request.setAttribute("importErrorCount", session.getAttribute("importErrorCount"));
-		request.setAttribute("importErrorMessages", session.getAttribute("importErrorMessages"));
-		request.setAttribute("importDuplicateMessages", session.getAttribute("importDuplicateMessages"));
-		session.removeAttribute("importSuccessCount");
-		session.removeAttribute("importDuplicateCount");
-		session.removeAttribute("importErrorCount");
-		session.removeAttribute("importErrorMessages");
-		session.removeAttribute("importDuplicateMessages");
+
+		Object failed = session.getAttribute("importFailed");
+		if (failed != null) {
+			request.setAttribute("importFailed", failed);
+			request.setAttribute("importTotalDataRows", session.getAttribute("importTotalDataRows"));
+			request.setAttribute("importErrorMessages", session.getAttribute("importErrorMessages"));
+			request.setAttribute("importDuplicateMessages", session.getAttribute("importDuplicateMessages"));
+			session.removeAttribute("importFailed");
+			session.removeAttribute("importTotalDataRows");
+			session.removeAttribute("importErrorMessages");
+			session.removeAttribute("importDuplicateMessages");
+		}
 	}
 }

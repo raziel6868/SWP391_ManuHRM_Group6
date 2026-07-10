@@ -91,23 +91,47 @@ public class AttendanceDAO {
 				VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 				""";
 		try (Connection conn = DBContext.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
-			ps.setLong(1, record.getUserId());
-			ps.setDate(2, record.getDate());
-			if (record.getShiftId() != null) {
-				ps.setLong(3, record.getShiftId());
-			} else {
-				ps.setNull(3, java.sql.Types.BIGINT);
-			}
-			ps.setTime(4, record.getCheckIn());
-			ps.setTime(5, record.getCheckOut());
-			ps.setBigDecimal(6, record.getWorkingHours());
-			ps.setString(7, record.getStatus());
-			ps.setString(8, record.getImportBatchId());
-			return ps.executeUpdate() > 0;
+			return insert(ps, record);
 		} catch (SQLException e) {
 			System.err.println("AttendanceDAO.insert() ERROR: " + e.getMessage());
 		}
 		return false;
+	}
+
+	/**
+	 * Insert dùng chung 1 Connection do caller quản lý transaction (commit/rollback
+	 * ở caller). Dùng cho import Excel kiểu all-or-nothing: toàn bộ dòng hợp lệ của
+	 * 1 file được insert trong cùng 1 transaction, lỗi bất kỳ dòng nào thì rollback
+	 * hết, không để lại dữ liệu insert dở dang.
+	 */
+	public boolean insert(Connection conn, AttendanceRecord record) throws SQLException {
+		if (record == null || record.getUserId() == null || record.getDate() == null) {
+			return false;
+		}
+		String sql = """
+				INSERT INTO attendance_records
+				    (user_id, date, shift_id, check_in, check_out, working_hours, status, import_batch_id)
+				VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+				""";
+		try (PreparedStatement ps = conn.prepareStatement(sql)) {
+			return insert(ps, record);
+		}
+	}
+
+	private boolean insert(PreparedStatement ps, AttendanceRecord record) throws SQLException {
+		ps.setLong(1, record.getUserId());
+		ps.setDate(2, record.getDate());
+		if (record.getShiftId() != null) {
+			ps.setLong(3, record.getShiftId());
+		} else {
+			ps.setNull(3, java.sql.Types.BIGINT);
+		}
+		ps.setTime(4, record.getCheckIn());
+		ps.setTime(5, record.getCheckOut());
+		ps.setBigDecimal(6, record.getWorkingHours());
+		ps.setString(7, record.getStatus());
+		ps.setString(8, record.getImportBatchId());
+		return ps.executeUpdate() > 0;
 	}
 
 	public List<AttendanceRecord> searchByUserIdsAndMonth(List<Long> userIds, int year, int month) {

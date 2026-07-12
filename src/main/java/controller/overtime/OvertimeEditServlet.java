@@ -18,23 +18,21 @@ import model.AttendanceRecord;
 import model.OvertimeRecord;
 import model.Permission;
 import model.User;
+import util.WorkScheduleConfig;
 
 /**
  * Trang sửa 1 bản ghi OT đã tạo (đổi giờ / lý do). Chỉ quản đốc quản lý trực
  * tiếp nhân viên đó mới sửa được, và chỉ khi tháng chưa chốt công. Validate lại
  * đầy đủ rule giống lúc tạo (trừ chính bản ghi đang sửa ra khỏi tổng giờ
- * tháng/năm). Không còn phụ thuộc phân ca — rule "không quá 20:00" giờ là hằng
- * số MAX_HOURS_PER_DAY = 3 (ca hành chính chung 7:00-17:00).
+ * tháng/năm). OT tối đa 2h/ngày theo quy định hiện hành.
  */
 @WebServlet(name = "OvertimeEditServlet", urlPatterns = {"/overtime-edit"})
 public class OvertimeEditServlet extends HttpServlet {
 
-	// Từ khi bỏ phân ca: toàn bộ nhân viên làm ca hành chính T2-T6, 7:00-17:00.
-	// OT tối đa trong ngày để đảm bảo nghỉ trước 20:00 = 20:00 - 17:00 = 3 giờ.
-	private static final BigDecimal MAX_HOURS_PER_DAY = new BigDecimal("3");
+	// OT tối đa trong ngày theo quy định hiện hành: 2h/ngày.
+	private static final BigDecimal MAX_HOURS_PER_DAY = new BigDecimal("2");
 	private static final BigDecimal MAX_HOURS_PER_MONTH = new BigDecimal("40");
 	private static final BigDecimal MAX_HOURS_PER_YEAR = new BigDecimal("200");
-	private static final LocalTime STANDARD_SHIFT_END = LocalTime.of(17, 0);
 
 	private final OvertimeDAO overtimeDAO = new OvertimeDAO();
 	private final UserDAO userDAO = new UserDAO();
@@ -141,8 +139,8 @@ public class OvertimeEditServlet extends HttpServlet {
 		}
 
 		if (hours.compareTo(MAX_HOURS_PER_DAY) > 0) {
-			session.setAttribute("errorMsg", "Số giờ OT (" + hours + "h) vượt quá tối đa " + MAX_HOURS_PER_DAY
-					+ "h/ngày (ca hành chính 7:00-17:00, OT không được quá 20:00).");
+			session.setAttribute("errorMsg",
+					"Số giờ OT (" + hours + "h) vượt quá tối đa " + MAX_HOURS_PER_DAY + "h/ngày.");
 			response.sendRedirect(request.getContextPath() + "/overtime-edit?id=" + id);
 			return;
 		}
@@ -158,7 +156,7 @@ public class OvertimeEditServlet extends HttpServlet {
 		}
 		if (existingAttendance != null && existingAttendance.getCheckOut() != null) {
 			long otMinutes = hours.multiply(BigDecimal.valueOf(60)).longValue();
-			LocalTime expectedCheckout = STANDARD_SHIFT_END.plusMinutes(otMinutes);
+			LocalTime expectedCheckout = WorkScheduleConfig.STANDARD_END.plusMinutes(otMinutes);
 			if (existingAttendance.getCheckOut().toLocalTime().isBefore(expectedCheckout)) {
 				session.setAttribute("errorMsg",
 						"Nhân viên đã chấm công ra lúc " + existingAttendance.getCheckOut().toLocalTime() + " ngày "

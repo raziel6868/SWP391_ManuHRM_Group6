@@ -22,11 +22,10 @@ import model.AttendanceCorrection;
 import model.OvertimeRecord;
 import model.Permission;
 import model.User;
+import util.WorkScheduleConfig;
 
 @WebServlet(name = "AttendanceCorrectionApproveServlet", urlPatterns = {"/attendance-correction-approve"})
 public class AttendanceCorrectionApproveServlet extends HttpServlet {
-
-	private static final LocalTime STANDARD_SHIFT_END = LocalTime.of(17, 0);
 
 	private final AttendanceCorrectionDAO correctionDAO = new AttendanceCorrectionDAO();
 	private final AttendanceDAO attendanceDAO = new AttendanceDAO();
@@ -101,7 +100,7 @@ public class AttendanceCorrectionApproveServlet extends HttpServlet {
 			OvertimeRecord approvedOT = overtimeDAO.findApprovedOTForUserAndDate(targetUserId, attendanceDate);
 			if (approvedOT != null && approvedOT.getApprovedHours() != null) {
 				long otMinutes = approvedOT.getApprovedHours().multiply(BigDecimal.valueOf(60)).longValue();
-				LocalTime expectedCheckout = STANDARD_SHIFT_END.plusMinutes(otMinutes);
+				LocalTime expectedCheckout = WorkScheduleConfig.STANDARD_END.plusMinutes(otMinutes);
 				if (correction.getNewCheckOut().toLocalTime().isBefore(expectedCheckout)) {
 					session.setAttribute("errorMsg",
 							"Nhân viên có OT " + approvedOT.getApprovedHours() + "h được duyệt ngày " + attendanceDate

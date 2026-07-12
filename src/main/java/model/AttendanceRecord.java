@@ -12,8 +12,6 @@ public class AttendanceRecord {
 	private String employeeCode;
 	private String employeeName;
 	private Date date;
-	private Long shiftId;
-	private String shiftName;
 	private Time checkIn;
 	private Time checkOut;
 	private BigDecimal workingHours;
@@ -60,22 +58,6 @@ public class AttendanceRecord {
 
 	public void setDate(Date date) {
 		this.date = date;
-	}
-
-	public Long getShiftId() {
-		return shiftId;
-	}
-
-	public void setShiftId(Long shiftId) {
-		this.shiftId = shiftId;
-	}
-
-	public String getShiftName() {
-		return shiftName;
-	}
-
-	public void setShiftName(String shiftName) {
-		this.shiftName = shiftName;
 	}
 
 	public Time getCheckIn() {

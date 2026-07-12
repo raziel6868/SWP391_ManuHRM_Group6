@@ -37,19 +37,18 @@ import org.apache.poi.ss.usermodel.WorkbookFactory;
  * qua và ghi nhận lỗi — không có dòng nào chặn các dòng khác trong cùng file.
  *
  * Không còn phụ thuộc phân ca (shift_assignments) — công ty đã bỏ phân ca, toàn
- * bộ nhân viên làm ca hành chính cố định T2-T6, 7:00-17:00. Vì vậy rule "không
- * làm quá 20:00" được quy đổi thành hằng số: OT tối đa 3h/ngày.
+ * bộ nhân viên làm ca hành chính cố định T2-T6, theo khung giờ chuẩn ở
+ * {@link WorkScheduleConfig} (hiện là 08:00-17:00). OT tối đa 2h/ngày theo quy
+ * định hiện hành.
  *
  * Cột Excel: employee_code | date | hours | reason
  */
 public class OvertimeImportUtil {
 
-	// Từ khi bỏ phân ca: toàn bộ nhân viên làm ca hành chính T2-T6, 7:00-17:00.
-	// OT tối đa trong ngày để đảm bảo nghỉ trước 20:00 = 20:00 - 17:00 = 3 giờ.
-	private static final BigDecimal MAX_HOURS_PER_DAY = new BigDecimal("3");
+	// OT tối đa trong ngày theo quy định hiện hành: 2h/ngày.
+	private static final BigDecimal MAX_HOURS_PER_DAY = new BigDecimal("2");
 	private static final BigDecimal MAX_HOURS_PER_MONTH = new BigDecimal("40");
 	private static final BigDecimal MAX_HOURS_PER_YEAR = new BigDecimal("200");
-	private static final LocalTime STANDARD_SHIFT_END = LocalTime.of(17, 0);
 
 	private final UserDAO userDAO;
 	private final OvertimeDAO overtimeDAO;
@@ -146,8 +145,8 @@ public class OvertimeImportUtil {
 				}
 
 				if (hours.compareTo(MAX_HOURS_PER_DAY) > 0) {
-					result.addError(displayRow, "Số giờ OT (" + hours + "h) vượt quá tối đa " + MAX_HOURS_PER_DAY
-							+ "h/ngày (ca hành chính 7:00-17:00, OT không được quá 20:00).");
+					result.addError(displayRow,
+							"Số giờ OT (" + hours + "h) vượt quá tối đa " + MAX_HOURS_PER_DAY + "h/ngày.");
 					continue;
 				}
 
@@ -194,7 +193,7 @@ public class OvertimeImportUtil {
 				}
 				if (existingAttendance != null && existingAttendance.getCheckOut() != null) {
 					long otMinutes = hours.multiply(BigDecimal.valueOf(60)).longValue();
-					LocalTime expectedCheckout = STANDARD_SHIFT_END.plusMinutes(otMinutes);
+					LocalTime expectedCheckout = WorkScheduleConfig.STANDARD_END.plusMinutes(otMinutes);
 					if (existingAttendance.getCheckOut().toLocalTime().isBefore(expectedCheckout)) {
 						result.addError(displayRow, "Nhân viên " + employeeCode + " đã chấm công ra lúc "
 								+ existingAttendance.getCheckOut().toLocalTime() + " ngày " + date

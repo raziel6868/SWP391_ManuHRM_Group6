@@ -46,9 +46,9 @@
                                     <div class="mb-3">
                                         <label class="form-label text-on-surface fw-medium mb-1">Số giờ OT</label>
                                         <input type="number" name="requestedHours" class="form-control input-premium"
-                                               value="${record.requestedHours}" min="0.5" max="3" step="0.5" required />
+                                               value="${record.requestedHours}" min="0.5" max="2" step="0.5" required />
                                         <div class="form-text text-on-surface-variant">
-                                            Tối đa 3h/ngày (ca hành chính 7:00-17:00, không làm quá 20:00),
+                                            Tối đa 2h/ngày (giờ làm chuẩn 08:00-17:00, OT từ 17:00 đến 19:00),
                                             tối đa 40h/tháng và 200h/năm cho mỗi nhân viên.
                                         </div>
                                     </div>

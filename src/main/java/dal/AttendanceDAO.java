@@ -9,7 +9,7 @@ import java.sql.Time;
 import java.util.ArrayList;
 import java.util.List;
 import model.AttendanceRecord;
-import model.Shift;
+import util.WorkScheduleConfig;
 
 public class AttendanceDAO {
 
@@ -24,12 +24,11 @@ public class AttendanceDAO {
 		}
 		String sql = """
 				SELECT ar.id, ar.user_id, u.employee_code, u.full_name AS employee_name,
-				       ar.date, ar.shift_id, s.name AS shift_name,
+				       ar.date,
 				       ar.check_in, ar.check_out, ar.working_hours, ar.status,
 				       ar.import_batch_id, ar.created_at, ar.updated_at
 				FROM attendance_records ar
 				JOIN users u ON ar.user_id = u.id
-				LEFT JOIN shifts s ON ar.shift_id = s.id
 				WHERE ar.user_id = ? AND ar.date = ?
 				""";
 		try (Connection conn = DBContext.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -87,8 +86,8 @@ public class AttendanceDAO {
 		}
 		String sql = """
 				INSERT INTO attendance_records
-				    (user_id, date, shift_id, check_in, check_out, working_hours, status, import_batch_id)
-				VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+				    (user_id, date, check_in, check_out, working_hours, status, import_batch_id)
+				VALUES (?, ?, ?, ?, ?, ?, ?)
 				""";
 		try (Connection conn = DBContext.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
 			return insert(ps, record);
@@ -110,8 +109,8 @@ public class AttendanceDAO {
 		}
 		String sql = """
 				INSERT INTO attendance_records
-				    (user_id, date, shift_id, check_in, check_out, working_hours, status, import_batch_id)
-				VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+				    (user_id, date, check_in, check_out, working_hours, status, import_batch_id)
+				VALUES (?, ?, ?, ?, ?, ?, ?)
 				""";
 		try (PreparedStatement ps = conn.prepareStatement(sql)) {
 			return insert(ps, record);
@@ -121,16 +120,11 @@ public class AttendanceDAO {
 	private boolean insert(PreparedStatement ps, AttendanceRecord record) throws SQLException {
 		ps.setLong(1, record.getUserId());
 		ps.setDate(2, record.getDate());
-		if (record.getShiftId() != null) {
-			ps.setLong(3, record.getShiftId());
-		} else {
-			ps.setNull(3, java.sql.Types.BIGINT);
-		}
-		ps.setTime(4, record.getCheckIn());
-		ps.setTime(5, record.getCheckOut());
-		ps.setBigDecimal(6, record.getWorkingHours());
-		ps.setString(7, record.getStatus());
-		ps.setString(8, record.getImportBatchId());
+		ps.setTime(3, record.getCheckIn());
+		ps.setTime(4, record.getCheckOut());
+		ps.setBigDecimal(5, record.getWorkingHours());
+		ps.setString(6, record.getStatus());
+		ps.setString(7, record.getImportBatchId());
 		return ps.executeUpdate() > 0;
 	}
 
@@ -142,12 +136,11 @@ public class AttendanceDAO {
 
 		StringBuilder sql = new StringBuilder("""
 				SELECT ar.id, ar.user_id, u.employee_code, u.full_name AS employee_name,
-				       ar.date, ar.shift_id, s.name AS shift_name,
+				       ar.date,
 				       ar.check_in, ar.check_out, ar.working_hours, ar.status,
 				       ar.import_batch_id, ar.created_at, ar.updated_at
 				FROM attendance_records ar
 				JOIN users u ON ar.user_id = u.id
-				LEFT JOIN shifts s ON ar.shift_id = s.id
 				WHERE YEAR(ar.date) = ? AND MONTH(ar.date) = ?
 				  AND ar.user_id IN (
 				""");
@@ -181,12 +174,11 @@ public class AttendanceDAO {
 
 		String sql = """
 				SELECT ar.id, ar.user_id, u.employee_code, u.full_name AS employee_name,
-				       ar.date, ar.shift_id, s.name AS shift_name,
+				       ar.date,
 				       ar.check_in, ar.check_out, ar.working_hours, ar.status,
 				       ar.import_batch_id, ar.created_at, ar.updated_at
 				FROM attendance_records ar
 				JOIN users u ON ar.user_id = u.id
-				LEFT JOIN shifts s ON ar.shift_id = s.id
 				WHERE ar.user_id = ? AND YEAR(ar.date) = ? AND MONTH(ar.date) = ?
 				ORDER BY ar.date DESC
 				""";
@@ -214,12 +206,11 @@ public class AttendanceDAO {
 
 		String sql = """
 				SELECT ar.id, ar.user_id, u.employee_code, u.full_name AS employee_name,
-				       ar.date, ar.shift_id, s.name AS shift_name,
+				       ar.date,
 				       ar.check_in, ar.check_out, ar.working_hours, ar.status,
 				       ar.import_batch_id, ar.created_at, ar.updated_at
 				FROM attendance_records ar
 				JOIN users u ON ar.user_id = u.id
-				LEFT JOIN shifts s ON ar.shift_id = s.id
 				WHERE ar.id = ?
 				""";
 
@@ -245,31 +236,32 @@ public class AttendanceDAO {
 
 		String sql = """
 				UPDATE attendance_records ar
-				LEFT JOIN shifts s ON ar.shift_id = s.id
 				SET ar.check_in = ?,
 				    ar.check_out = ?,
 				    ar.working_hours = ROUND(
 				        GREATEST(
 				            0,
-				            (TIME_TO_SEC(TIMEDIFF(?, ?)) / 60) - COALESCE(s.break_minutes, 0)
+				            (TIME_TO_SEC(TIMEDIFF(?, ?)) / 60) - ?
 				        ) / 60,
 				        2
 				    ),
 				    ar.status = CASE
-				        WHEN ? > ADDTIME(COALESCE(s.start_time, ?), '00:15:00') THEN 'LATE'
+				        WHEN ? > ADDTIME(?, '00:15:00') THEN 'LATE'
 				        ELSE 'NORMAL'
 				    END
 				WHERE ar.id = ?
 				""";
 
 		try (PreparedStatement ps = conn.prepareStatement(sql)) {
+			Time standardStart = Time.valueOf(WorkScheduleConfig.STANDARD_START);
 			ps.setTime(1, newCheckIn);
 			ps.setTime(2, newCheckOut);
 			ps.setTime(3, newCheckOut);
 			ps.setTime(4, newCheckIn);
-			ps.setTime(5, newCheckIn);
+			ps.setInt(5, WorkScheduleConfig.BREAK_MINUTES);
 			ps.setTime(6, newCheckIn);
-			ps.setLong(7, recordId);
+			ps.setTime(7, standardStart);
+			ps.setLong(8, recordId);
 			return ps.executeUpdate() > 0;
 		}
 	}
@@ -294,28 +286,6 @@ public class AttendanceDAO {
 		return null;
 	}
 
-	public Shift findDefaultShift() {
-		String sql = """
-				SELECT id, code, name, start_time, end_time, break_minutes, is_night_shift,
-				       is_active, created_at, updated_at
-				FROM shifts
-				WHERE is_active = TRUE
-				ORDER BY is_night_shift ASC, id ASC
-				LIMIT 1
-				""";
-		try (Connection conn = DBContext.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
-			try (ResultSet rs = ps.executeQuery()) {
-				if (rs.next()) {
-					return mapShift(rs);
-				}
-			}
-		} catch (SQLException e) {
-			System.err.println("AttendanceDAO.findDefaultShift() ERROR: " + e.getMessage());
-		}
-
-		return null;
-	}
-
 	private void appendPlaceholders(StringBuilder sql, int count) {
 		for (int i = 0; i < count; i++) {
 			if (i > 0) {
@@ -332,11 +302,6 @@ public class AttendanceDAO {
 		record.setEmployeeCode(rs.getString("employee_code"));
 		record.setEmployeeName(rs.getString("employee_name"));
 		record.setDate(rs.getDate("date"));
-		long shiftId = rs.getLong("shift_id");
-		if (!rs.wasNull()) {
-			record.setShiftId(shiftId);
-		}
-		record.setShiftName(rs.getString("shift_name"));
 		record.setCheckIn(rs.getTime("check_in"));
 		record.setCheckOut(rs.getTime("check_out"));
 		record.setWorkingHours(rs.getBigDecimal("working_hours"));
@@ -345,21 +310,6 @@ public class AttendanceDAO {
 		record.setCreatedAt(rs.getTimestamp("created_at"));
 		record.setUpdatedAt(rs.getTimestamp("updated_at"));
 		return record;
-	}
-
-	private Shift mapShift(ResultSet rs) throws SQLException {
-		Shift shift = new Shift();
-		shift.setId(rs.getLong("id"));
-		shift.setCode(rs.getString("code"));
-		shift.setName(rs.getString("name"));
-		shift.setStartTime(rs.getTime("start_time"));
-		shift.setEndTime(rs.getTime("end_time"));
-		shift.setBreakMinutes(rs.getInt("break_minutes"));
-		shift.setIsNightShift(rs.getBoolean("is_night_shift"));
-		shift.setIsActive(rs.getBoolean("is_active"));
-		shift.setCreatedAt(rs.getTimestamp("created_at"));
-		shift.setUpdatedAt(rs.getTimestamp("updated_at"));
-		return shift;
 	}
 
 }

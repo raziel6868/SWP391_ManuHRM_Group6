@@ -28,7 +28,6 @@ import java.util.Set;
 import java.util.UUID;
 import model.AttendanceRecord;
 import model.OvertimeRecord;
-import model.Shift;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellType;
 import org.apache.poi.ss.usermodel.DataFormatter;
@@ -53,13 +52,11 @@ import org.apache.poi.ss.usermodel.WorkbookFactory;
  * dòng): so khớp với dữ liệu đã có trong DB, leave đã duyệt, OT đã duyệt... Chỉ
  * có CÁCH THỰC THI (all-or-nothing thay vì độc lập từng dòng) là thay đổi.
  *
- * Không còn phụ thuộc phân ca (shift_assignments) — công ty đã bỏ phân ca, luôn
- * dùng ca mặc định (findDefaultShift(), là ca "OFFICE" 08:00–17:00, break 60
- * phút) để tính trạng thái đi muộn và giờ công.
+ * Không còn phụ thuộc bảng shifts/shift_assignments (công ty đã bỏ phân ca).
+ * Toàn công ty dùng chung 1 khung giờ chuẩn cố định (WorkScheduleConfig:
+ * 08:00–17:00, break 60 phút) để tính trạng thái đi muộn và giờ công.
  */
 public class AttendanceImportUtil {
-
-	private static final int LATE_THRESHOLD_MINUTES = 15;
 
 	private final AttendanceDAO attendanceDAO;
 	private final LeaveRequestDAO leaveRequestDAO;
@@ -97,8 +94,6 @@ public class AttendanceImportUtil {
 		String importBatchId = UUID.randomUUID().toString();
 		boolean hasAnyDataRow = false;
 		int totalDataRows = 0;
-
-		Shift shift = attendanceDAO.findDefaultShift();
 
 		try (Workbook workbook = WorkbookFactory.create(inputStream)) {
 			Sheet sheet = workbook.getSheetAt(0);
@@ -176,11 +171,6 @@ public class AttendanceImportUtil {
 					continue;
 				}
 
-				if (shift == null) {
-					errorMessages.add("Dòng " + displayRow + ": Không tìm được ca làm mặc định nào trong hệ thống.");
-					continue;
-				}
-
 				Date sqlDate = Date.valueOf(date);
 				Time newCheckIn = checkIn != null ? Time.valueOf(checkIn) : null;
 				Time newCheckOut = checkOut != null ? Time.valueOf(checkOut) : null;
@@ -212,9 +202,9 @@ public class AttendanceImportUtil {
 				// ── Conflict: có OT APPROVED nhưng checkout không đủ muộn ──
 				if (checkIn != null && checkOut != null) {
 					OvertimeRecord approvedOT = overtimeDAO.findApprovedOTForUserAndDate(userId, sqlDate);
-					if (approvedOT != null && approvedOT.getApprovedHours() != null && shift.getEndTime() != null) {
+					if (approvedOT != null && approvedOT.getApprovedHours() != null) {
 						long otMinutes = approvedOT.getApprovedHours().multiply(BigDecimal.valueOf(60)).longValue();
-						LocalTime expectedCheckout = shift.getEndTime().toLocalTime().plusMinutes(otMinutes);
+						LocalTime expectedCheckout = WorkScheduleConfig.STANDARD_END.plusMinutes(otMinutes);
 						if (checkOut.isBefore(expectedCheckout)) {
 							errorMessages.add("Dòng " + displayRow + ": Nhân viên " + employeeCode + " có OT "
 									+ approvedOT.getApprovedHours() + "h được duyệt ngày " + date
@@ -229,13 +219,12 @@ public class AttendanceImportUtil {
 				record.setUserId(userId);
 				record.setEmployeeCode(employeeCode);
 				record.setDate(sqlDate);
-				record.setShiftId(shift.getId());
 				record.setCheckIn(newCheckIn);
 				record.setCheckOut(newCheckOut);
 				record.setWorkingHours(checkIn != null && checkOut != null
-						? calculateWorkingHours(checkIn, checkOut, shift.getBreakMinutes())
+						? calculateWorkingHours(checkIn, checkOut, WorkScheduleConfig.BREAK_MINUTES)
 						: null);
-				record.setStatus(resolveStatus(checkIn, shift.getStartTime()));
+				record.setStatus(resolveStatus(checkIn));
 				record.setImportBatchId(importBatchId);
 
 				toInsert.add(record);
@@ -395,17 +384,14 @@ public class AttendanceImportUtil {
 	}
 
 	/**
-	 * Ca mặc định (findDefaultShift) luôn là "OFFICE" 08:00–17:00 → đi muộn quá 15
-	 * phút mới tính LATE.
+	 * Giờ làm chuẩn cố định 08:00–17:00 (WorkScheduleConfig) → đi muộn quá 15 phút
+	 * mới tính LATE.
 	 */
-	private String resolveStatus(LocalTime checkIn, Time shiftStartTime) {
+	private String resolveStatus(LocalTime checkIn) {
 		if (checkIn == null) {
 			return "ABSENT";
 		}
-		if (shiftStartTime == null) {
-			return "NORMAL";
-		}
-		LocalTime lateTime = shiftStartTime.toLocalTime().plusMinutes(LATE_THRESHOLD_MINUTES);
+		LocalTime lateTime = WorkScheduleConfig.STANDARD_START.plusMinutes(WorkScheduleConfig.LATE_THRESHOLD_MINUTES);
 		return checkIn.isAfter(lateTime) ? "LATE" : "NORMAL";
 	}
 

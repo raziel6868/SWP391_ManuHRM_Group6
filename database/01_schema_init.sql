@@ -296,7 +296,6 @@ CREATE TABLE attendance_records (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     user_id BIGINT NOT NULL,
     date DATE NOT NULL,
-    shift_id BIGINT NULL,
     check_in TIME NULL,
     check_out TIME NULL,
     working_hours DECIMAL(5,2) NULL,
@@ -306,8 +305,6 @@ CREATE TABLE attendance_records (
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     CONSTRAINT fk_attendance_records_user
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-    CONSTRAINT fk_attendance_records_shift
-        FOREIGN KEY (shift_id) REFERENCES shifts(id) ON DELETE SET NULL,
     CONSTRAINT uq_attendance_records_user_date
         UNIQUE (user_id, date)
 );

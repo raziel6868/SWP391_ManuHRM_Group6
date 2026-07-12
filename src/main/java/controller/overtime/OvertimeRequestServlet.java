@@ -1,61 +1,41 @@
 package controller.overtime;
 
 import dal.MonthlySheetDAO;
-import dal.OvertimeDAO;
-import dal.UserDAO;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.annotation.MultipartConfig;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
+import jakarta.servlet.http.Part;
 import java.io.IOException;
-import java.math.BigDecimal;
-import java.sql.Date;
+import java.io.InputStream;
 import java.time.LocalDate;
-import java.time.ZoneId;
-import java.time.format.DateTimeParseException;
-import java.time.format.ResolverStyle;
-import java.time.format.DateTimeFormatter;
 import java.util.List;
-import model.OvertimeRecord;
+import model.Permission;
 import model.User;
-import util.ValidationUtil;
+import util.OvertimeImportUtil;
+import util.OvertimeImportUtil.OvertimeImportException;
+import util.OvertimeImportUtil.OvertimeImportResult;
 
+/**
+ * Không còn là trang form tạo OT từng người nữa. Giờ đây quản đốc bấm "Tạo yêu
+ * cầu OT" trên grid -> mở thẳng file picker -> chọn file -> form ẩn tự submit
+ * POST thẳng vào đây, kèm year/month đang xem trên grid. Không có trang GET
+ * riêng.
+ */
+@MultipartConfig(maxFileSize = 10 * 1024 * 1024)
 @WebServlet(name = "OvertimeRequestServlet", urlPatterns = {"/overtime-request"})
 public class OvertimeRequestServlet extends HttpServlet {
 
-	private static final ZoneId VN_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
-	private static final DateTimeFormatter STRICT_DATE = DateTimeFormatter.ofPattern("uuuu-MM-dd")
-			.withResolverStyle(ResolverStyle.STRICT);
-
-	private final OvertimeDAO overtimeDAO = new OvertimeDAO();
-	private final UserDAO userDAO = new UserDAO();
 	private final MonthlySheetDAO monthlySheetDAO = new MonthlySheetDAO();
+	private final OvertimeImportUtil importUtil = new OvertimeImportUtil();
 
 	@Override
-	protected void doGet(HttpServletRequest request, HttpServletResponse response)
-			throws ServletException, IOException {
-
-		HttpSession session = request.getSession();
-		User authUser = (User) session.getAttribute("authUser");
-		if (authUser == null || authUser.getId() == null) {
-			response.sendRedirect(request.getContextPath() + "/login");
-			return;
-		}
-
-		int authRank = authUser.getHierarchyLevel() != null ? authUser.getHierarchyLevel() : 1;
-		Long managerId = authRank <= 2 ? authUser.getId() : null;
-		List<User> subordinates = userDAO.searchUsers(null, null, null, true, null, 0, 1000, managerId);
-
-		LocalDate today = LocalDate.now(VN_ZONE);
-		LocalDate minOtDate = resolveMinOtDate(today);
-		LocalDate maxOtDate = resolveMaxOtDate(today);
-
-		request.setAttribute("subordinates", subordinates);
-		request.setAttribute("minOtDate", minOtDate);
-		request.setAttribute("maxOtDate", maxOtDate);
-		request.getRequestDispatcher("/views/overtime/overtime-request.jsp").forward(request, response);
+	protected void doGet(HttpServletRequest request, HttpServletResponse response) throws IOException {
+		// Không còn trang import riêng - quay lại grid.
+		response.sendRedirect(request.getContextPath() + "/overtime-list");
 	}
 
 	@Override
@@ -69,150 +49,81 @@ public class OvertimeRequestServlet extends HttpServlet {
 			response.sendRedirect(request.getContextPath() + "/login");
 			return;
 		}
-
-		Long userId = parseLong(request.getParameter("userId"));
-		Date date = parseDate(request.getParameter("date"));
-		BigDecimal requestedHours = parseBigDecimal(request.getParameter("requestedHours"));
-		String reason = request.getParameter("reason");
-
-		String redirectList = request.getContextPath() + "/overtime-list";
-
-		if (userId == null) {
-			session.setAttribute("errorMsg", "Vui lòng chọn nhân viên.");
-			response.sendRedirect(redirectList);
+		if (!hasPermission(session, "OT_REQUEST")) {
+			response.sendError(HttpServletResponse.SC_FORBIDDEN);
 			return;
 		}
 
-		User targetUser = userDAO.getById(userId);
-		if (targetUser == null || !Boolean.TRUE.equals(targetUser.getIsActive())) {
-			session.setAttribute("errorMsg", "Nhân viên không tồn tại hoặc đã bị vô hiệu hóa.");
-			response.sendRedirect(redirectList);
+		LocalDate today = LocalDate.now();
+		int year = parseInt(request.getParameter("year"), today.getYear());
+		int month = parseInt(request.getParameter("month"), today.getMonthValue());
+
+		if (year < 2000 || year > 2100 || month < 1 || month > 12) {
+			session.setAttribute("errorMsg", "Tháng/năm import không hợp lệ.");
+			redirectBack(request, response, year, month);
 			return;
 		}
-		int authRank = authUser.getHierarchyLevel() != null ? authUser.getHierarchyLevel() : 1;
-		if (authRank <= 2) {
-			if (targetUser.getManagerId() == null || !targetUser.getManagerId().equals(authUser.getId())) {
-				session.setAttribute("errorMsg", "Bạn chỉ có thể tạo OT cho nhân viên dưới quyền của mình.");
-				response.sendRedirect(redirectList);
-				return;
+		if (monthlySheetDAO.isPeriodClosed(year, month)) {
+			session.setAttribute("errorMsg", "Tháng " + month + "/" + year + " đã chốt công, không thể import OT.");
+			redirectBack(request, response, year, month);
+			return;
+		}
+
+		Part filePart = request.getPart("excelFile");
+		if (filePart == null || filePart.getSize() == 0) {
+			session.setAttribute("errorMsg", "Vui lòng chọn file Excel để import.");
+			redirectBack(request, response, year, month);
+			return;
+		}
+		String submittedFileName = filePart.getSubmittedFileName();
+		if (submittedFileName == null || !submittedFileName.toLowerCase().endsWith(".xlsx")) {
+			session.setAttribute("errorMsg", "Chỉ hỗ trợ file Excel định dạng .xlsx.");
+			redirectBack(request, response, year, month);
+			return;
+		}
+
+		try (InputStream inputStream = filePart.getInputStream()) {
+			OvertimeImportResult result = importUtil.importExcel(inputStream, year, month, authUser.getId());
+			session.setAttribute("importSuccessCount", result.getSuccessCount());
+			session.setAttribute("importDuplicateCount", result.getDuplicateCount());
+			session.setAttribute("importErrorCount", result.getErrorCount());
+			session.setAttribute("importErrorMessages", result.getErrorMessages());
+			session.setAttribute("importDuplicateMessages", result.getDuplicateMessages());
+		} catch (OvertimeImportException e) {
+			session.setAttribute("errorMsg", e.getMessage());
+		}
+
+		redirectBack(request, response, year, month);
+	}
+
+	private void redirectBack(HttpServletRequest request, HttpServletResponse response, int year, int month)
+			throws IOException {
+		response.sendRedirect(
+				request.getContextPath() + "/overtime-list?year=" + year + "&month=" + month + "&imported=true");
+	}
+
+	@SuppressWarnings("unchecked")
+	private boolean hasPermission(HttpSession session, String code) {
+		List<Permission> permissions = (List<Permission>) session.getAttribute("permissions");
+		if (permissions == null) {
+			return false;
+		}
+		for (Permission p : permissions) {
+			if (code.equals(p.getCode())) {
+				return true;
 			}
 		}
-
-		if (date == null) {
-			session.setAttribute("errorMsg", "Ngày OT không hợp lệ. Vui lòng chọn ngày hợp lệ trên lịch.");
-			response.sendRedirect(redirectList);
-			return;
-		}
-
-		LocalDate otDate = date.toLocalDate();
-		String dateError = validateOtDate(otDate);
-		if (dateError != null) {
-			session.setAttribute("errorMsg", dateError);
-			response.sendRedirect(redirectList);
-			return;
-		}
-
-		if (requestedHours == null || requestedHours.compareTo(BigDecimal.ZERO) <= 0
-				|| requestedHours.compareTo(new BigDecimal("24")) > 0) {
-			session.setAttribute("errorMsg", "Số giờ OT không hợp lệ (phải từ 0.5 đến 24).");
-			response.sendRedirect(redirectList);
-			return;
-		}
-
-		if (ValidationUtil.isBlank(reason)) {
-			session.setAttribute("errorMsg", "Vui lòng nhập lý do tăng ca.");
-			response.sendRedirect(redirectList);
-			return;
-		}
-
-		if (overtimeDAO.hasPendingByUserAndDate(userId, date)) {
-			session.setAttribute("errorMsg", "Nhân viên " + targetUser.getFullName()
-					+ " đã có yêu cầu OT đang chờ duyệt cho ngày " + date + ".");
-			response.sendRedirect(redirectList);
-			return;
-		}
-
-		OvertimeRecord record = new OvertimeRecord();
-		record.setUserId(userId);
-		record.setDate(date);
-		record.setRequestedHours(requestedHours);
-		record.setReason(reason.trim());
-
-		boolean success = overtimeDAO.insert(record);
-		if (success) {
-			session.setAttribute("successMsg", "Tạo yêu cầu OT cho " + targetUser.getFullName() + " thành công.");
-		} else {
-			session.setAttribute("errorMsg", "Không thể tạo yêu cầu OT. Vui lòng thử lại.");
-		}
-
-		response.sendRedirect(redirectList);
+		return false;
 	}
 
-	private Long parseLong(String value) {
+	private int parseInt(String value, int defaultValue) {
 		if (value == null || value.isBlank()) {
-			return null;
+			return defaultValue;
 		}
 		try {
-			return Long.parseLong(value.trim());
+			return Integer.parseInt(value.trim());
 		} catch (NumberFormatException e) {
-			return null;
-		}
-	}
-
-	private LocalDate resolveMinOtDate(LocalDate today) {
-		if (!monthlySheetDAO.isPeriodClosed(today.getYear(), today.getMonthValue())) {
-			return today;
-		}
-		LocalDate nextMonth = today.plusMonths(1);
-		return nextMonth.withDayOfMonth(1);
-	}
-
-	private LocalDate resolveMaxOtDate(LocalDate today) {
-		if (!monthlySheetDAO.isPeriodClosed(today.getYear(), today.getMonthValue())) {
-			return today.withDayOfMonth(today.lengthOfMonth());
-		}
-		LocalDate nextMonth = today.plusMonths(1);
-		return nextMonth.withDayOfMonth(nextMonth.lengthOfMonth());
-	}
-
-	private String validateOtDate(LocalDate otDate) {
-		LocalDate today = LocalDate.now(VN_ZONE);
-		LocalDate minDate = resolveMinOtDate(today);
-		LocalDate maxDate = resolveMaxOtDate(today);
-
-		if (otDate.isBefore(today)) {
-			return "Ngày OT không được là ngày trong quá khứ.";
-		}
-		if (otDate.isBefore(minDate) || otDate.isAfter(maxDate)) {
-			return "Ngày OT phải từ " + minDate + " đến " + maxDate + ".";
-		}
-		if (monthlySheetDAO.isPeriodClosed(otDate.getYear(), otDate.getMonthValue())) {
-			return "Tháng " + otDate.getMonthValue() + "/" + otDate.getYear()
-					+ " đã chốt công, không thể tạo OT cho ngày này.";
-		}
-		return null;
-	}
-
-	private Date parseDate(String value) {
-		if (value == null || value.isBlank()) {
-			return null;
-		}
-		try {
-			LocalDate parsed = LocalDate.parse(value.trim(), STRICT_DATE);
-			return Date.valueOf(parsed);
-		} catch (DateTimeParseException | IllegalArgumentException e) {
-			return null;
-		}
-	}
-
-	private BigDecimal parseBigDecimal(String value) {
-		if (value == null || value.isBlank()) {
-			return null;
-		}
-		try {
-			return new BigDecimal(value.trim());
-		} catch (NumberFormatException e) {
-			return null;
+			return defaultValue;
 		}
 	}
 }

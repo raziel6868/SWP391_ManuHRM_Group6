@@ -175,6 +175,8 @@
                                                     <input type="hidden" name="id" value="${cr.id}" />
                                                     <input type="hidden" name="action" value="approve" />
                                                     <input type="hidden" name="tab" value="supervisor" />
+                                                    <input type="hidden" name="status" value="${selectedStatus}" />
+                                                    <input type="hidden" name="page" value="${currentPage}" />
                                                     <button type="submit" class="btn btn-sm btn-icon" title="Duyệt">
                                                         <span class="material-symbols-outlined" style="font-size:1.25rem;color:#065f46;">check_circle</span>
                                                     </button>
@@ -194,6 +196,8 @@
                                                       class="d-inline m-0"
                                                       onsubmit="return confirm('Duyệt yêu cầu của ${cr.employeeName}?')">
                                                     <input type="hidden" name="id" value="${cr.id}" />
+                                                    <input type="hidden" name="status" value="${selectedStatus}" />
+                                                    <input type="hidden" name="page" value="${currentPage}" />
                                                     <button type="submit" class="btn btn-sm btn-icon" title="Duyệt">
                                                         <span class="material-symbols-outlined" style="font-size:1.25rem;color:#065f46;">check_circle</span>
                                                     </button>
@@ -257,6 +261,8 @@
             <input type="hidden" name="id" id="rejectId" />
             <input type="hidden" name="action" value="reject" />
             <input type="hidden" name="tab" id="rejectTab" />
+            <input type="hidden" name="status" value="${selectedStatus}" />
+            <input type="hidden" name="page" value="${currentPage}" />
             <div class="mb-3">
                 <label class="form-label fw-medium mb-1">
                     Lý do từ chối yêu cầu của <strong id="rejectName"></strong>

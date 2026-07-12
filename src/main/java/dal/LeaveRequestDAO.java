@@ -59,6 +59,48 @@ public class LeaveRequestDAO {
 		return false;
 	}
 
+	/**
+	 * Lấy toàn bộ đơn nghỉ đã APPROVED của 1 nhóm nhân viên có khoảng thời gian
+	 * giao với 1 tháng cụ thể. Dùng để tô ô "L" (nghỉ phép) trên lưới chấm công
+	 * (attendance-list dạng grid, giống ot-list).
+	 */
+	public List<LeaveRequest> getApprovedLeavesForUsersInMonth(List<Long> userIds, int year, int month) {
+		List<LeaveRequest> requests = new ArrayList<>();
+		if (userIds == null || userIds.isEmpty()) {
+			return requests;
+		}
+
+		java.time.YearMonth ym = java.time.YearMonth.of(year, month);
+		java.sql.Date monthStart = java.sql.Date.valueOf(ym.atDay(1));
+		java.sql.Date monthEnd = java.sql.Date.valueOf(ym.atEndOfMonth());
+
+		StringBuilder placeholders = new StringBuilder();
+		for (int i = 0; i < userIds.size(); i++) {
+			placeholders.append(i == 0 ? "?" : ",?");
+		}
+
+		String sql = "SELECT " + SELECT_COLUMNS + BASE_FROM + " WHERE lr.status = 'APPROVED' AND lr.user_id IN ("
+				+ placeholders + ") AND lr.start_date <= ? AND lr.end_date >= ?";
+
+		try (Connection conn = DBContext.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+			int idx = 1;
+			for (Long userId : userIds) {
+				ps.setLong(idx++, userId);
+			}
+			ps.setDate(idx++, monthEnd);
+			ps.setDate(idx, monthStart);
+			try (ResultSet rs = ps.executeQuery()) {
+				while (rs.next()) {
+					requests.add(mapRow(rs));
+				}
+			}
+		} catch (SQLException e) {
+			System.err.println("LeaveRequestDAO.getApprovedLeavesForUsersInMonth() ERROR: " + e.getMessage());
+		}
+
+		return requests;
+	}
+
 	public List<LeaveRequest> searchRequests(String keyword, String status, Long departmentId, Long managerId,
 			int offset, int limit) {
 		List<LeaveRequest> requests = new ArrayList<>();

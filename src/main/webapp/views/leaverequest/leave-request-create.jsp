@@ -43,7 +43,7 @@
                                             <option value="" ${empty selectedLeaveTypeId ? 'selected' : ''}>Chọn loại nghỉ</option>
                                             <c:forEach var="leaveType" items="${leaveTypes}">
                                                 <option value="${leaveType.id}" ${selectedLeaveTypeId == leaveType.id ? 'selected' : ''}>
-                                                    <c:out value="${leaveType.code}" /> - <c:out value="${leaveType.name}" />
+                                                    <c:out value="${leaveType.name}" />
                                                 </option>
                                             </c:forEach>
                                         </select>
@@ -71,7 +71,7 @@
                                                   maxlength="1000"
                                                   placeholder="Nhập lý do nghỉ nếu có...">${reason}</textarea>
                                         <div class="form-text mt-1 text-on-surface-variant">
-                                            Số ngày nghỉ được tính theo ngày lịch, bao gồm cả ngày bắt đầu và kết thúc.
+                                            Hệ thống tự tính số ngày nghỉ theo quy định của từng loại nghỉ.
                                         </div>
                                     </div>
                                 </div>
@@ -104,9 +104,6 @@
                                                 <div class="fw-semibold">
                                                     <c:out value="${balance.leaveTypeName}" />
                                                 </div>
-                                                <div class="body-sm text-on-surface-variant">
-                                                    <c:out value="${balance.leaveTypeCode}" />
-                                                </div>
                                             </div>
                                             <div class="text-end">
                                                 <div class="fw-bold">
@@ -126,6 +123,34 @@
                                         Chưa có hạn mức nghỉ cho năm này. Vui lòng liên hệ HR.
                                     </div>
                                 </c:if>
+                            </div>
+                        </div>
+                        <div class="card-premium p-4 mt-4">
+                            <h3 class="h5 fw-bold mb-3">Quy tắc loại nghỉ</h3>
+                            <div class="d-flex flex-column gap-3">
+                                <c:forEach var="leaveType" items="${leaveTypes}">
+                                    <div class="p-3 rounded-3 border border-outline-variant bg-surface">
+                                        <div class="d-flex justify-content-between gap-3">
+                                            <div>
+                                                <div class="fw-semibold"><c:out value="${leaveType.name}" /></div>
+                                            </div>
+                                            <div class="text-end body-sm">
+                                                <c:choose>
+                                                    <c:when test="${leaveType.salaryPaidBy == 'SOCIAL_INSURANCE'}">BHXH</c:when>
+                                                    <c:when test="${leaveType.salaryPaidBy == 'NONE'}">Không lương</c:when>
+                                                    <c:otherwise>Công ty trả lương</c:otherwise>
+                                                </c:choose>
+                                            </div>
+                                        </div>
+                                        <div class="body-sm text-on-surface-variant mt-2">
+                                            <c:if test="${leaveType.requiresBalance}">Trừ quỹ phép năm.</c:if>
+                                            <c:if test="${not empty leaveType.maxDays}">
+                                                Tối đa <fmt:formatNumber value="${leaveType.maxDays}" minFractionDigits="0" maxFractionDigits="2" groupingUsed="false" /> ngày/đơn.
+                                            </c:if>
+                                            <c:if test="${empty leaveType.maxDays and !leaveType.requiresBalance}"> Không giới hạn ngày theo hệ thống.</c:if>
+                                        </div>
+                                    </div>
+                                </c:forEach>
                             </div>
                         </div>
                     </div>

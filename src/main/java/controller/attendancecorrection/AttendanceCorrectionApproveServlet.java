@@ -100,7 +100,7 @@ public class AttendanceCorrectionApproveServlet extends HttpServlet {
 			OvertimeRecord approvedOT = overtimeDAO.findApprovedOTForUserAndDate(targetUserId, attendanceDate);
 			if (approvedOT != null && approvedOT.getApprovedHours() != null) {
 				long otMinutes = approvedOT.getApprovedHours().multiply(BigDecimal.valueOf(60)).longValue();
-				LocalTime expectedCheckout = WorkScheduleConfig.STANDARD_END.plusMinutes(otMinutes);
+				LocalTime expectedCheckout = WorkScheduleConfig.OVERTIME_START.plusMinutes(otMinutes);
 				if (correction.getNewCheckOut().toLocalTime().isBefore(expectedCheckout)) {
 					session.setAttribute("errorMsg",
 							"Nhân viên có OT " + approvedOT.getApprovedHours() + "h được duyệt ngày " + attendanceDate

@@ -320,6 +320,17 @@ public class MonthlySheetDAO {
 	}
 
 	public boolean reopenSheet(Long sheetId) {
+		String finalPayrollSql = """
+				SELECT COUNT(*)
+				FROM monthly_salaries
+				WHERE monthly_sheet_id = ?
+				  AND status IN ('FINAL', 'PAID')
+				""";
+		String deleteDraftPayrollSql = """
+				DELETE FROM monthly_salaries
+				WHERE monthly_sheet_id = ?
+				  AND status = 'DRAFT'
+				""";
 		String resetSql = """
 				UPDATE monthly_sheets
 				SET status = 'OPEN',
@@ -332,6 +343,16 @@ public class MonthlySheetDAO {
 		try (Connection conn = DBContext.getConnection()) {
 			conn.setAutoCommit(false);
 			try {
+				try (PreparedStatement ps = conn.prepareStatement(finalPayrollSql)) {
+					ps.setLong(1, sheetId);
+					try (ResultSet rs = ps.executeQuery()) {
+						if (rs.next() && rs.getInt(1) > 0) {
+							conn.rollback();
+							return false;
+						}
+					}
+				}
+
 				int updated;
 				try (PreparedStatement ps = conn.prepareStatement(resetSql)) {
 					ps.setLong(1, sheetId);
@@ -340,6 +361,10 @@ public class MonthlySheetDAO {
 				if (updated <= 0) {
 					conn.rollback();
 					return false;
+				}
+				try (PreparedStatement ps = conn.prepareStatement(deleteDraftPayrollSql)) {
+					ps.setLong(1, sheetId);
+					ps.executeUpdate();
 				}
 				try (PreparedStatement ps = conn.prepareStatement(deleteApprovalsSql)) {
 					ps.setLong(1, sheetId);

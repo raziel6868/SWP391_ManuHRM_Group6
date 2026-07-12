@@ -8,6 +8,7 @@ import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.List;
@@ -15,10 +16,11 @@ import model.InsuranceRate;
 import model.PayrollSetting;
 import model.PersonalTaxBracket;
 import model.PersonalTaxSetting;
+import util.LeavePolicyUtil;
 
 public class PayrollDAO {
 
-	private static final BigDecimal DEFAULT_WORK_DAYS = new BigDecimal("26");
+	private static final BigDecimal DEFAULT_WORK_DAYS = new BigDecimal("22");
 	private static final BigDecimal DEFAULT_HOURS_PER_DAY = new BigDecimal("8");
 	private static final BigDecimal DEFAULT_OT_RATE = new BigDecimal("1.5");
 	private static final BigDecimal MONEY_ZERO = BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
@@ -30,35 +32,42 @@ public class PayrollDAO {
 	private final PersonalTaxBracketDAO personalTaxBracketDAO = new PersonalTaxBracketDAO();
 	private final EmployeeDependentDAO employeeDependentDAO = new EmployeeDependentDAO();
 
+	public List<String> validateRequiredConfiguration(int year, int month) {
+		List<String> errors = new ArrayList<>();
+		String period = month + "/" + year;
+
+		if (payrollSettingDAO.getConfiguredForPeriod(year, month) == null) {
+			errors.add("Chưa cấu hình tham số lương cho kỳ " + period + ".");
+		}
+		if (insuranceRateDAO.getActiveForPeriod(year, month) == null) {
+			errors.add("Chưa cấu hình mức đóng bảo hiểm cho kỳ " + period + ".");
+		}
+		if (personalTaxSettingDAO.getActiveForPeriod(year, month) == null) {
+			errors.add("Chưa cấu hình giảm trừ gia cảnh cho kỳ " + period + ".");
+		}
+		if (personalTaxBracketDAO.getActiveBracketsForPeriod(year, month).isEmpty()) {
+			errors.add("Chưa cấu hình biểu thuế TNCN cho kỳ " + period + ".");
+		}
+
+		return errors;
+	}
+
 	public List<PayrollPreviewRow> buildPayrollPreview(int year, int month) {
+		List<String> configErrors = validateRequiredConfiguration(year, month);
+		if (!configErrors.isEmpty()) {
+			throw new PayrollConfigurationException(configErrors);
+		}
+
 		List<PayrollPreviewRow> rows = new ArrayList<>();
 		YearMonth yearMonth = YearMonth.of(year, month);
 		Date firstDay = Date.valueOf(yearMonth.atDay(1));
 		Date lastDay = Date.valueOf(yearMonth.atEndOfMonth());
-		PayrollSetting setting = payrollSettingDAO.getActiveForPeriod(year, month);
+		PayrollSetting setting = payrollSettingDAO.getConfiguredForPeriod(year, month);
 		InsuranceRate insuranceRate = insuranceRateDAO.getActiveForPeriod(year, month);
-		if (insuranceRate == null) {
-			System.err.println("InsuranceRateDAO.getActiveForPeriod() returned null for " + year + "-" + month
-					+ ". Using zero rates.");
-			insuranceRate = zeroInsuranceRate();
-		}
-
 		PersonalTaxSetting personalTaxSetting = personalTaxSettingDAO.getActiveForPeriod(year, month);
-		BigDecimal personalDeductionAmount = MONEY_ZERO;
-		BigDecimal dependentDeductionAmount = MONEY_ZERO;
-		if (personalTaxSetting == null) {
-			System.err.println("PersonalTaxSettingDAO.getActiveForPeriod() returned null for " + year + "-" + month
-					+ ". Using zero deductions.");
-		} else {
-			personalDeductionAmount = money(personalTaxSetting.getPersonalDeduction());
-			dependentDeductionAmount = money(personalTaxSetting.getDependentDeduction());
-		}
-
+		BigDecimal personalDeductionAmount = money(personalTaxSetting.getPersonalDeduction());
+		BigDecimal dependentDeductionAmount = money(personalTaxSetting.getDependentDeduction());
 		List<PersonalTaxBracket> taxBrackets = personalTaxBracketDAO.getActiveBracketsForPeriod(year, month);
-		if (taxBrackets.isEmpty()) {
-			System.err.println("PersonalTaxBracketDAO.getActiveBracketsForPeriod() returned empty for " + year + "-"
-					+ month + ". PIT will be 0.");
-		}
 
 		String usersSql = """
 				SELECT u.id, u.full_name, u.employee_code, d.name AS department_name,
@@ -144,32 +153,34 @@ public class PayrollDAO {
 	private BigDecimal countPaidLeaveDays(Connection conn, Long userId, Date firstDay, Date lastDay)
 			throws SQLException {
 		String sql = """
-				SELECT COALESCE(SUM(DATEDIFF(LEAST(lr.end_date, ?), GREATEST(lr.start_date, ?)) + 1), 0)
-				       AS paid_leave_days
+				SELECT lr.start_date, lr.end_date, lr.day_count_method_snapshot AS day_count_method
 				FROM leave_requests lr
-				JOIN leave_types lt ON lr.leave_type_id = lt.id
 				WHERE lr.user_id = ?
 				  AND lr.status = 'APPROVED'
-				  AND lt.is_paid = TRUE
+				  AND lr.is_paid_snapshot = TRUE
 				  AND lr.start_date <= ?
 				  AND lr.end_date >= ?
 				""";
 
 		try (PreparedStatement ps = conn.prepareStatement(sql)) {
-			ps.setDate(1, lastDay);
-			ps.setDate(2, firstDay);
-			ps.setLong(3, userId);
-			ps.setDate(4, lastDay);
-			ps.setDate(5, firstDay);
+			ps.setLong(1, userId);
+			ps.setDate(2, lastDay);
+			ps.setDate(3, firstDay);
 			try (ResultSet rs = ps.executeQuery()) {
-				if (rs.next()) {
-					BigDecimal paidLeaveDays = rs.getBigDecimal("paid_leave_days");
-					return paidLeaveDays != null ? paidLeaveDays : BigDecimal.ZERO;
+				BigDecimal totalDays = BigDecimal.ZERO;
+				LocalDate periodStart = firstDay.toLocalDate();
+				LocalDate periodEnd = lastDay.toLocalDate();
+				while (rs.next()) {
+					LocalDate requestStart = rs.getDate("start_date").toLocalDate();
+					LocalDate requestEnd = rs.getDate("end_date").toLocalDate();
+					LocalDate countedStart = requestStart.isBefore(periodStart) ? periodStart : requestStart;
+					LocalDate countedEnd = requestEnd.isAfter(periodEnd) ? periodEnd : requestEnd;
+					totalDays = totalDays.add(LeavePolicyUtil.calculateRequestDays(countedStart, countedEnd,
+							rs.getString("day_count_method")));
 				}
+				return totalDays;
 			}
 		}
-
-		return BigDecimal.ZERO;
 	}
 
 	private BigDecimal sumApprovedOtHours(Connection conn, Long userId, int year, int month) throws SQLException {
@@ -243,8 +254,9 @@ public class PayrollDAO {
 		BigDecimal employeeInsurance = money(socialInsurance.add(healthInsurance).add(unemploymentInsurance));
 		BigDecimal dependentDeduction = money(
 				BigDecimal.valueOf(Math.max(dependentCount, 0L)).multiply(dependentDeductionAmount));
+		BigDecimal taxExemptIncome = money(nonTaxableAllowances.add(overtimePay));
 		BigDecimal taxableIncome = money(grossIncome.subtract(employeeInsurance).subtract(personalDeductionAmount)
-				.subtract(dependentDeduction).subtract(nonTaxableAllowances));
+				.subtract(dependentDeduction).subtract(taxExemptIncome));
 		if (taxableIncome.compareTo(BigDecimal.ZERO) < 0) {
 			taxableIncome = MONEY_ZERO;
 		}
@@ -371,11 +383,16 @@ public class PayrollDAO {
 		return (value != null ? value : BigDecimal.ZERO).setScale(2, RoundingMode.HALF_UP);
 	}
 
-	private InsuranceRate zeroInsuranceRate() {
-		InsuranceRate insuranceRate = new InsuranceRate();
-		insuranceRate.setSocialInsuranceEmployeeRate(BigDecimal.ZERO);
-		insuranceRate.setHealthInsuranceEmployeeRate(BigDecimal.ZERO);
-		insuranceRate.setUnemploymentInsuranceEmployeeRate(BigDecimal.ZERO);
-		return insuranceRate;
+	public static class PayrollConfigurationException extends IllegalStateException {
+		private final List<String> errors;
+
+		public PayrollConfigurationException(List<String> errors) {
+			super(String.join(" ", errors));
+			this.errors = List.copyOf(errors);
+		}
+
+		public List<String> getErrors() {
+			return errors;
+		}
 	}
 }

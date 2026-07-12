@@ -2,6 +2,7 @@ package controller.contract;
 
 import dal.ContractDAO;
 import dal.ContractTypeDAO;
+import dal.LeaveBalanceDAO;
 import dal.UserDAO;
 import model.Contract;
 import model.ContractType;
@@ -43,6 +44,7 @@ public class ContractCreateServlet extends HttpServlet {
 
 	private final ContractDAO contractDAO = new ContractDAO();
 	private final ContractTypeDAO contractTypeDAO = new ContractTypeDAO();
+	private final LeaveBalanceDAO leaveBalanceDAO = new LeaveBalanceDAO();
 	private final UserDAO userDAO = new UserDAO();
 
 	@Override
@@ -155,6 +157,7 @@ public class ContractCreateServlet extends HttpServlet {
 				}
 			}
 		}
+		leaveBalanceDAO.syncAnnualBalance(userId, startDate.toLocalDate().getYear());
 
 		request.getSession().setAttribute("successMsg", "Tạo hợp đồng mới thành công!");
 		response.sendRedirect(request.getContextPath() + "/contract-list");

@@ -318,8 +318,8 @@
                                         </tr>
                                         <tr>
                                             <td class="fw-medium">Thu nhập chịu thuế</td>
-                                            <td>Max(0, Tổng trước khấu trừ - BH NLĐ đóng - Giảm trừ bản thân - Giảm trừ NPT - Phụ cấp không thuế)</td>
-                                            <td>Thu nhập chịu thuế</td>
+                                            <td>Max(0, Tổng trước khấu trừ - BH NLĐ đóng - Giảm trừ bản thân - Giảm trừ NPT - Phụ cấp không thuế - Tiền OT miễn thuế)</td>
+                                            <td>Thu nhập chịu thuế, Phụ cấp không thuế, Tiền OT</td>
                                         </tr>
                                         <tr>
                                             <td class="fw-medium">Tổng khấu trừ</td>

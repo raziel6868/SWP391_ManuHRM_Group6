@@ -1,5 +1,6 @@
 package model;
 
+import java.math.BigDecimal;
 import java.sql.Timestamp;
 
 public class LeaveType {
@@ -9,6 +10,15 @@ public class LeaveType {
 	private String name;
 	private String description;
 	private Boolean isPaid;
+	private String salaryPaidBy;
+	private Boolean isAnnualLeave;
+	private Boolean requiresBalance;
+	private BigDecimal baseDays;
+	private BigDecimal maxDays;
+	private Boolean hasSeniorityBonus;
+	private Integer seniorityIntervalYears;
+	private BigDecimal seniorityBonusDays;
+	private String dayCountMethod;
 	private Boolean isActive;
 	private Timestamp createdAt;
 	private Timestamp updatedAt;
@@ -51,6 +61,78 @@ public class LeaveType {
 
 	public void setIsPaid(Boolean isPaid) {
 		this.isPaid = isPaid;
+	}
+
+	public String getSalaryPaidBy() {
+		return salaryPaidBy;
+	}
+
+	public void setSalaryPaidBy(String salaryPaidBy) {
+		this.salaryPaidBy = salaryPaidBy;
+	}
+
+	public Boolean getIsAnnualLeave() {
+		return isAnnualLeave;
+	}
+
+	public void setIsAnnualLeave(Boolean isAnnualLeave) {
+		this.isAnnualLeave = isAnnualLeave;
+	}
+
+	public Boolean getRequiresBalance() {
+		return requiresBalance;
+	}
+
+	public void setRequiresBalance(Boolean requiresBalance) {
+		this.requiresBalance = requiresBalance;
+	}
+
+	public BigDecimal getBaseDays() {
+		return baseDays;
+	}
+
+	public void setBaseDays(BigDecimal baseDays) {
+		this.baseDays = baseDays;
+	}
+
+	public BigDecimal getMaxDays() {
+		return maxDays;
+	}
+
+	public void setMaxDays(BigDecimal maxDays) {
+		this.maxDays = maxDays;
+	}
+
+	public Boolean getHasSeniorityBonus() {
+		return hasSeniorityBonus;
+	}
+
+	public void setHasSeniorityBonus(Boolean hasSeniorityBonus) {
+		this.hasSeniorityBonus = hasSeniorityBonus;
+	}
+
+	public Integer getSeniorityIntervalYears() {
+		return seniorityIntervalYears;
+	}
+
+	public void setSeniorityIntervalYears(Integer seniorityIntervalYears) {
+		this.seniorityIntervalYears = seniorityIntervalYears;
+	}
+
+	public BigDecimal getSeniorityBonusDays() {
+		return seniorityBonusDays;
+	}
+
+	public void setSeniorityBonusDays(BigDecimal seniorityBonusDays) {
+		this.seniorityBonusDays = seniorityBonusDays;
+	}
+
+	public String getDayCountMethod() {
+		return dayCountMethod;
+	}
+
+	public void setDayCountMethod(String dayCountMethod) {
+		this.dayCountMethod = dayCountMethod;
 	}
 
 	public Boolean getIsActive() {

@@ -1,6 +1,7 @@
 package controller.leaverequest;
 
 import dal.DBContext;
+import dal.AttendanceDAO;
 import dal.LeaveBalanceDAO;
 import dal.LeaveRequestDAO;
 import dal.OvertimeDAO;
@@ -24,6 +25,7 @@ public class LeaveRequestFinalApproveServlet extends HttpServlet {
 	private final LeaveBalanceDAO leaveBalanceDAO = new LeaveBalanceDAO();
 	private final LeaveRequestDAO leaveRequestDAO = new LeaveRequestDAO();
 	private final OvertimeDAO overtimeDAO = new OvertimeDAO();
+	private final AttendanceDAO attendanceDAO = new AttendanceDAO();
 
 	@Override
 	protected void doPost(HttpServletRequest request, HttpServletResponse response)
@@ -48,9 +50,9 @@ public class LeaveRequestFinalApproveServlet extends HttpServlet {
 
 		boolean success = finalApprove(leaveRequest, authUser.getId());
 		if (success) {
-			session.setAttribute("successMsg", "Duyệt cuối đơn nghỉ phép thành công.");
+			session.setAttribute("successMsg", "Duyệt cuối đơn nghỉ thành công.");
 		} else {
-			session.setAttribute("errorMsg", "Không thể duyệt cuối đơn nghỉ phép. Vui lòng kiểm tra hạn mức còn lại.");
+			session.setAttribute("errorMsg", "Không thể duyệt cuối đơn nghỉ. Vui lòng kiểm tra hạn mức còn lại.");
 		}
 		response.sendRedirect(request.getContextPath() + "/leave-request-list");
 	}
@@ -65,8 +67,8 @@ public class LeaveRequestFinalApproveServlet extends HttpServlet {
 			conn.setAutoCommit(false);
 
 			boolean requestUpdated = leaveRequestDAO.finalApprove(conn, leaveRequest.getId(), approverId);
-			boolean balanceUpdated = false;
-			if (requestUpdated) {
+			boolean balanceUpdated = true;
+			if (requestUpdated && requiresBalance(leaveRequest)) {
 				int year = leaveRequest.getStartDate().toLocalDate().getYear();
 				balanceUpdated = leaveBalanceDAO.incrementUsedDays(conn, leaveRequest.getUserId(),
 						leaveRequest.getLeaveTypeId(), year, leaveRequest.getDays());
@@ -93,21 +95,36 @@ public class LeaveRequestFinalApproveServlet extends HttpServlet {
 
 	private String validate(LeaveRequest leaveRequest, User authUser) {
 		if (leaveRequest == null) {
-			return "Không tìm thấy đơn nghỉ phép.";
+			return "Không tìm thấy đơn nghỉ.";
 		}
 		if (!ROLE_EMPLOYEE.equals(leaveRequest.getRequesterRole())) {
-			return "Chỉ duyệt cuối cho đơn của nhân viên role EMPLOYEE.";
+			return "Chỉ duyệt cuối cho đơn của nhân viên vai trò EMPLOYEE.";
 		}
 		if (authUser.getId() != null && authUser.getId().equals(leaveRequest.getUserId())) {
-			return "Không thể tự duyệt đơn nghỉ phép của chính mình.";
+			return "Không thể tự duyệt đơn nghỉ của chính mình.";
 		}
 		if (!"APPROVED_LEVEL_1".equals(leaveRequest.getStatus())) {
 			return "Chỉ có thể duyệt cuối đơn đã được duyệt cấp 1.";
 		}
-		if (leaveRequest.getStartDate() == null || leaveRequest.getDays() == null) {
-			return "Dữ liệu đơn nghỉ phép không hợp lệ.";
+		if (leaveRequest.getStartDate() == null || leaveRequest.getEndDate() == null
+				|| leaveRequest.getDays() == null) {
+			return "Dữ liệu đơn nghỉ không hợp lệ.";
+		}
+		if (attendanceDAO.hasAnyAttendanceInRange(leaveRequest.getUserId(), leaveRequest.getStartDate(),
+				leaveRequest.getEndDate())) {
+			return "Nhân viên đã có dữ liệu chấm công trong khoảng ngày xin nghỉ này — không thể duyệt cuối."
+					+ " Vui lòng kiểm tra lại chấm công trước khi duyệt đơn.";
+		}
+		if (leaveRequestDAO.hasOverlappingActiveRequest(leaveRequest.getUserId(), leaveRequest.getStartDate(),
+				leaveRequest.getEndDate(), leaveRequest.getId())) {
+			return "Nhân viên đã có đơn nghỉ khác trùng với khoảng thời gian này.";
 		}
 		return null;
+	}
+
+	private boolean requiresBalance(LeaveRequest leaveRequest) {
+		return Boolean.TRUE.equals(leaveRequest.getLeaveTypeRequiresBalance())
+				|| Boolean.TRUE.equals(leaveRequest.getLeaveTypeAnnualLeave());
 	}
 
 	private void rollback(Connection conn) {

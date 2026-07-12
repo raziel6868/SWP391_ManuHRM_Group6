@@ -6,14 +6,18 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import dto.AttendanceSummaryRow;
 import dto.ContractStatusRow;
 import dto.HeadcountRow;
 import dto.LeaveSummaryRow;
 import dto.OvertimeSummaryRow;
 import dto.PayrollSummaryRow;
+import util.LeavePolicyUtil;
 
 public class ReportDAO {
 
@@ -83,54 +87,69 @@ public class ReportDAO {
 	}
 
 	public List<LeaveSummaryRow> getLeaveUtilization(int year, Long departmentId) {
-		List<LeaveSummaryRow> rows = new ArrayList<>();
+		Map<Long, LeaveSummaryRow> rowsByDepartment = new LinkedHashMap<>();
+		LocalDate yearStart = LocalDate.of(year, 1, 1);
+		LocalDate yearEnd = LocalDate.of(year, 12, 31);
 
-		StringBuilder sql = new StringBuilder(
-				"""
-						SELECT d.id AS department_id, d.name AS department_name,
-						       COUNT(lr.id) AS total_requests,
-						       SUM(CASE WHEN lr.status = 'APPROVED' THEN 1 ELSE 0 END) AS approved_requests,
-						       SUM(CASE WHEN lr.status = 'REJECTED' THEN 1 ELSE 0 END) AS rejected_requests,
-						       SUM(CASE WHEN lr.status IN ('PENDING', 'APPROVED_LEVEL_1') THEN 1 ELSE 0 END) AS pending_requests,
-						       SUM(CASE WHEN lr.status = 'APPROVED' THEN DATEDIFF(lr.end_date, lr.start_date) + 1 ELSE 0 END) AS total_days
-						FROM leave_requests lr
-						JOIN users u ON lr.user_id = u.id
-						LEFT JOIN departments d ON u.department_id = d.id
-						WHERE YEAR(lr.start_date) = ?
-						""");
+		StringBuilder sql = new StringBuilder("""
+				SELECT d.id AS department_id, d.name AS department_name,
+				       lr.status, lr.start_date, lr.end_date, lr.day_count_method_snapshot
+				FROM leave_requests lr
+				JOIN users u ON lr.user_id = u.id
+				LEFT JOIN departments d ON u.department_id = d.id
+				WHERE lr.start_date <= ?
+				  AND lr.end_date >= ?
+				""");
 
 		List<Object> params = new ArrayList<>();
-		params.add(year);
+		params.add(java.sql.Date.valueOf(yearEnd));
+		params.add(java.sql.Date.valueOf(yearStart));
 
 		if (departmentId != null) {
 			sql.append(" AND u.department_id = ?");
 			params.add(departmentId);
 		}
 
-		sql.append(" GROUP BY d.id, d.name ORDER BY d.name");
+		sql.append(" ORDER BY d.name, lr.start_date, lr.id");
 
 		try (Connection conn = DBContext.getConnection();
 				PreparedStatement ps = conn.prepareStatement(sql.toString())) {
 			setParams(ps, params);
 			try (ResultSet rs = ps.executeQuery()) {
 				while (rs.next()) {
-					LeaveSummaryRow row = new LeaveSummaryRow();
-					row.setDepartmentId(rs.getObject("department_id") != null ? rs.getLong("department_id") : null);
+					Long rowDepartmentId = rs.getObject("department_id") != null ? rs.getLong("department_id") : null;
+					LeaveSummaryRow row = rowsByDepartment.computeIfAbsent(rowDepartmentId, id -> {
+						LeaveSummaryRow newRow = new LeaveSummaryRow();
+						newRow.setDepartmentId(rowDepartmentId);
+						newRow.setDepartmentName(null);
+						newRow.setYear(year);
+						newRow.setTotalDays(BigDecimal.ZERO);
+						return newRow;
+					});
 					row.setDepartmentName(rs.getString("department_name"));
-					row.setYear(year);
-					row.setTotalRequests(rs.getInt("total_requests"));
-					row.setApprovedRequests(rs.getInt("approved_requests"));
-					row.setRejectedRequests(rs.getInt("rejected_requests"));
-					row.setPendingRequests(rs.getInt("pending_requests"));
-					row.setTotalDays(rs.getBigDecimal("total_days"));
-					rows.add(row);
+					row.setTotalRequests(row.getTotalRequests() + 1);
+
+					String status = rs.getString("status");
+					if ("APPROVED".equals(status)) {
+						row.setApprovedRequests(row.getApprovedRequests() + 1);
+						LocalDate requestStart = rs.getDate("start_date").toLocalDate();
+						LocalDate requestEnd = rs.getDate("end_date").toLocalDate();
+						LocalDate countedStart = requestStart.isBefore(yearStart) ? yearStart : requestStart;
+						LocalDate countedEnd = requestEnd.isAfter(yearEnd) ? yearEnd : requestEnd;
+						row.setTotalDays(row.getTotalDays().add(LeavePolicyUtil.calculateRequestDays(countedStart,
+								countedEnd, rs.getString("day_count_method_snapshot"))));
+					} else if ("REJECTED".equals(status)) {
+						row.setRejectedRequests(row.getRejectedRequests() + 1);
+					} else if ("PENDING".equals(status) || "APPROVED_LEVEL_1".equals(status)) {
+						row.setPendingRequests(row.getPendingRequests() + 1);
+					}
 				}
 			}
 		} catch (SQLException e) {
 			System.err.println("ReportDAO.getLeaveUtilization() ERROR: " + e.getMessage());
 		}
 
-		return rows;
+		return new ArrayList<>(rowsByDepartment.values());
 	}
 
 	public List<HeadcountRow> getHeadcount(Long departmentId, Boolean isActive) {

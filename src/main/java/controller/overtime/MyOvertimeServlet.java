@@ -18,9 +18,9 @@ import model.Permission;
 import model.User;
 
 /**
- * Trang nhân viên tự xem lịch tăng ca (OT) của chính mình, dạng calendar theo
- * tháng (giống my-shift), mỗi ô ngày hiển thị số giờ OT ngày đó nếu có. Chỉ
- * xem, không tạo/sửa/hủy được ở đây.
+ * Trang nhân viên tự xem lịch tăng ca (OT) của chính mình theo tháng; mỗi ô
+ * ngày hiển thị số giờ OT ngày đó nếu có. Chỉ xem, không tạo/sửa/hủy được ở
+ * đây.
  */
 @WebServlet(name = "MyOvertimeServlet", urlPatterns = {"/my-overtime"})
 public class MyOvertimeServlet extends HttpServlet {

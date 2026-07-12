@@ -42,6 +42,14 @@ public class PayrollCloseServlet extends HttpServlet {
 			return;
 		}
 
+		if (!"CLOSED".equals(sheet.getStatus())) {
+			session.setAttribute("errorMsg", "Bảng công tháng " + sheet.getMonth() + "/" + sheet.getYear()
+					+ " chưa đóng hoặc đã được mở lại, không thể chốt bảng lương.");
+			response.sendRedirect(request.getContextPath() + "/payroll-preview?year=" + sheet.getYear() + "&month="
+					+ sheet.getMonth());
+			return;
+		}
+
 		if (!monthlySalaryDAO.hasGeneratedRows(sheet.getId())) {
 			session.setAttribute("errorMsg",
 					"Chưa có dữ liệu bảng lương tháng " + sheet.getMonth() + "/" + sheet.getYear() + " để chốt.");

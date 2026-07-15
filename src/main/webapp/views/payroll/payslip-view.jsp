@@ -182,7 +182,7 @@
                                             <td class="text-end fw-medium text-on-surface"><fmt:formatNumber value="${salary.overtimePay}" pattern="#,##0" /> VND</td>
                                         </tr>
                                         <tr>
-                                            <td class="text-on-surface-variant">Phụ cấp</td>
+                                            <td class="text-on-surface-variant">Phụ cấp hợp lệ</td>
                                             <td class="text-end fw-medium text-on-surface"><fmt:formatNumber value="${salary.totalAllowances}" pattern="#,##0" /> VND</td>
                                         </tr>
                                         <tr>
@@ -285,6 +285,11 @@
                                             <td class="fw-medium">Tiền OT</td>
                                             <td>${salary.approvedOtHours} giờ x Đơn giá giờ x Hệ số OT của kỳ lương</td>
                                             <td class="text-end"><fmt:formatNumber value="${salary.overtimePay}" pattern="#,##0" /> VND</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="fw-medium">Phụ cấp hợp lệ</td>
+                                            <td>Phụ cấp đang hiệu lực; ATTENDANCE_BONUS chỉ cộng khi không có LATE và không có ABSENT không phép trong kỳ</td>
+                                            <td class="text-end"><fmt:formatNumber value="${salary.totalAllowances}" pattern="#,##0" /> VND</td>
                                         </tr>
                                         <tr>
                                             <td class="fw-medium">Tổng trước khấu trừ</td>

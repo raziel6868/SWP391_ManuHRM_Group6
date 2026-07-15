@@ -3,6 +3,7 @@ package controller.leaverequest;
 import dal.LeaveBalanceDAO;
 import dal.LeaveRequestDAO;
 import dal.LeaveTypeDAO;
+import dal.MonthlySheetDAO;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
@@ -19,6 +20,7 @@ import java.util.List;
 import model.LeaveBalance;
 import model.LeaveRequest;
 import model.LeaveType;
+import model.MonthlySheet;
 import model.User;
 import util.LeavePolicyUtil;
 
@@ -30,6 +32,7 @@ public class LeaveRequestCreateServlet extends HttpServlet {
 	private final LeaveBalanceDAO leaveBalanceDAO = new LeaveBalanceDAO();
 	private final LeaveRequestDAO leaveRequestDAO = new LeaveRequestDAO();
 	private final LeaveTypeDAO leaveTypeDAO = new LeaveTypeDAO();
+	private final MonthlySheetDAO monthlySheetDAO = new MonthlySheetDAO();
 
 	@Override
 	protected void doGet(HttpServletRequest request, HttpServletResponse response)
@@ -117,6 +120,12 @@ public class LeaveRequestCreateServlet extends HttpServlet {
 		}
 		if (endDate.isBefore(startDate)) {
 			return "Ngày kết thúc không được trước ngày bắt đầu.";
+		}
+		MonthlySheet lockedPeriod = monthlySheetDAO.findLockedPeriodInRange(Date.valueOf(startDate),
+				Date.valueOf(endDate));
+		if (lockedPeriod != null) {
+			return "Không thể tạo đơn nghỉ vì bảng công tháng " + lockedPeriod.getMonth() + "/" + lockedPeriod.getYear()
+					+ " đang ở trạng thái " + lockedPeriod.getStatus() + ".";
 		}
 		if (reason != null && reason.length() > 1000) {
 			return "Lý do nghỉ không được vượt quá 1000 ký tự.";

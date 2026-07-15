@@ -207,7 +207,7 @@ public class AttendanceImportUtil {
 						LocalTime expectedCheckout = WorkScheduleConfig.OVERTIME_START.plusMinutes(otMinutes);
 						if (checkOut.isBefore(expectedCheckout)) {
 							errorMessages.add("Dòng " + displayRow + ": Nhân viên " + employeeCode + " có OT "
-									+ approvedOT.getApprovedHours() + "h được duyệt ngày " + date
+									+ formatHours(approvedOT.getApprovedHours()) + "h được duyệt ngày " + date
 									+ " nhưng giờ ra trong file là " + checkOut + " (cần đến " + expectedCheckout
 									+ " trở đi).");
 							continue;
@@ -381,6 +381,13 @@ public class AttendanceImportUtil {
 			minutes = 0;
 		}
 		return BigDecimal.valueOf(minutes).divide(BigDecimal.valueOf(60), 2, RoundingMode.HALF_UP);
+	}
+
+	private String formatHours(BigDecimal hours) {
+		if (hours == null) {
+			return "0";
+		}
+		return hours.stripTrailingZeros().toPlainString();
 	}
 
 	/**

@@ -36,6 +36,11 @@
                     </div>
                 </div>
 
+                <div class="alert alert-warning d-flex align-items-center gap-2 mb-4" role="alert">
+                    <span class="material-symbols-outlined">warning</span>
+                    Deprecated: thay doi tai day khong con anh huong toi payroll. Payroll lay luong co ban tu contracts.salary cua hop dong ACTIVE.
+                </div>
+
                 <div class="card-premium overflow-hidden">
                     <div class="p-4">
                         <form action="${pageContext.request.contextPath}/salary-base-setup" method="POST" class="row g-4">

@@ -1,12 +1,18 @@
 package dal;
 
+import java.math.BigDecimal;
 import java.sql.Connection;
+import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Time;
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 import model.MonthlySheet;
+import util.WorkScheduleConfig;
 
 public class MonthlySheetDAO {
 
@@ -29,6 +35,7 @@ public class MonthlySheetDAO {
 			    GROUP BY monthly_sheet_id
 			) agg ON ms.id = agg.monthly_sheet_id
 			""";
+	private static final int MAX_CLOSE_CONFLICT_MESSAGES = 20;
 
 	// ── Query ───────────────────────────────────────────────────────────────────
 
@@ -105,6 +112,22 @@ public class MonthlySheetDAO {
 			}
 		} catch (SQLException e) {
 			System.err.println("MonthlySheetDAO.getByYearMonth() ERROR: " + e.getMessage());
+		}
+		return null;
+	}
+
+	public MonthlySheet findLockedPeriodInRange(Date startDate, Date endDate) {
+		if (startDate == null || endDate == null) {
+			return null;
+		}
+		LocalDate currentMonth = startDate.toLocalDate().withDayOfMonth(1);
+		LocalDate endMonth = endDate.toLocalDate().withDayOfMonth(1);
+		while (!currentMonth.isAfter(endMonth)) {
+			MonthlySheet sheet = getByYearMonth(currentMonth.getYear(), currentMonth.getMonthValue());
+			if (sheet != null && !"OPEN".equals(sheet.getStatus())) {
+				return sheet;
+			}
+			currentMonth = currentMonth.plusMonths(1);
 		}
 		return null;
 	}
@@ -231,8 +254,9 @@ public class MonthlySheetDAO {
 	}
 
 	/**
-	 * HR hoặc Giám đốc reject — reset về OPEN. Xóa toàn bộ approvals của supervisor
-	 * liên quan đến phòng ban có vấn đề. Nếu departmentId = null thì reset tất cả.
+	 * HR hoặc Giám đốc reject — reset về OPEN. Vì sheet đã quay lại từ đầu, xóa
+	 * toàn bộ approval cũ để lần gửi duyệt tiếp theo không giữ trạng thái APPROVED
+	 * cũ.
 	 */
 	public boolean reject(Long sheetId, Long departmentId) {
 		String resetSql = """
@@ -246,11 +270,6 @@ public class MonthlySheetDAO {
 		String deleteAllApprovalsSql = """
 				DELETE FROM monthly_sheet_approvals WHERE monthly_sheet_id = ?
 				""";
-		String deleteByDeptSql = """
-				DELETE msa FROM monthly_sheet_approvals msa
-				JOIN users u ON msa.supervisor_id = u.id
-				WHERE msa.monthly_sheet_id = ? AND u.department_id = ?
-				""";
 		try (Connection conn = DBContext.getConnection()) {
 			conn.setAutoCommit(false);
 			try {
@@ -258,17 +277,9 @@ public class MonthlySheetDAO {
 					ps.setLong(1, sheetId);
 					ps.executeUpdate();
 				}
-				if (departmentId == null) {
-					try (PreparedStatement ps = conn.prepareStatement(deleteAllApprovalsSql)) {
-						ps.setLong(1, sheetId);
-						ps.executeUpdate();
-					}
-				} else {
-					try (PreparedStatement ps = conn.prepareStatement(deleteByDeptSql)) {
-						ps.setLong(1, sheetId);
-						ps.setLong(2, departmentId);
-						ps.executeUpdate();
-					}
+				try (PreparedStatement ps = conn.prepareStatement(deleteAllApprovalsSql)) {
+					ps.setLong(1, sheetId);
+					ps.executeUpdate();
 				}
 				conn.commit();
 				return true;
@@ -383,6 +394,184 @@ public class MonthlySheetDAO {
 	}
 
 	// ── Helper ───────────────────────────────────────────────────────────────────
+
+	public List<String> findCloseConflicts(int year, int month) {
+		try (Connection conn = DBContext.getConnection()) {
+			return findCloseConflicts(conn, year, month);
+		} catch (SQLException e) {
+			System.err.println("MonthlySheetDAO.findCloseConflicts() ERROR: " + e.getMessage());
+		}
+		return new ArrayList<>();
+	}
+
+	public List<String> findCloseConflicts(Connection conn, int year, int month) throws SQLException {
+		List<String> conflicts = new ArrayList<>();
+		appendLeaveAttendanceConflicts(conn, year, month, conflicts);
+		appendLeaveOvertimeConflicts(conn, year, month, conflicts);
+		appendOvertimeAttendanceConflicts(conn, year, month, conflicts);
+		if (conflicts.size() >= MAX_CLOSE_CONFLICT_MESSAGES) {
+			conflicts.add("Hệ thống chỉ hiển thị tối đa " + MAX_CLOSE_CONFLICT_MESSAGES
+					+ " conflict đầu tiên. Vui lòng xử lý rồi kiểm tra lại.");
+		}
+		return conflicts;
+	}
+
+	private void appendLeaveAttendanceConflicts(Connection conn, int year, int month, List<String> conflicts)
+			throws SQLException {
+		String sql = """
+				SELECT u.employee_code, u.full_name, ar.date AS conflict_date, lr.status AS leave_status
+				FROM leave_requests lr
+				JOIN users u ON lr.user_id = u.id
+				JOIN attendance_records ar
+				  ON ar.user_id = lr.user_id
+				 AND ar.date BETWEEN lr.start_date AND lr.end_date
+				WHERE lr.status IN ('APPROVED_LEVEL_1', 'APPROVED')
+				  AND YEAR(ar.date) = ?
+				  AND MONTH(ar.date) = ?
+				  AND ar.check_in IS NOT NULL
+				ORDER BY ar.date ASC, u.employee_code ASC
+				""";
+		try (PreparedStatement ps = conn.prepareStatement(sql)) {
+			ps.setInt(1, year);
+			ps.setInt(2, month);
+			try (ResultSet rs = ps.executeQuery()) {
+				while (rs.next()) {
+					if (!addCloseConflict(conflicts,
+							"Leave/Attendance: " + employeeLabel(rs) + " có đơn nghỉ phép "
+									+ leaveStatusLabel(rs.getString("leave_status")) + " nhưng vẫn có chấm công ngày "
+									+ rs.getDate("conflict_date") + ".")) {
+						return;
+					}
+				}
+			}
+		}
+	}
+
+	private void appendLeaveOvertimeConflicts(Connection conn, int year, int month, List<String> conflicts)
+			throws SQLException {
+		String sql = """
+				SELECT u.employee_code, u.full_name, ot.date AS conflict_date, lr.status AS leave_status
+				FROM overtime_records ot
+				JOIN users u ON ot.user_id = u.id
+				JOIN leave_requests lr
+				  ON lr.user_id = ot.user_id
+				 AND ot.date BETWEEN lr.start_date AND lr.end_date
+				WHERE ot.status = 'APPROVED'
+				  AND lr.status IN ('APPROVED_LEVEL_1', 'APPROVED')
+				  AND YEAR(ot.date) = ?
+				  AND MONTH(ot.date) = ?
+				ORDER BY ot.date ASC, u.employee_code ASC
+				""";
+		try (PreparedStatement ps = conn.prepareStatement(sql)) {
+			ps.setInt(1, year);
+			ps.setInt(2, month);
+			try (ResultSet rs = ps.executeQuery()) {
+				while (rs.next()) {
+					if (!addCloseConflict(conflicts,
+							"Leave/OT: " + employeeLabel(rs) + " có OT approved nhưng cũng có đơn nghỉ phép "
+									+ leaveStatusLabel(rs.getString("leave_status")) + " ngày "
+									+ rs.getDate("conflict_date") + ".")) {
+						return;
+					}
+				}
+			}
+		}
+	}
+
+	private void appendOvertimeAttendanceConflicts(Connection conn, int year, int month, List<String> conflicts)
+			throws SQLException {
+		String sql = """
+				SELECT u.employee_code, u.full_name, ot.date AS conflict_date, ot.approved_hours,
+				       ar.id AS attendance_id, ar.check_in, ar.check_out
+				FROM overtime_records ot
+				JOIN users u ON ot.user_id = u.id
+				LEFT JOIN attendance_records ar
+				  ON ar.user_id = ot.user_id
+				 AND ar.date = ot.date
+				WHERE ot.status = 'APPROVED'
+				  AND YEAR(ot.date) = ?
+				  AND MONTH(ot.date) = ?
+				ORDER BY ot.date ASC, u.employee_code ASC
+				""";
+		try (PreparedStatement ps = conn.prepareStatement(sql)) {
+			ps.setInt(1, year);
+			ps.setInt(2, month);
+			try (ResultSet rs = ps.executeQuery()) {
+				while (rs.next()) {
+					if (!appendOneOvertimeAttendanceConflict(rs, conflicts)) {
+						return;
+					}
+				}
+			}
+		}
+	}
+
+	private boolean appendOneOvertimeAttendanceConflict(ResultSet rs, List<String> conflicts) throws SQLException {
+		String employee = employeeLabel(rs);
+		java.sql.Date conflictDate = rs.getDate("conflict_date");
+		BigDecimal approvedHours = rs.getBigDecimal("approved_hours");
+		rs.getLong("attendance_id");
+		boolean hasAttendance = !rs.wasNull();
+
+		if (approvedHours == null || approvedHours.compareTo(BigDecimal.ZERO) <= 0) {
+			return addCloseConflict(conflicts, "OT/Attendance: " + employee + " có OT approved ngày " + conflictDate
+					+ " nhưng thiếu số giờ OT hợp lệ.");
+		}
+		if (!hasAttendance) {
+			return addCloseConflict(conflicts, "OT/Attendance: " + employee + " có " + formatHours(approvedHours)
+					+ "h OT approved ngày " + conflictDate + " nhưng chưa có chấm công.");
+		}
+
+		Time checkIn = rs.getTime("check_in");
+		Time checkOut = rs.getTime("check_out");
+		if (checkIn == null) {
+			return addCloseConflict(conflicts, "OT/Attendance: " + employee + " có " + formatHours(approvedHours)
+					+ "h OT approved ngày " + conflictDate + " nhưng attendance đang là vắng/chưa có giờ vào.");
+		}
+		if (checkOut == null) {
+			return addCloseConflict(conflicts, "OT/Attendance: " + employee + " có " + formatHours(approvedHours)
+					+ "h OT approved ngày " + conflictDate + " nhưng attendance chưa có giờ ra.");
+		}
+
+		long otMinutes = approvedHours.multiply(BigDecimal.valueOf(60)).longValue();
+		LocalTime expectedCheckout = WorkScheduleConfig.OVERTIME_START.plusMinutes(otMinutes);
+		if (checkOut.toLocalTime().isBefore(expectedCheckout)) {
+			return addCloseConflict(conflicts,
+					"OT/Attendance: " + employee + " có " + formatHours(approvedHours) + "h OT approved ngày "
+							+ conflictDate + " nhưng giờ ra " + checkOut.toLocalTime() + " chưa đủ, cần từ "
+							+ expectedCheckout + " trở đi.");
+		}
+		return true;
+	}
+
+	private boolean addCloseConflict(List<String> conflicts, String message) {
+		if (conflicts.size() >= MAX_CLOSE_CONFLICT_MESSAGES) {
+			return false;
+		}
+		conflicts.add(message);
+		return true;
+	}
+
+	private String employeeLabel(ResultSet rs) throws SQLException {
+		return rs.getString("employee_code") + " - " + rs.getString("full_name");
+	}
+
+	private String leaveStatusLabel(String status) {
+		if ("APPROVED_LEVEL_1".equals(status)) {
+			return "đã duyệt cấp 1";
+		}
+		if ("APPROVED".equals(status)) {
+			return "đã duyệt cuối";
+		}
+		return status;
+	}
+
+	private String formatHours(BigDecimal hours) {
+		if (hours == null) {
+			return "0";
+		}
+		return hours.stripTrailingZeros().toPlainString();
+	}
 
 	private MonthlySheet mapRow(ResultSet rs) throws SQLException {
 		MonthlySheet s = new MonthlySheet();

@@ -69,8 +69,9 @@ public class OvertimeEditServlet extends HttpServlet {
 
 		int recYear = record.getDate().toLocalDate().getYear();
 		int recMonth = record.getDate().toLocalDate().getMonthValue();
-		if (monthlySheetDAO.isPeriodClosed(recYear, recMonth)) {
-			session.setAttribute("errorMsg", "Tháng " + recMonth + "/" + recYear + " đã chốt công, không thể sửa OT.");
+		if (!monthlySheetDAO.isEditablePeriod(recYear, recMonth)) {
+			session.setAttribute("errorMsg",
+					"Tháng " + recMonth + "/" + recYear + " không còn ở trạng thái OPEN, không thể sửa OT.");
 			response.sendRedirect(request.getContextPath() + "/overtime-list?year=" + recYear + "&month=" + recMonth);
 			return;
 		}
@@ -119,8 +120,9 @@ public class OvertimeEditServlet extends HttpServlet {
 			return;
 		}
 
-		if (monthlySheetDAO.isPeriodClosed(recYear, recMonth)) {
-			session.setAttribute("errorMsg", "Tháng " + recMonth + "/" + recYear + " đã chốt công, không thể sửa OT.");
+		if (!monthlySheetDAO.isEditablePeriod(recYear, recMonth)) {
+			session.setAttribute("errorMsg",
+					"Tháng " + recMonth + "/" + recYear + " không còn ở trạng thái OPEN, không thể sửa OT.");
 			response.sendRedirect(redirectList);
 			return;
 		}

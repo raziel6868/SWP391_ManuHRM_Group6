@@ -4,6 +4,7 @@ import dal.DBContext;
 import dal.AttendanceDAO;
 import dal.LeaveBalanceDAO;
 import dal.LeaveRequestDAO;
+import dal.MonthlySheetDAO;
 import dal.OvertimeDAO;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
@@ -15,6 +16,7 @@ import java.io.IOException;
 import java.sql.Connection;
 import java.sql.SQLException;
 import model.LeaveRequest;
+import model.MonthlySheet;
 import model.User;
 
 @WebServlet(name = "LeaveRequestFinalApproveServlet", urlPatterns = {"/leave-request-final-approve"})
@@ -26,6 +28,7 @@ public class LeaveRequestFinalApproveServlet extends HttpServlet {
 	private final LeaveRequestDAO leaveRequestDAO = new LeaveRequestDAO();
 	private final OvertimeDAO overtimeDAO = new OvertimeDAO();
 	private final AttendanceDAO attendanceDAO = new AttendanceDAO();
+	private final MonthlySheetDAO monthlySheetDAO = new MonthlySheetDAO();
 
 	@Override
 	protected void doPost(HttpServletRequest request, HttpServletResponse response)
@@ -109,6 +112,12 @@ public class LeaveRequestFinalApproveServlet extends HttpServlet {
 		if (leaveRequest.getStartDate() == null || leaveRequest.getEndDate() == null
 				|| leaveRequest.getDays() == null) {
 			return "Dữ liệu đơn nghỉ không hợp lệ.";
+		}
+		MonthlySheet lockedPeriod = monthlySheetDAO.findLockedPeriodInRange(leaveRequest.getStartDate(),
+				leaveRequest.getEndDate());
+		if (lockedPeriod != null) {
+			return "Không thể duyệt cuối đơn nghỉ vì bảng công tháng " + lockedPeriod.getMonth() + "/"
+					+ lockedPeriod.getYear() + " đang ở trạng thái " + lockedPeriod.getStatus() + ".";
 		}
 		if (attendanceDAO.hasAnyAttendanceInRange(leaveRequest.getUserId(), leaveRequest.getStartDate(),
 				leaveRequest.getEndDate())) {

@@ -90,8 +90,8 @@ public class AttendanceCorrectionApproveServlet extends HttpServlet {
 		// phép/OT đã duyệt cùng ngày (giống hệt check khi import chấm công).
 		Long targetUserId = correction.getAttendanceUserId();
 		java.sql.Date attendanceDate = correction.getAttendanceDate();
-		if (leaveRequestDAO.hasApprovedLeaveOnDate(targetUserId, attendanceDate)) {
-			session.setAttribute("errorMsg", "Nhân viên đã có đơn nghỉ phép được duyệt ngày " + attendanceDate
+		if (leaveRequestDAO.hasApprovedOrLevel1LeaveOnDate(targetUserId, attendanceDate)) {
+			session.setAttribute("errorMsg", "Nhân viên đã có đơn nghỉ phép đang/đã duyệt ngày " + attendanceDate
 					+ " — không thể duyệt điều chỉnh thành có chấm công. Vui lòng xử lý nghỉ phép trước.");
 			response.sendRedirect(redirectUrl);
 			return;
@@ -103,8 +103,8 @@ public class AttendanceCorrectionApproveServlet extends HttpServlet {
 				LocalTime expectedCheckout = WorkScheduleConfig.OVERTIME_START.plusMinutes(otMinutes);
 				if (correction.getNewCheckOut().toLocalTime().isBefore(expectedCheckout)) {
 					session.setAttribute("errorMsg",
-							"Nhân viên có OT " + approvedOT.getApprovedHours() + "h được duyệt ngày " + attendanceDate
-									+ " nhưng giờ ra mới (" + correction.getNewCheckOut().toLocalTime()
+							"Nhân viên có OT " + formatHours(approvedOT.getApprovedHours()) + "h được duyệt ngày "
+									+ attendanceDate + " nhưng giờ ra mới (" + correction.getNewCheckOut().toLocalTime()
 									+ ") không đủ hỗ trợ (cần ra từ " + expectedCheckout + " trở đi).");
 					response.sendRedirect(redirectUrl);
 					return;
@@ -160,6 +160,13 @@ public class AttendanceCorrectionApproveServlet extends HttpServlet {
 		} catch (NumberFormatException e) {
 			return null;
 		}
+	}
+
+	private String formatHours(BigDecimal hours) {
+		if (hours == null) {
+			return "0";
+		}
+		return hours.stripTrailingZeros().toPlainString();
 	}
 
 	/**

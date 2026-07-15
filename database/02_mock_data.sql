@@ -141,8 +141,8 @@ INSERT INTO permissions (id, code, name, url_pattern, module) VALUES
 (60, 'OT_APPROVE',              'Duyệt tăng ca',              '/overtime-approve',        'OVERTIME'),
 (61, 'OT_CANCEL',               'Hủy tăng ca',                '/overtime-reject',         'OVERTIME'),
 -- Salary / Payroll
-(62, 'SALARY_BASE_VIEW',        'Xem lương cơ bản',           '/salary-base-list',        'SALARY'),
-(63, 'SALARY_BASE_SETUP',       'Cài đặt lương cơ bản',      '/salary-base-setup',       'SALARY'),
+(62, 'SALARY_BASE_VIEW',        '[Deprecated] Xem lương cơ bản',      '/salary-base-list',        'SALARY'),
+(63, 'SALARY_BASE_SETUP',       '[Deprecated] Cài đặt lương cơ bản', '/salary-base-setup',       'SALARY'),
 (64, 'PAYROLL_VIEW',            'Xem bảng lương',             '/payroll-preview',         'PAYROLL'),
 (65, 'PAYROLL_GENERATE',        'Tạo bảng lương tháng',      '/payroll-generate',        'PAYROLL'),
 (66, 'PAYSLIP_VIEW',            'Xem phiếu lương',            '/payslip-view',            'PAYSLIP'),
@@ -429,7 +429,9 @@ INSERT INTO allowance_types
 VALUES
     (1, 'MEAL', 'Phụ cấp ăn trưa', 'Phụ cấp ăn ca cố định hàng tháng', FALSE, FALSE, TRUE),
     (2, 'POSITION', 'Phụ cấp vị trí', 'Phụ cấp vị trí tính vào thu nhập và căn cứ bảo hiểm', TRUE, TRUE, TRUE),
-    (3, 'PHONE', 'Phụ cấp điện thoại', 'Phụ cấp điện thoại khoán cố định hàng tháng', FALSE, FALSE, TRUE);
+    (3, 'PHONE', 'Phụ cấp điện thoại', 'Phụ cấp điện thoại khoán cố định hàng tháng', FALSE, FALSE, TRUE),
+    (4, 'ATTENDANCE_BONUS', 'Phụ cấp chuyên cần',
+     'Chỉ được cộng khi nhân viên không đi muộn và không vắng không phép trong kỳ lương.', TRUE, FALSE, TRUE);
 
 INSERT INTO contracts (user_id, contract_type_id, start_date, end_date, salary, file_path, status) VALUES
 (1, 2, '2024-01-01', '2029-12-31', 35000000, '/contracts/director_minhanh_full_time.pdf', 'ACTIVE'),
@@ -460,32 +462,50 @@ GROUP BY c.user_id;
 -- Keep one OPEN monthly sheet for 6/2026 so the HR monthly-sheet screen has
 -- a visible baseline right after DB reset.
 
-INSERT INTO monthly_sheets (year, month, status) VALUES
-(2026, 6, 'OPEN');
+-- INSERT INTO monthly_sheets (year, month, status) VALUES
+-- (2026, 6, 'OPEN');
 
-INSERT INTO salary_bases (user_id, base_salary, insurance_salary, effective_from) VALUES
-(1, 35000000.00, NULL, '2024-01-01'),
-(2, 22000000.00, NULL, '2024-01-01'),
-(3, 14000000.00, NULL, '2024-01-01'),
-(4, 28000000.00, NULL, '2024-01-01'),
-(5, 16000000.00, NULL, '2024-01-01'),
-(6, 15500000.00, NULL, '2024-01-01'),
-(7, 18000000.00, NULL, '2024-01-01'),
-(8, 8000000.00, NULL, '2024-01-01'),
-(9, 8200000.00, NULL, '2024-01-01'),
-(10, 18000000.00, NULL, '2024-01-01'),
-(11, 8100000.00, NULL, '2024-01-01'),
-(12, 8000000.00, NULL, '2024-01-01'),
-(13, 18000000.00, NULL, '2024-01-01'),
-(14, 8050000.00, NULL, '2024-01-01'),
-(15, 8000000.00, NULL, '2024-01-01');
+-- Company-wide allowance configuration.
+-- MEAL and ATTENDANCE_BONUS apply to every active employee.
+INSERT INTO employee_allowances
+    (user_id, allowance_type_id, amount, effective_from, effective_to, is_active)
+SELECT u.id, at.id, 500000.00, '2024-01-01', NULL, TRUE
+FROM users u
+JOIN allowance_types at ON at.code = 'MEAL'
+WHERE u.is_active = TRUE;
 
 INSERT INTO employee_allowances
     (user_id, allowance_type_id, amount, effective_from, effective_to, is_active)
-VALUES
-    (8, 1, 500000.00, '2024-01-01', NULL, TRUE),
-    (8, 2, 1000000.00, '2024-01-01', NULL, TRUE),
-    (8, 3, 300000.00, '2024-01-01', NULL, TRUE);
+SELECT u.id, at.id, 1000000.00, '2024-01-01', NULL, TRUE
+FROM users u
+JOIN allowance_types at ON at.code = 'ATTENDANCE_BONUS'
+WHERE u.is_active = TRUE;
+
+-- PHONE applies to office employees and production supervisors.
+INSERT INTO employee_allowances
+    (user_id, allowance_type_id, amount, effective_from, effective_to, is_active)
+SELECT u.id, at.id, 300000.00, '2024-01-01', NULL, TRUE
+FROM users u
+JOIN allowance_types at ON at.code = 'PHONE'
+WHERE u.is_active = TRUE
+  AND u.employee_type = 'OFFICE';
+
+-- POSITION applies only to management/supervisor job titles.
+INSERT INTO employee_allowances
+    (user_id, allowance_type_id, amount, effective_from, effective_to, is_active)
+SELECT u.id,
+       at.id,
+       CASE
+           WHEN u.job_title_id = 1 THEN 3000000.00
+           WHEN u.job_title_id IN (2, 4, 6) THEN 1000000.00
+       END AS amount,
+       '2024-01-01',
+       NULL,
+       TRUE
+FROM users u
+JOIN allowance_types at ON at.code = 'POSITION'
+WHERE u.is_active = TRUE
+  AND u.job_title_id IN (1, 2, 4, 6);
 
 INSERT INTO audit_logs (event_code, entity_type, entity_id, actor_id, actor_name, changed_fields, ip_address) VALUES
 ('SYSTEM_RESET', 'DATABASE', 1, 2, 'it_manager_khoa', 'Reset to Iter 3 baseline for manual attendance import and payroll demo', '127.0.0.1');

@@ -3,10 +3,12 @@ package dal;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.sql.Connection;
+import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -244,33 +246,53 @@ public class ReportDAO {
 
 	public List<PayrollSummaryRow> getPayrollSummary(int year, int month) {
 		List<PayrollSummaryRow> rows = new ArrayList<>();
+		YearMonth yearMonth = YearMonth.of(year, month);
+		Date firstDay = Date.valueOf(yearMonth.atDay(1));
+		Date lastDay = Date.valueOf(yearMonth.atEndOfMonth());
 
 		String sql = """
-				SELECT d.id AS department_id, d.name AS department_name,
-				       COUNT(DISTINCT u.id) AS employee_count,
-				       SUM(sb.base_salary) AS total_salary,
-				       SUM(COALESCE(ar.work_hours, 0)) AS total_work_hours,
-				       SUM(COALESCE(ot.approved_hours, 0)) AS total_ot_hours
-				FROM users u
-				LEFT JOIN departments d ON u.department_id = d.id
-				LEFT JOIN salary_bases sb ON u.id = sb.user_id
-				        AND sb.effective_from <= CURRENT_DATE
-				        AND (sb.effective_to IS NULL OR sb.effective_to >= CURRENT_DATE)
-				LEFT JOIN attendance_records ar ON u.id = ar.user_id
-				        AND YEAR(ar.date) = ? AND MONTH(ar.date) = ?
-				LEFT JOIN overtime_records ot ON u.id = ot.user_id
-				        AND ot.status = 'APPROVED'
-				        AND YEAR(ot.date) = ? AND MONTH(ot.date) = ?
-				WHERE u.is_active = TRUE AND sb.base_salary IS NOT NULL
-				GROUP BY d.id, d.name
-				ORDER BY d.name
+				SELECT payroll.department_id,
+				       payroll.department_name,
+				       COUNT(*) AS employee_count,
+				       SUM(payroll.base_salary) AS total_salary,
+				       SUM(payroll.total_ot_hours) AS total_ot_hours
+				FROM (
+				    SELECT u.id AS user_id,
+				           d.id AS department_id,
+				           d.name AS department_name,
+				           c.salary AS base_salary,
+				           COALESCE((
+				               SELECT SUM(ot.approved_hours)
+				               FROM overtime_records ot
+				               WHERE ot.user_id = u.id
+				                 AND ot.status = 'APPROVED'
+				                 AND YEAR(ot.date) = ?
+				                 AND MONTH(ot.date) = ?
+				           ), 0) AS total_ot_hours
+				    FROM users u
+				    LEFT JOIN departments d ON u.department_id = d.id
+				    JOIN contracts c ON c.id = (
+				        SELECT c2.id
+				        FROM contracts c2
+				        WHERE c2.user_id = u.id
+				          AND c2.status = 'ACTIVE'
+				          AND c2.start_date <= ?
+				          AND (c2.end_date IS NULL OR c2.end_date >= ?)
+				          AND c2.salary IS NOT NULL
+				        ORDER BY c2.start_date DESC, c2.id DESC
+				        LIMIT 1
+				    )
+				    WHERE u.is_active = TRUE
+				) payroll
+				GROUP BY payroll.department_id, payroll.department_name
+				ORDER BY payroll.department_name
 				""";
 
 		try (Connection conn = DBContext.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
 			ps.setInt(1, year);
 			ps.setInt(2, month);
-			ps.setInt(3, year);
-			ps.setInt(4, month);
+			ps.setDate(3, lastDay);
+			ps.setDate(4, firstDay);
 
 			try (ResultSet rs = ps.executeQuery()) {
 				while (rs.next()) {

@@ -127,12 +127,6 @@ public class OvertimeImportUtil {
 					continue;
 				}
 
-				LocalDate today = LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh"));
-				if (date.isBefore(today)) {
-					result.addError(displayRow, "Ngày OT " + date + " là ngày trong quá khứ.");
-					continue;
-				}
-
 				DayOfWeek dow = date.getDayOfWeek();
 				if (dow == DayOfWeek.SATURDAY || dow == DayOfWeek.SUNDAY) {
 					result.addError(displayRow,
@@ -172,9 +166,9 @@ public class OvertimeImportUtil {
 					continue;
 				}
 
-				// ── Conflict: nhân viên có đơn nghỉ phép ĐÃ DUYỆT trùng ngày OT ──
-				if (leaveRequestDAO.hasApprovedLeaveOnDate(targetUser.getId(), sqlDate)) {
-					result.addError(displayRow, "Nhân viên " + employeeCode + " đã có đơn nghỉ phép được duyệt ngày "
+				// ── Conflict: nhân viên có đơn nghỉ phép đã qua duyệt cấp 1 trùng ngày OT ──
+				if (leaveRequestDAO.hasApprovedOrLevel1LeaveOnDate(targetUser.getId(), sqlDate)) {
+					result.addError(displayRow, "Nhân viên " + employeeCode + " đã có đơn nghỉ phép đang/đã duyệt ngày "
 							+ date + ", không thể tạo OT cho ngày này.");
 					continue;
 				}

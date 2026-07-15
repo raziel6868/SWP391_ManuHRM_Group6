@@ -125,11 +125,9 @@
             cursor: default;
             position: relative;
         }
-        .att-badge.bt  { background: #d1fae5; color: #065f46; }
-        .att-badge.m   { background: #fef3c7; color: #92400e; }
-        .att-badge.v   { background: #fee2e2; color: #991b1b; }
-        .att-badge.ct  { background: var(--surface-container); color: var(--on-surface-variant); }
-        .att-badge.nd  { background: transparent; color: var(--on-surface-variant); }
+        .att-badge.p     { background: #dcfce7; color: #166534; }
+        .att-badge.late  { background: #ffedd5; color: #9a3412; }
+        .att-badge.a     { background: #fee2e2; color: #991b1b; }
 
         /* Tooltip */
         .att-badge[data-tooltip]:hover::after {
@@ -516,15 +514,18 @@ const employees = [
             const rec = recMap[key];
 
             let badge = '';
-            if (!rec) {
-                const label = isWE ? 'CT' : '—';
-                badge = '<span class="att-badge ' + (isWE ? 'ct' : 'nd') + '">' + label + '</span>';
+            if (isWE) {
+                // Cuối tuần: hiển thị chữ "W" dạng text, không dùng badge tròn — giống attendance-list
+                badge = '<span class="text-on-surface-variant" style="font-size:0.75rem;">W</span>';
+            } else if (!rec) {
+                // Không có dữ liệu trong ngày làm việc: để trống — giống attendance-list
+                badge = '';
             } else {
                 const st = rec.status;
-                let cls = 'nd', lbl = '—';
-                if (st === 'NORMAL') { cls = 'bt'; lbl = 'BT'; totalPresent++; }
-                else if (st === 'LATE')   { cls = 'm';  lbl = 'M';  totalLate++;    }
-                else if (st === 'ABSENT') { cls = 'v';  lbl = 'V';  totalAbsent++;  }
+                let cls = '', lbl = '';
+                if (st === 'NORMAL') { cls = 'p';    lbl = 'P'; totalPresent++; }
+                else if (st === 'LATE')   { cls = 'late'; lbl = 'P'; totalLate++;    }
+                else if (st === 'ABSENT') { cls = 'a';    lbl = 'A'; totalAbsent++;  }
                 const h = parseFloat(rec.hours);
                 if (!isNaN(h)) totalHours += h;
                 const tip = rec.checkIn
@@ -532,7 +533,7 @@ const employees = [
                         + (rec.checkOut ? rec.checkOut.substring(0,5) : '?')
                         + ' | ' + (rec.hours || '—') + 'h'
                     : 'Vắng';
-                badge = '<span class="att-badge ' + cls + '" data-tooltip="' + tip + '">' + lbl + '</span>';
+                badge = cls ? '<span class="att-badge ' + cls + '" data-tooltip="' + tip + '">' + lbl + '</span>' : '';
             }
             row += '<td class="day-cell">' + badge + '</td>';
         }

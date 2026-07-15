@@ -121,7 +121,7 @@
 
                 <!-- Stat cards -->
                 <div class="row g-3 mb-4">
-                    <div class="col-6 col-md-3">
+                    <div class="col-6 col-md">
                         <div class="card-premium overflow-hidden h-100">
                             <div class="card-body p-3">
                                 <p class="text-on-surface-variant mb-1" style="font-size: 0.75rem;">Số buổi có mặt</p>
@@ -129,7 +129,7 @@
                             </div>
                         </div>
                     </div>
-                    <div class="col-6 col-md-3">
+                    <div class="col-6 col-md">
                         <div class="card-premium overflow-hidden h-100">
                             <div class="card-body p-3">
                                 <p class="text-on-surface-variant mb-1" style="font-size: 0.75rem;">Số buổi đi muộn</p>
@@ -137,7 +137,7 @@
                             </div>
                         </div>
                     </div>
-                    <div class="col-6 col-md-3">
+                    <div class="col-6 col-md">
                         <div class="card-premium overflow-hidden h-100">
                             <div class="card-body p-3">
                                 <p class="text-on-surface-variant mb-1" style="font-size: 0.75rem;">Số buổi vắng</p>
@@ -145,11 +145,19 @@
                             </div>
                         </div>
                     </div>
-                    <div class="col-6 col-md-3">
+                    <div class="col-6 col-md">
                         <div class="card-premium overflow-hidden h-100">
                             <div class="card-body p-3">
                                 <p class="text-on-surface-variant mb-1" style="font-size: 0.75rem;">Số ngày nghỉ phép</p>
                                 <h3 class="mb-0 fw-bold" style="color:#854d0e;">${countLeaveDays}</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md">
+                        <div class="card-premium overflow-hidden h-100">
+                            <div class="card-body p-3">
+                                <p class="text-on-surface-variant mb-1" style="font-size: 0.75rem;">Tổng số buổi lý thuyết</p>
+                                <h3 class="mb-0 fw-bold" style="color:#1e3a8a;">${standardWorkingDays * fn:length(employees)}</h3>
                             </div>
                         </div>
                     </div>
@@ -159,7 +167,7 @@
                     <div class="p-3 bg-surface border-bottom border-outline-variant">
                         <form action="${pageContext.request.contextPath}/attendance-list" method="GET"
                               class="d-flex flex-wrap align-items-end gap-3">
-                            <div style="width: 130px;">
+                            <div style="width: 200px;">
                                 <label class="form-label text-on-surface fw-medium mb-1">Tháng</label>
                                 <select name="month" class="form-select input-premium">
                                     <c:forEach begin="1" end="12" var="m">
@@ -167,13 +175,13 @@
                                     </c:forEach>
                                 </select>
                             </div>
-                            <div style="width: 110px;">
+                            <div style="width: 200px;">
                                 <label class="form-label text-on-surface fw-medium mb-1">Năm</label>
                                 <input type="number" name="year" value="${selectedYear}"
                                        class="form-control input-premium" min="2020" max="2100" />
                             </div>
                             <c:if test="${viewAll}">
-                                <div style="width: 160px;">
+                                <div style="width: 220px;">
                                     <label class="form-label text-on-surface fw-medium mb-1">Phòng ban</label>
                                     <select name="departmentId" class="form-select input-premium">
                                         <option value="">Tất cả phòng ban</option>
@@ -185,7 +193,7 @@
                                     </select>
                                 </div>
                             </c:if>
-                            <div style="width: 130px;">
+                            <div style="width: 200px;">
                                 <label class="form-label text-on-surface fw-medium mb-1">Tìm nhân viên</label>
                                 <input type="text" name="keyword" value="${keyword}"
                                        class="form-control input-premium" placeholder="Mã NV/tên" />
@@ -216,9 +224,10 @@
                                     <c:forEach begin="1" end="${daysInMonth}" var="d">
                                         <th class="text-center">${d}</th>
                                     </c:forEach>
-                                    <th class="text-center">P</th>
-                                    <th class="text-center">A</th>
-                                    <th class="text-center">L</th>
+                                    <th class="text-center att-col-highlight">P</th>
+                                    <th class="text-center att-col-highlight">A</th>
+                                    <th class="text-center att-col-highlight">L</th>
+                                    <th class="text-center att-col-highlight">Công chuẩn</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -252,14 +261,15 @@
                                                 </c:choose>
                                             </td>
                                         </c:forEach>
-                                        <td class="text-center fw-semibold" style="color:#166534;">${summary[0]}</td>
-                                        <td class="text-center fw-semibold" style="color:#991b1b;">${summary[1]}</td>
-                                        <td class="text-center fw-semibold" style="color:#854d0e;">${summary[2]}</td>
+                                        <td class="text-center fw-semibold att-col-highlight" style="color:#166534;">${summary[0]}</td>
+                                        <td class="text-center fw-semibold att-col-highlight" style="color:#991b1b;">${summary[1]}</td>
+                                        <td class="text-center fw-semibold att-col-highlight" style="color:#854d0e;">${summary[2]}</td>
+                                        <td class="text-center fw-semibold att-col-highlight" style="color:#1e3a8a;">${standardWorkingDays}</td>
                                     </tr>
                                 </c:forEach>
                                 <c:if test="${empty employees}">
                                     <tr>
-                                        <td colspan="${daysInMonth + 4}" class="text-center py-4 text-on-surface-variant">
+                                        <td colspan="${daysInMonth + 5}" class="text-center py-4 text-on-surface-variant">
                                             Không có nhân viên nào.
                                         </td>
                                     </tr>
@@ -316,6 +326,21 @@
             border-radius: 50%;
             font-weight: 700;
             font-size: 0.75rem;
+        }
+        .att-grid-table .att-col-highlight {
+            background: #eef2ff;
+        }
+        .att-grid-table th.att-col-highlight {
+            background: #c7d2fe;
+            color: #312e81;
+        }
+        .att-grid-table td.att-col-highlight,
+        .att-grid-table th.att-col-highlight {
+            border-left: 1px solid #a5b4fc;
+        }
+        .att-grid-table th.att-col-highlight:nth-last-child(4),
+        .att-grid-table td.att-col-highlight:nth-last-child(4) {
+            border-left: 2px solid #4f46e5;
         }
         .modal-overlay {
             display: none;

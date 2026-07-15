@@ -243,8 +243,7 @@ INSERT INTO role_permissions (role_id, permission_id) VALUES
 (1, 87), (1, 88), (1, 89), (1, 90), (1, 91), (1, 92), (1, 93), (1, 94),
 (1, 95), (1, 96), (1, 97), (1, 98), (1, 99), (1, 100), (1, 101), (1, 102), (1, 103),
 (1, 104), (1, 105), (1, 106), (1, 107), (1, 108), (1, 109), (1, 110), (1, 111), (1, 112),
-(1, 113), (1, 114), (1, 115), (1, 116), (1, 117),
--- Holiday permissions for SYSADMIN
+(1, 113), (1, 114), (1, 115), (1, 117),-- Holiday permissions for SYSADMIN
 (1, 78), (1, 79), (1, 80), (1, 81);
 
 -- HR_MANAGER: explicit operational scope
@@ -264,8 +263,7 @@ INSERT INTO role_permissions (role_id, permission_id) VALUES
 (2, 94), (2, 95), (2, 96),
 (2, 97), (2, 98),
 (2, 99), (2, 100), (2, 101), (2, 102),
-(2, 103), (2, 104), (2, 105), (2, 113), (2, 114), (2, 115), (2, 116), (2, 117),
--- Monthly Sheet
+(2, 103), (2, 104), (2, 105), (2, 113), (2, 114), (2, 115), (2, 117),-- Monthly Sheet
 (2, 67), (2, 68), (2, 69), (2, 106), (2, 109), (2, 110), (2, 112),
 -- Reports
 (2, 70), (2, 71), (2, 72), (2, 73), (2, 74), (2, 75),
@@ -278,7 +276,7 @@ INSERT INTO role_permissions (role_id, permission_id) VALUES
 INSERT INTO role_permissions (role_id, permission_id) VALUES
 (3, 41), (3, 45), (3, 47),
 (3, 51), (3, 57),
-(3, 58), (3, 59), (3, 61), (3, 115), (3, 116),
+(3, 58), (3, 59), (3, 61), (3, 115),
 (3, 107), (3, 108), (3, 111);
 
 -- EMPLOYEE: self-service scope only

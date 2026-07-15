@@ -9,9 +9,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigDecimal;
 import java.sql.Date;
-import java.time.DayOfWeek;
 import java.time.LocalDate;
-import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
@@ -19,7 +17,6 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import model.AttendanceRecord;
 import model.User;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellType;
@@ -31,44 +28,40 @@ import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.ss.usermodel.WorkbookFactory;
 
 /**
- * Import Excel cho yêu cầu OT của quản đốc. Xử lý ĐỘC LẬP từng dòng — giống
- * cách làm gốc trước đây: dòng hợp lệ insert (tự động APPROVED) ngay, dòng
- * trùng dữ liệu đã có trong DB thì bỏ qua, dòng lỗi dữ liệu/vi phạm rule thì bỏ
- * qua và ghi nhận lỗi — không có dòng nào chặn các dòng khác trong cùng file.
+ * Import Excel cho yêu cầu OT của quản đốc. Xử lý ĐỘC LẬP từng dòng — dòng hợp
+ * lệ insert (tự động APPROVED) ngay, dòng trùng dữ liệu đã có trong DB thì bỏ
+ * qua, dòng lỗi dữ liệu/vi phạm rule thì bỏ qua và ghi nhận lỗi — không có dòng
+ * nào chặn các dòng khác trong cùng file.
  *
- * Toàn bộ nhân viên làm giờ hành chính cố định T2-T6, theo khung giờ chuẩn ở
- * {@link WorkScheduleConfig} (hiện là 08:00-17:00). OT tối đa 2h/ngày theo quy
- * định hiện hành.
+ * Toàn bộ rule nghiệp vụ dùng chung (2h/ngày, 40h/tháng, 200h/năm, trùng OT,
+ * conflict nghỉ phép/chấm công, kỳ công phải OPEN...) nằm ở
+ * {@link OvertimeValidator} — file này chỉ xử lý phần đặc thù riêng của Excel:
+ * đọc cột, ngày phải thuộc đúng tháng đã chọn trên UI, và trùng dữ liệu ngay
+ * trong cùng file.
  *
  * Cột Excel: employee_code | date | hours | reason
  */
 public class OvertimeImportUtil {
 
-	private static final BigDecimal MAX_HOURS_PER_MONTH = new BigDecimal("40");
-	private static final BigDecimal MAX_HOURS_PER_YEAR = new BigDecimal("200");
-
 	private final UserDAO userDAO;
 	private final OvertimeDAO overtimeDAO;
-	private final MonthlySheetDAO monthlySheetDAO;
-	private final AttendanceDAO attendanceDAO;
-	private final LeaveRequestDAO leaveRequestDAO;
+	private final OvertimeValidator overtimeValidator;
 
 	public OvertimeImportUtil() {
-		this(new UserDAO(), new OvertimeDAO(), new MonthlySheetDAO(), new AttendanceDAO(), new LeaveRequestDAO());
+		this(new UserDAO(), new OvertimeDAO(), new OvertimeValidator(new OvertimeDAO(), new MonthlySheetDAO(),
+				new AttendanceDAO(), new LeaveRequestDAO()));
 	}
 
 	public OvertimeImportUtil(UserDAO userDAO, OvertimeDAO overtimeDAO, MonthlySheetDAO monthlySheetDAO,
 			AttendanceDAO attendanceDAO) {
-		this(userDAO, overtimeDAO, monthlySheetDAO, attendanceDAO, new LeaveRequestDAO());
+		this(userDAO, overtimeDAO,
+				new OvertimeValidator(overtimeDAO, monthlySheetDAO, attendanceDAO, new LeaveRequestDAO()));
 	}
 
-	public OvertimeImportUtil(UserDAO userDAO, OvertimeDAO overtimeDAO, MonthlySheetDAO monthlySheetDAO,
-			AttendanceDAO attendanceDAO, LeaveRequestDAO leaveRequestDAO) {
+	public OvertimeImportUtil(UserDAO userDAO, OvertimeDAO overtimeDAO, OvertimeValidator overtimeValidator) {
 		this.userDAO = userDAO;
 		this.overtimeDAO = overtimeDAO;
-		this.monthlySheetDAO = monthlySheetDAO;
-		this.attendanceDAO = attendanceDAO;
-		this.leaveRequestDAO = leaveRequestDAO;
+		this.overtimeValidator = overtimeValidator;
 	}
 
 	/**
@@ -112,35 +105,23 @@ public class OvertimeImportUtil {
 					result.addError(displayRow, "Ngày không hợp lệ. Định dạng gợi ý: yyyy-MM-dd.");
 					continue;
 				}
-				if (hours == null || hours.compareTo(BigDecimal.ZERO) <= 0) {
-					result.addError(displayRow, "Số giờ OT không hợp lệ (phải lớn hơn 0).");
+				if (hours == null) {
+					result.addError(displayRow, "Số giờ OT không hợp lệ.");
 					continue;
 				}
-				if (reason == null || reason.isBlank()) {
+				if (reason == null) {
 					result.addError(displayRow, "Thiếu lý do tăng ca.");
 					continue;
 				}
 
+				// ── Đặc thù Excel: ngày phải thuộc đúng tháng/năm đã chọn trên UI ──
 				if (date.getYear() != year || date.getMonthValue() != month) {
 					result.addError(displayRow,
 							"Ngày " + date + " không thuộc tháng " + month + "/" + year + " đã chọn.");
 					continue;
 				}
 
-				DayOfWeek dow = date.getDayOfWeek();
-				if (dow == DayOfWeek.SATURDAY || dow == DayOfWeek.SUNDAY) {
-					result.addError(displayRow,
-							"Ngày " + date + " là " + (dow == DayOfWeek.SATURDAY ? "Thứ 7" : "Chủ nhật")
-									+ ", công ty làm việc T2-T6 nên không thể tạo OT ngày này.");
-					continue;
-				}
-
-				if (hours.compareTo(WorkScheduleConfig.MAX_OT_HOURS_PER_DAY) > 0) {
-					result.addError(displayRow, "Số giờ OT (" + hours + "h) vượt quá tối đa "
-							+ WorkScheduleConfig.MAX_OT_HOURS_PER_DAY + "h/ngày.");
-					continue;
-				}
-
+				// ── Đặc thù Excel: trùng nhân viên/ngày ngay trong cùng file ──
 				String key = employeeCode.toUpperCase() + "|" + date;
 				if (!importedKeys.add(key)) {
 					result.addError(displayRow, "Trùng nhân viên/ngày với 1 dòng khác trong cùng file (" + employeeCode
@@ -153,61 +134,20 @@ public class OvertimeImportUtil {
 					result.addError(displayRow, "Không tìm thấy nhân viên đang hoạt động có mã " + employeeCode + ".");
 					continue;
 				}
-				if (targetUser.getManagerId() == null || !targetUser.getManagerId().equals(creatorId)) {
-					result.addError(displayRow, "Nhân viên " + employeeCode + " không thuộc quyền quản lý của bạn.");
+
+				// ── Toàn bộ rule nghiệp vụ dùng chung ──
+				OvertimeValidator.Outcome outcome = overtimeValidator.validate(targetUser, creatorId, date, hours,
+						reason, null);
+				if (outcome.type == OvertimeValidator.OutcomeType.DUPLICATE) {
+					result.addDuplicate(displayRow, outcome.message);
+					continue;
+				}
+				if (outcome.type == OvertimeValidator.OutcomeType.ERROR) {
+					result.addError(displayRow, outcome.message);
 					continue;
 				}
 
 				Date sqlDate = Date.valueOf(date);
-
-				if (overtimeDAO.existsActiveForUserAndDate(targetUser.getId(), sqlDate, null)) {
-					result.addDuplicate(displayRow, "Nhân viên " + targetUser.getFullName() + " (" + employeeCode
-							+ ") đã có OT ngày " + date + " trong hệ thống.");
-					continue;
-				}
-
-				// ── Conflict: nhân viên có đơn nghỉ phép đã qua duyệt cấp 1 trùng ngày OT ──
-				if (leaveRequestDAO.hasApprovedOrLevel1LeaveOnDate(targetUser.getId(), sqlDate)) {
-					result.addError(displayRow, "Nhân viên " + employeeCode + " đã có đơn nghỉ phép đang/đã duyệt ngày "
-							+ date + ", không thể tạo OT cho ngày này.");
-					continue;
-				}
-
-				// Nếu ngày đó đã có chấm công thật (đã import trước đó), giờ ra phải đủ
-				// hỗ trợ số giờ OT đang xin (ngược lại với conflict check bên
-				// AttendanceImportUtil — validate 2 chiều để tránh trạng thái mâu thuẫn).
-				AttendanceRecord existingAttendance = attendanceDAO.findByUserAndDate(targetUser.getId(), sqlDate);
-				if (existingAttendance != null && existingAttendance.getCheckIn() == null) {
-					result.addError(displayRow, "Nhân viên " + employeeCode + " được ghi nhận VẮNG MẶT ngày " + date
-							+ ", không thể tạo OT cho ngày này.");
-					continue;
-				}
-				if (existingAttendance != null && existingAttendance.getCheckOut() != null) {
-					long otMinutes = hours.multiply(BigDecimal.valueOf(60)).longValue();
-					LocalTime expectedCheckout = WorkScheduleConfig.OVERTIME_START.plusMinutes(otMinutes);
-					if (existingAttendance.getCheckOut().toLocalTime().isBefore(expectedCheckout)) {
-						result.addError(displayRow, "Nhân viên " + employeeCode + " đã chấm công ra lúc "
-								+ existingAttendance.getCheckOut().toLocalTime() + " ngày " + date
-								+ ", không đủ hỗ trợ " + hours + "h OT (cần ra từ " + expectedCheckout + " trở đi).");
-						continue;
-					}
-				}
-
-				BigDecimal monthTotal = overtimeDAO.sumHoursInMonth(targetUser.getId(), year, month, null);
-				if (monthTotal.add(hours).compareTo(MAX_HOURS_PER_MONTH) > 0) {
-					result.addError(displayRow,
-							"Nhân viên " + employeeCode + " đã có " + monthTotal + "h OT trong tháng " + month + "/"
-									+ year + ", cộng thêm " + hours + "h sẽ vượt trần 40h/tháng.");
-					continue;
-				}
-
-				BigDecimal yearTotal = overtimeDAO.sumHoursInYear(targetUser.getId(), year, null);
-				if (yearTotal.add(hours).compareTo(MAX_HOURS_PER_YEAR) > 0) {
-					result.addError(displayRow, "Nhân viên " + employeeCode + " đã có " + yearTotal + "h OT trong năm "
-							+ year + ", cộng thêm " + hours + "h sẽ vượt trần 200h/năm.");
-					continue;
-				}
-
 				boolean inserted = overtimeDAO.insertAutoApproved(targetUser.getId(), sqlDate, hours, reason.trim(),
 						creatorId);
 				if (inserted) {

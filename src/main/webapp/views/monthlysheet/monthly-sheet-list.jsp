@@ -274,16 +274,10 @@
         <p class="body-sm text-on-surface-variant mb-3" id="rejectSheetLabel"></p>
         <form action="${pageContext.request.contextPath}/monthly-sheet-reject" method="POST">
             <input type="hidden" name="id" id="rejectSheetId" />
-            <div class="mb-3">
-                <label class="form-label fw-medium mb-1">Reset approval của</label>
-                <select name="departmentId" class="form-select input-premium">
-                    <option value="">Tất cả quản đốc</option>
-                    <c:forEach var="dept" items="${departments}">
-                        <option value="${dept.id}"><c:out value="${dept.name}" /></option>
-                    </c:forEach>
-                </select>
-                <div class="body-sm text-on-surface-variant mt-1">
-                    Chọn phòng ban cụ thể nếu chỉ muốn reset quản đốc của phòng đó. Để trống sẽ reset tất cả.
+            <div class="mb-3 p-3" style="border:1px solid #fde68a; background:#fffbeb; border-radius:8px;">
+                <div class="fw-medium mb-1">Reset toàn bộ xác nhận quản đốc</div>
+                <div class="body-sm text-on-surface-variant">
+                    Bảng công sẽ quay về OPEN và tất cả xác nhận quản đốc cũ sẽ bị xóa. HR cần gửi duyệt lại từ đầu.
                 </div>
             </div>
             <div class="d-flex justify-content-end gap-2">

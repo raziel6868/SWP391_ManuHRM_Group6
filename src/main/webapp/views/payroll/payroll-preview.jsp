@@ -109,7 +109,7 @@
                         <div class="card-premium p-5 text-center">
                             <span class="material-symbols-outlined" style="font-size: 3rem; color: var(--outline);">inbox</span>
                             <p class="body-md text-on-surface-variant mt-2 mb-0">
-                                Không có nhân viên nào có lương cơ sở được thiết lập cho tháng này.
+                                Không có nhân viên nào có hợp đồng ACTIVE hợp lệ và salary trong kỳ lương này.
                             </p>
                         </div>
                     </c:when>
@@ -188,7 +188,7 @@
                                             <th class="text-end">Lương nghỉ phép</th>
                                             <th class="text-center">OT duyệt (h)</th>
                                             <th class="text-end">Tiền OT</th>
-                                            <th class="text-end">Phụ cấp</th>
+                                            <th class="text-end">Phụ cấp hợp lệ</th>
                                             <th class="text-end">Tổng trước khấu trừ</th>
                                             <th class="text-end">Lương đóng BH</th>
                                             <th class="text-end">Phụ cấp tính BH</th>
@@ -302,8 +302,13 @@
                                             <td>OT duyệt (h), Tiền OT</td>
                                         </tr>
                                         <tr>
+                                            <td class="fw-medium">Phụ cấp hợp lệ</td>
+                                            <td>Cộng phụ cấp đang hiệu lực; riêng ATTENDANCE_BONUS chỉ cộng khi không có LATE và không có ABSENT không phép trong kỳ</td>
+                                            <td>Phụ cấp, Đi muộn, Vắng</td>
+                                        </tr>
+                                        <tr>
                                             <td class="fw-medium">Tổng trước khấu trừ</td>
-                                            <td>Lương ngày công + Lương nghỉ phép + Tiền OT + Phụ cấp</td>
+                                            <td>Lương ngày công + Lương nghỉ phép + Tiền OT + Phụ cấp hợp lệ</td>
                                             <td>Tổng trước khấu trừ</td>
                                         </tr>
                                         <tr>
@@ -318,8 +323,8 @@
                                         </tr>
                                         <tr>
                                             <td class="fw-medium">Thu nhập chịu thuế</td>
-                                            <td>Max(0, Tổng trước khấu trừ - BH NLĐ đóng - Giảm trừ bản thân - Giảm trừ NPT - Phụ cấp không thuế)</td>
-                                            <td>Thu nhập chịu thuế</td>
+                                            <td>Max(0, Tổng trước khấu trừ - BH NLĐ đóng - Giảm trừ bản thân - Giảm trừ NPT - Phụ cấp không thuế - Tiền OT miễn thuế)</td>
+                                            <td>Thu nhập chịu thuế, Phụ cấp không thuế, Tiền OT</td>
                                         </tr>
                                         <tr>
                                             <td class="fw-medium">Tổng khấu trừ</td>

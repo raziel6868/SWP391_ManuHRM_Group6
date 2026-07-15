@@ -1,6 +1,7 @@
 package model;
 
 import java.math.BigDecimal;
+import java.sql.Date;
 import java.sql.Timestamp;
 
 public class LeaveBalance {
@@ -19,6 +20,7 @@ public class LeaveBalance {
 	private String departmentName;
 	private String leaveTypeCode;
 	private String leaveTypeName;
+	private Date firstContractStartDate;
 
 	public Long getId() {
 		return id;
@@ -122,5 +124,13 @@ public class LeaveBalance {
 
 	public void setLeaveTypeName(String leaveTypeName) {
 		this.leaveTypeName = leaveTypeName;
+	}
+
+	public Date getFirstContractStartDate() {
+		return firstContractStartDate;
+	}
+
+	public void setFirstContractStartDate(Date firstContractStartDate) {
+		this.firstContractStartDate = firstContractStartDate;
 	}
 }

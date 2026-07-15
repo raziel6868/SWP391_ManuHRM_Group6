@@ -41,6 +41,10 @@
                         ${errorMsg}
                     </div>
                 </c:if>
+                <div class="alert alert-warning d-flex align-items-center gap-2 mb-3" role="alert">
+                    <span class="material-symbols-outlined">warning</span>
+                    Deprecated: payroll khong con lay luong co ban tu salary_bases. Hay cap nhat luong tren hop dong ACTIVE cua nhan vien.
+                </div>
 
                 <div class="card-premium p-4 mb-4">
                     <form method="GET" action="${pageContext.request.contextPath}/salary-base-list" class="row g-3 align-items-end">

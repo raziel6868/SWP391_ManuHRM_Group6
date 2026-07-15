@@ -3,6 +3,7 @@ package controller.leaverequest;
 import dal.LeaveBalanceDAO;
 import dal.LeaveRequestDAO;
 import dal.LeaveTypeDAO;
+import dal.MonthlySheetDAO;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
@@ -15,12 +16,13 @@ import java.sql.Date;
 import java.time.LocalDate;
 import java.time.Year;
 import java.time.format.DateTimeParseException;
-import java.time.temporal.ChronoUnit;
 import java.util.List;
 import model.LeaveBalance;
 import model.LeaveRequest;
 import model.LeaveType;
+import model.MonthlySheet;
 import model.User;
+import util.LeavePolicyUtil;
 
 @WebServlet(name = "LeaveRequestCreateServlet", urlPatterns = {"/leave-request-create"})
 public class LeaveRequestCreateServlet extends HttpServlet {
@@ -30,6 +32,7 @@ public class LeaveRequestCreateServlet extends HttpServlet {
 	private final LeaveBalanceDAO leaveBalanceDAO = new LeaveBalanceDAO();
 	private final LeaveRequestDAO leaveRequestDAO = new LeaveRequestDAO();
 	private final LeaveTypeDAO leaveTypeDAO = new LeaveTypeDAO();
+	private final MonthlySheetDAO monthlySheetDAO = new MonthlySheetDAO();
 
 	@Override
 	protected void doGet(HttpServletRequest request, HttpServletResponse response)
@@ -70,8 +73,13 @@ public class LeaveRequestCreateServlet extends HttpServlet {
 		LocalDate startDate = parseDate(startDateText);
 		LocalDate endDate = parseDate(endDateText);
 		Integer balanceYear = startDate == null ? Year.now().getValue() : startDate.getYear();
+		LeaveType leaveType = leaveTypeDAO.getById(leaveTypeId);
+		BigDecimal requestedDays = BigDecimal.ZERO;
+		if (startDate != null && endDate != null && leaveType != null) {
+			requestedDays = LeavePolicyUtil.calculateRequestDays(startDate, endDate, leaveType.getDayCountMethod());
+		}
 
-		String validationError = validate(authUser.getId(), leaveTypeId, startDate, endDate, reason);
+		String validationError = validate(authUser.getId(), leaveType, startDate, endDate, reason, requestedDays);
 		if (validationError != null) {
 			request.setAttribute("errorMsg", validationError);
 			populateFormData(request, authUser.getId(), balanceYear);
@@ -79,29 +87,29 @@ public class LeaveRequestCreateServlet extends HttpServlet {
 			return;
 		}
 
-		long requestedDays = ChronoUnit.DAYS.between(startDate, endDate) + 1;
 		LeaveRequest leaveRequest = new LeaveRequest();
 		leaveRequest.setUserId(authUser.getId());
 		leaveRequest.setLeaveTypeId(leaveTypeId);
 		leaveRequest.setStartDate(Date.valueOf(startDate));
 		leaveRequest.setEndDate(Date.valueOf(endDate));
-		leaveRequest.setDays(BigDecimal.valueOf(requestedDays));
+		leaveRequest.setDays(requestedDays);
 		leaveRequest.setReason(reason);
 
 		boolean success = leaveRequestDAO.insert(leaveRequest);
 		if (success) {
-			session.setAttribute("successMsg", "Gửi đơn nghỉ phép thành công.");
+			session.setAttribute("successMsg", "Gửi đơn nghỉ thành công.");
 			response.sendRedirect(request.getContextPath() + "/leave-request-my");
 			return;
 		}
 
-		request.setAttribute("errorMsg", "Không thể gửi đơn nghỉ phép. Vui lòng thử lại.");
+		request.setAttribute("errorMsg", "Không thể gửi đơn nghỉ. Vui lòng thử lại.");
 		populateFormData(request, authUser.getId(), balanceYear);
 		request.getRequestDispatcher("/views/leaverequest/leave-request-create.jsp").forward(request, response);
 	}
 
-	private String validate(Long userId, Long leaveTypeId, LocalDate startDate, LocalDate endDate, String reason) {
-		if (leaveTypeId == null) {
+	private String validate(Long userId, LeaveType leaveType, LocalDate startDate, LocalDate endDate, String reason,
+			BigDecimal requestedDays) {
+		if (leaveType == null) {
 			return "Vui lòng chọn loại nghỉ.";
 		}
 		if (startDate == null) {
@@ -113,20 +121,41 @@ public class LeaveRequestCreateServlet extends HttpServlet {
 		if (endDate.isBefore(startDate)) {
 			return "Ngày kết thúc không được trước ngày bắt đầu.";
 		}
-		if (startDate.getYear() != endDate.getYear()) {
-			return "Đơn nghỉ không được vượt qua 2 năm khác nhau.";
+		MonthlySheet lockedPeriod = monthlySheetDAO.findLockedPeriodInRange(Date.valueOf(startDate),
+				Date.valueOf(endDate));
+		if (lockedPeriod != null) {
+			return "Không thể tạo đơn nghỉ vì bảng công tháng " + lockedPeriod.getMonth() + "/" + lockedPeriod.getYear()
+					+ " đang ở trạng thái " + lockedPeriod.getStatus() + ".";
 		}
 		if (reason != null && reason.length() > 1000) {
 			return "Lý do nghỉ không được vượt quá 1000 ký tự.";
 		}
-
-		LeaveType leaveType = leaveTypeDAO.getById(leaveTypeId);
-		if (leaveType == null || leaveType.getIsActive() == null || !leaveType.getIsActive()) {
+		if (leaveType.getIsActive() == null || !leaveType.getIsActive()) {
 			return "Loại nghỉ không tồn tại hoặc đã bị vô hiệu hóa.";
 		}
 
-		long requestedDays = ChronoUnit.DAYS.between(startDate, endDate) + 1;
-		LeaveBalance balance = leaveBalanceDAO.getByUserAndTypeAndYear(userId, leaveTypeId, startDate.getYear());
+		boolean requiresBalance = requiresBalance(leaveType);
+		if (requiresBalance && startDate.getYear() != endDate.getYear()) {
+			return "Đơn nghỉ có trừ quỹ phép không được vượt qua 2 năm khác nhau.";
+		}
+		if (requestedDays == null || requestedDays.compareTo(BigDecimal.ZERO) <= 0) {
+			return "Khoảng thời gian nghỉ không có ngày hợp lệ theo cách tính của loại nghỉ.";
+		}
+		if (leaveType.getMaxDays() != null && requestedDays.compareTo(leaveType.getMaxDays()) > 0) {
+			return "Số ngày nghỉ vượt quá hạn mức tối đa của loại nghỉ này.";
+		}
+		if (leaveRequestDAO.hasOverlappingActiveRequest(userId, Date.valueOf(startDate), Date.valueOf(endDate), null)) {
+			return "Bạn đã có đơn nghỉ đang chờ duyệt hoặc đã duyệt trùng với khoảng thời gian này.";
+		}
+		if (!requiresBalance) {
+			return null;
+		}
+
+		LeaveBalance balance = leaveBalanceDAO.getByUserAndTypeAndYear(userId, leaveType.getId(), startDate.getYear());
+		if (balance == null && Boolean.TRUE.equals(leaveType.getIsAnnualLeave())) {
+			leaveBalanceDAO.syncAnnualBalance(userId, startDate.getYear());
+			balance = leaveBalanceDAO.getByUserAndTypeAndYear(userId, leaveType.getId(), startDate.getYear());
+		}
 		if (balance == null) {
 			return "Chưa thiết lập hạn mức nghỉ cho loại nghỉ này trong năm " + startDate.getYear() + ".";
 		}
@@ -134,11 +163,15 @@ public class LeaveRequestCreateServlet extends HttpServlet {
 		BigDecimal totalDays = balance.getTotalDays() == null ? BigDecimal.ZERO : balance.getTotalDays();
 		BigDecimal usedDays = balance.getUsedDays() == null ? BigDecimal.ZERO : balance.getUsedDays();
 		BigDecimal remainingDays = totalDays.subtract(usedDays);
-		if (remainingDays.compareTo(BigDecimal.valueOf(requestedDays)) < 0) {
+		if (remainingDays.compareTo(requestedDays) < 0) {
 			return "Số ngày nghỉ vượt quá hạn mức còn lại.";
 		}
 
 		return null;
+	}
+
+	private boolean requiresBalance(LeaveType leaveType) {
+		return Boolean.TRUE.equals(leaveType.getRequiresBalance()) || Boolean.TRUE.equals(leaveType.getIsAnnualLeave());
 	}
 
 	private void populateFormData(HttpServletRequest request, Long userId, Integer year) {

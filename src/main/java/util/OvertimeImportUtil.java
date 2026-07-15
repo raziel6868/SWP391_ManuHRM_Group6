@@ -36,8 +36,7 @@ import org.apache.poi.ss.usermodel.WorkbookFactory;
  * trùng dữ liệu đã có trong DB thì bỏ qua, dòng lỗi dữ liệu/vi phạm rule thì bỏ
  * qua và ghi nhận lỗi — không có dòng nào chặn các dòng khác trong cùng file.
  *
- * Không còn phụ thuộc phân ca (shift_assignments) — công ty đã bỏ phân ca, toàn
- * bộ nhân viên làm ca hành chính cố định T2-T6, theo khung giờ chuẩn ở
+ * Toàn bộ nhân viên làm giờ hành chính cố định T2-T6, theo khung giờ chuẩn ở
  * {@link WorkScheduleConfig} (hiện là 08:00-17:00). OT tối đa 2h/ngày theo quy
  * định hiện hành.
  *
@@ -45,8 +44,6 @@ import org.apache.poi.ss.usermodel.WorkbookFactory;
  */
 public class OvertimeImportUtil {
 
-	// OT tối đa trong ngày theo quy định hiện hành: 2h/ngày.
-	private static final BigDecimal MAX_HOURS_PER_DAY = new BigDecimal("2");
 	private static final BigDecimal MAX_HOURS_PER_MONTH = new BigDecimal("40");
 	private static final BigDecimal MAX_HOURS_PER_YEAR = new BigDecimal("200");
 
@@ -130,12 +127,6 @@ public class OvertimeImportUtil {
 					continue;
 				}
 
-				LocalDate today = LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh"));
-				if (date.isBefore(today)) {
-					result.addError(displayRow, "Ngày OT " + date + " là ngày trong quá khứ.");
-					continue;
-				}
-
 				DayOfWeek dow = date.getDayOfWeek();
 				if (dow == DayOfWeek.SATURDAY || dow == DayOfWeek.SUNDAY) {
 					result.addError(displayRow,
@@ -144,9 +135,9 @@ public class OvertimeImportUtil {
 					continue;
 				}
 
-				if (hours.compareTo(MAX_HOURS_PER_DAY) > 0) {
-					result.addError(displayRow,
-							"Số giờ OT (" + hours + "h) vượt quá tối đa " + MAX_HOURS_PER_DAY + "h/ngày.");
+				if (hours.compareTo(WorkScheduleConfig.MAX_OT_HOURS_PER_DAY) > 0) {
+					result.addError(displayRow, "Số giờ OT (" + hours + "h) vượt quá tối đa "
+							+ WorkScheduleConfig.MAX_OT_HOURS_PER_DAY + "h/ngày.");
 					continue;
 				}
 
@@ -175,9 +166,9 @@ public class OvertimeImportUtil {
 					continue;
 				}
 
-				// ── Conflict: nhân viên có đơn nghỉ phép ĐÃ DUYỆT trùng ngày OT ──
-				if (leaveRequestDAO.hasApprovedLeaveOnDate(targetUser.getId(), sqlDate)) {
-					result.addError(displayRow, "Nhân viên " + employeeCode + " đã có đơn nghỉ phép được duyệt ngày "
+				// ── Conflict: nhân viên có đơn nghỉ phép đã qua duyệt cấp 1 trùng ngày OT ──
+				if (leaveRequestDAO.hasApprovedOrLevel1LeaveOnDate(targetUser.getId(), sqlDate)) {
+					result.addError(displayRow, "Nhân viên " + employeeCode + " đã có đơn nghỉ phép đang/đã duyệt ngày "
 							+ date + ", không thể tạo OT cho ngày này.");
 					continue;
 				}
@@ -193,7 +184,7 @@ public class OvertimeImportUtil {
 				}
 				if (existingAttendance != null && existingAttendance.getCheckOut() != null) {
 					long otMinutes = hours.multiply(BigDecimal.valueOf(60)).longValue();
-					LocalTime expectedCheckout = WorkScheduleConfig.STANDARD_END.plusMinutes(otMinutes);
+					LocalTime expectedCheckout = WorkScheduleConfig.OVERTIME_START.plusMinutes(otMinutes);
 					if (existingAttendance.getCheckOut().toLocalTime().isBefore(expectedCheckout)) {
 						result.addError(displayRow, "Nhân viên " + employeeCode + " đã chấm công ra lúc "
 								+ existingAttendance.getCheckOut().toLocalTime() + " ngày " + date

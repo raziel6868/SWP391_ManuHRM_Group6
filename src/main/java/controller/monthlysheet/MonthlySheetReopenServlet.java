@@ -3,6 +3,7 @@ package controller.monthlysheet;
 import java.io.IOException;
 import java.util.List;
 
+import dal.MonthlySalaryDAO;
 import dal.MonthlySheetDAO;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
@@ -16,6 +17,7 @@ import model.Permission;
 public class MonthlySheetReopenServlet extends HttpServlet {
 
 	private final MonthlySheetDAO monthlySheetDAO = new MonthlySheetDAO();
+	private final MonthlySalaryDAO monthlySalaryDAO = new MonthlySalaryDAO();
 
 	@Override
 	protected void doPost(HttpServletRequest request, HttpServletResponse response)
@@ -39,11 +41,21 @@ public class MonthlySheetReopenServlet extends HttpServlet {
 
 		try {
 			Long id = Long.parseLong(idStr.trim());
+			if (monthlySalaryDAO.hasAnyFinalOrPaid(id)) {
+				session.setAttribute("errorMsg",
+						"Không thể mở lại bảng công vì bảng lương tháng này đã được chốt hoặc đã thanh toán.");
+				response.sendRedirect(request.getContextPath() + "/monthly-sheet-list");
+				return;
+			}
+			boolean hasDraftPayroll = monthlySalaryDAO.hasAnyDraft(id);
 			boolean success = monthlySheetDAO.reopenSheet(id);
 
 			if (success) {
-				session.setAttribute("successMsg",
-						"Đã mở lại bảng công tháng thành công. Có thể nhập công và sửa chấm công.");
+				String message = "Đã mở lại bảng công tháng thành công. Có thể nhập công và sửa chấm công.";
+				if (hasDraftPayroll) {
+					message += " Bảng lương nháp cũ đã được hủy, hãy tạo lại bảng lương sau khi đóng công lại.";
+				}
+				session.setAttribute("successMsg", message);
 			} else {
 				session.setAttribute("errorMsg",
 						"Không thể mở lại bảng công tháng. Bảng có thể đang ở trạng thái mở hoặc không tồn tại.");

@@ -11,6 +11,9 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.HashMap;
 import java.util.List;
@@ -53,23 +56,31 @@ public class PayrollPreviewServlet extends HttpServlet {
 
 		int year = currentYear;
 		int month = currentMonth;
+		boolean invalidPeriod = false;
 
 		if (yearParam != null && !yearParam.isEmpty()) {
 			try {
 				year = Integer.parseInt(yearParam);
 			} catch (NumberFormatException e) {
-				year = currentYear;
+				invalidPeriod = true;
 			}
 		}
 		if (monthParam != null && !monthParam.isEmpty()) {
 			try {
 				month = Integer.parseInt(monthParam);
 			} catch (NumberFormatException e) {
-				month = currentMonth;
+				invalidPeriod = true;
 			}
 		}
+		if (month < 1 || month > 12 || year < 1900 || year > 9999) {
+			invalidPeriod = true;
+		}
+		if (invalidPeriod) {
+			session.setAttribute("errorMsg", "Thông tin tháng/năm không hợp lệ.");
+			response.sendRedirect(request.getContextPath() + "/payroll-preview");
+			return;
+		}
 
-		List<PayrollPreviewRow> previewRows = payrollDAO.buildPayrollPreview(year, month);
 		MonthlySheet sheet = monthlySheetDAO.getByYearMonth(year, month);
 		List<MonthlySalary> generatedSalaries = sheet != null ? monthlySalaryDAO.getBySheet(sheet.getId()) : null;
 
@@ -90,10 +101,28 @@ public class PayrollPreviewServlet extends HttpServlet {
 			}
 		}
 
+		List<String> configErrors = hasFinalOrPaidPayroll
+				? List.of()
+				: payrollDAO.validateRequiredConfiguration(year, month);
+		List<PayrollPreviewRow> previewRows;
+		if (hasGeneratedRows) {
+			previewRows = toPreviewRows(generatedSalaries);
+			if (!configErrors.isEmpty()) {
+				request.setAttribute("errorMsg",
+						String.join(" ", configErrors) + " Đang hiển thị dữ liệu bảng lương đã lưu.");
+			}
+		} else if (configErrors.isEmpty()) {
+			previewRows = payrollDAO.buildPayrollPreview(year, month);
+		} else {
+			previewRows = List.of();
+			request.setAttribute("errorMsg", String.join(" ", configErrors));
+		}
+
 		boolean isMonthlySheetClosed = sheet != null && "CLOSED".equals(sheet.getStatus());
-		boolean canGeneratePayroll = !previewRows.isEmpty() && sheet != null && isMonthlySheetClosed
-				&& !hasFinalOrPaidPayroll;
-		boolean canClosePayroll = hasPermission(permissions, "PAYROLL_CLOSE") && hasGeneratedRows && hasDraftPayroll;
+		boolean canGeneratePayroll = configErrors.isEmpty() && !previewRows.isEmpty() && sheet != null
+				&& isMonthlySheetClosed && !hasFinalOrPaidPayroll;
+		boolean canClosePayroll = hasPermission(permissions, "PAYROLL_CLOSE") && isMonthlySheetClosed
+				&& hasGeneratedRows && hasDraftPayroll;
 
 		request.setAttribute("previewRows", previewRows);
 		request.setAttribute("generatedSalaries", generatedSalaries);
@@ -110,6 +139,72 @@ public class PayrollPreviewServlet extends HttpServlet {
 		request.setAttribute("isMonthlySheetClosed", isMonthlySheetClosed);
 
 		request.getRequestDispatcher("/views/payroll/payroll-preview.jsp").forward(request, response);
+	}
+
+	private List<PayrollPreviewRow> toPreviewRows(List<MonthlySalary> salaries) {
+		List<PayrollPreviewRow> rows = new ArrayList<>();
+		if (salaries == null) {
+			return rows;
+		}
+		for (MonthlySalary salary : salaries) {
+			PayrollPreviewRow row = new PayrollPreviewRow();
+			row.setUserId(salary.getUserId());
+			row.setUserFullName(salary.getUserFullName());
+			row.setEmployeeCode(salary.getEmployeeCode());
+			row.setDepartmentName(salary.getDepartmentName());
+			row.setBaseSalary(salary.getBaseSalary());
+			row.setStandardWorkDays(salary.getStandardWorkDays());
+			row.setStandardWorkHoursPerDay(salary.getStandardWorkHoursPerDay());
+			row.setActualWorkDays(salary.getActualWorkDays());
+			row.setAbsentDays(calculateAbsentDays(salary));
+			row.setPaidLeaveDays(salary.getPaidLeaveDays());
+			row.setProratedBaseSalary(salary.getProratedBaseSalary());
+			row.setPaidLeaveSalary(salary.getPaidLeaveSalary());
+			row.setApprovedOtHours(firstNonNull(salary.getApprovedOtHours(), salary.getOtHours()));
+			row.setOvertimePay(salary.getOvertimePay());
+			row.setTotalAllowances(salary.getTotalAllowances());
+			row.setGrossIncome(firstNonNull(salary.getGrossIncome(), salary.getGrossSalary()));
+			row.setInsuranceSalary(salary.getInsuranceSalary());
+			row.setInsuranceBasedAllowances(salary.getInsuranceBasedAllowances());
+			row.setSocialInsuranceBase(salary.getSocialInsuranceBase());
+			row.setHealthInsuranceBase(salary.getHealthInsuranceBase());
+			row.setUnemploymentInsuranceBase(salary.getUnemploymentInsuranceBase());
+			row.setSocialInsurance(salary.getSocialInsurance());
+			row.setHealthInsurance(salary.getHealthInsurance());
+			row.setUnemploymentInsurance(salary.getUnemploymentInsurance());
+			row.setEmployeeInsurance(salary.getEmployeeInsurance());
+			row.setPersonalDeduction(salary.getPersonalDeduction());
+			row.setDependentCount(salary.getDependentCount());
+			row.setDependentDeduction(salary.getDependentDeduction());
+			row.setNonTaxableAllowances(salary.getNonTaxableAllowances());
+			row.setTaxableIncome(salary.getTaxableIncome());
+			row.setPitTax(salary.getPitTax());
+			row.setOtHours(firstNonNull(salary.getOtHours(), salary.getApprovedOtHours()));
+			row.setGrossSalary(firstNonNull(salary.getGrossSalary(), salary.getGrossIncome()));
+			row.setAttendanceDeduction(BigDecimal.ZERO);
+			row.setOtBonus(salary.getOvertimePay());
+			row.setDeductions(salary.getDeductions());
+			row.setNetSalary(salary.getNetSalary());
+			rows.add(row);
+		}
+		return rows;
+	}
+
+	private int calculateAbsentDays(MonthlySalary salary) {
+		BigDecimal absentDays = safeNumber(salary.getStandardWorkDays())
+				.subtract(safeNumber(salary.getActualWorkDays())).subtract(safeNumber(salary.getPaidLeaveDays()));
+		if (absentDays.compareTo(BigDecimal.ZERO) < 0) {
+			return 0;
+		}
+		return absentDays.setScale(0, RoundingMode.HALF_UP).intValue();
+	}
+
+	private BigDecimal firstNonNull(BigDecimal first, BigDecimal second) {
+		return first != null ? first : second;
+	}
+
+	private BigDecimal safeNumber(BigDecimal value) {
+		return value != null ? value : BigDecimal.ZERO;
 	}
 
 	private void moveFlash(HttpSession session, HttpServletRequest request, String key) {

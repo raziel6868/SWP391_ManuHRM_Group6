@@ -78,6 +78,7 @@ public class LeaveRequestListServlet extends HttpServlet {
 		request.setAttribute("canViewAll", canViewAll);
 		request.setAttribute("currentUserId", authUser.getId());
 		request.setAttribute("canApproveLevel1", hasPermission(session, "LEAVE_REQUEST_APPROVE_L1"));
+		request.setAttribute("canApproveUnmanaged", canViewAll);
 		request.setAttribute("canFinalApprove", hasPermission(session, "LEAVE_REQUEST_APPROVE_L2"));
 		request.setAttribute("canReject", hasPermission(session, "LEAVE_REQUEST_REJECT"));
 

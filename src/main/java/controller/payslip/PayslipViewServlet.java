@@ -45,53 +45,80 @@ public class PayslipViewServlet extends HttpServlet {
 		String sheetIdParam = request.getParameter("sheetId");
 		String userIdParam = request.getParameter("userId");
 
-		if (sheetIdParam == null || sheetIdParam.isEmpty() || userIdParam == null || userIdParam.isEmpty()) {
-			MonthlySalary latest = canViewAllPayslips
-					? monthlySalaryDAO.getLatestByUser(authUser.getId())
-					: monthlySalaryDAO.getLatestFinalizedByUser(authUser.getId());
-			if (latest != null) {
-				response.sendRedirect(request.getContextPath() + "/payslip-view?sheetId=" + latest.getMonthlySheetId()
-						+ "&userId=" + authUser.getId());
-				return;
-			}
-
-			request.setAttribute("noPayslip", true);
-			request.setAttribute("noPayslipMessage",
-					canViewAllPayslips
-							? "Chưa có phiếu lương cho nhân viên này."
-							: "Chưa có phiếu lương đã chốt cho nhân viên này.");
-			request.getRequestDispatcher("/views/payroll/payslip-view.jsp").forward(request, response);
-			return;
-		}
-
 		try {
-			Long targetUserId = Long.parseLong(userIdParam);
-			if (!authUser.getId().equals(targetUserId) && !canViewAllPayslips) {
-				response.sendError(HttpServletResponse.SC_FORBIDDEN);
+			Long targetUserId = resolveTargetUserId(authUser, canViewAllPayslips, userIdParam, response);
+			if (targetUserId == null) {
 				return;
 			}
 
-			Long sheetId = Long.parseLong(sheetIdParam);
+			List<MonthlySalary> payslipPeriods = canViewAllPayslips
+					? monthlySalaryDAO.getByUser(targetUserId)
+					: monthlySalaryDAO.getFinalizedByUser(targetUserId);
+			request.setAttribute("payslipPeriods", payslipPeriods);
+			request.setAttribute("targetUserId", targetUserId);
+
+			if (!hasValue(sheetIdParam)) {
+				redirectToLatestPayslipOrShowEmpty(request, response, canViewAllPayslips, targetUserId, payslipPeriods);
+				return;
+			}
+
+			Long sheetId = Long.parseLong(sheetIdParam.trim());
 			MonthlySalary salary = monthlySalaryDAO.getBySheetAndUser(sheetId, targetUserId);
 			MonthlySheet sheet = monthlySheetDAO.getById(sheetId);
+			request.setAttribute("selectedSheetId", sheetId);
 
 			if (salary == null) {
 				request.setAttribute("noPayslip", true);
-				request.setAttribute("noPayslipMessage", "Không tìm thấy phiếu lương.");
+				request.setAttribute("noPayslipMessage", "Kh\u00f4ng t\u00ecm th\u1ea5y phi\u1ebfu l\u01b0\u01a1ng.");
 			} else if (!canViewAllPayslips && !isFinalizedPayrollStatus(salary.getStatus())) {
 				request.setAttribute("noPayslip", true);
-				request.setAttribute("noPayslipMessage", "Phiếu lương của tháng này chưa được chốt.");
+				request.setAttribute("noPayslipMessage",
+						"Phi\u1ebfu l\u01b0\u01a1ng c\u1ee7a th\u00e1ng n\u00e0y ch\u01b0a \u0111\u01b0\u1ee3c ch\u1ed1t.");
 			} else {
 				request.setAttribute("salary", salary);
 				request.setAttribute("sheet", sheet);
 			}
-
 		} catch (NumberFormatException e) {
 			request.setAttribute("noPayslip", true);
-			request.setAttribute("noPayslipMessage", "Tham số không hợp lệ.");
+			request.setAttribute("noPayslipMessage", "Tham s\u1ed1 kh\u00f4ng h\u1ee3p l\u1ec7.");
 		}
 
 		request.getRequestDispatcher("/views/payroll/payslip-view.jsp").forward(request, response);
+	}
+
+	private Long resolveTargetUserId(User authUser, boolean canViewAllPayslips, String userIdParam,
+			HttpServletResponse response) throws IOException {
+		Long targetUserId = authUser.getId();
+		if (hasValue(userIdParam)) {
+			targetUserId = Long.parseLong(userIdParam.trim());
+		}
+
+		if (!authUser.getId().equals(targetUserId) && !canViewAllPayslips) {
+			response.sendError(HttpServletResponse.SC_FORBIDDEN);
+			return null;
+		}
+		return targetUserId;
+	}
+
+	private void redirectToLatestPayslipOrShowEmpty(HttpServletRequest request, HttpServletResponse response,
+			boolean canViewAllPayslips, Long targetUserId, List<MonthlySalary> payslipPeriods)
+			throws ServletException, IOException {
+		if (!payslipPeriods.isEmpty()) {
+			MonthlySalary latest = payslipPeriods.get(0);
+			response.sendRedirect(request.getContextPath() + "/payslip-view?sheetId=" + latest.getMonthlySheetId()
+					+ "&userId=" + targetUserId);
+			return;
+		}
+
+		request.setAttribute("noPayslip", true);
+		request.setAttribute("noPayslipMessage", canViewAllPayslips
+				? "Ch\u01b0a c\u00f3 phi\u1ebfu l\u01b0\u01a1ng cho nh\u00e2n vi\u00ean n\u00e0y."
+				: "Ch\u01b0a c\u00f3 phi\u1ebfu l\u01b0\u01a1ng \u0111\u00e3 ch\u1ed1t cho nh\u00e2n vi\u00ean n\u00e0y.");
+		request.getRequestDispatcher("/views/payroll/payslip-view.jsp").forward(request, response);
+	}
+
+	private boolean hasValue(String value) {
+		return value != null && !value.trim().isEmpty();
 	}
 
 	private boolean isFinalizedPayrollStatus(String status) {

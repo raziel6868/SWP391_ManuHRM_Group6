@@ -51,6 +51,16 @@ public class MonthlySheetDirectorApproveServlet extends HttpServlet {
 		try (Connection conn = DBContext.getConnection()) {
 			conn.setAutoCommit(false);
 			try {
+				List<String> closeConflicts = monthlySheetDAO.findCloseConflicts(conn, sheet.getYear(),
+						sheet.getMonth());
+				if (!closeConflicts.isEmpty()) {
+					conn.rollback();
+					session.setAttribute("errorMsg", "Không thể đóng sổ vì dữ liệu Leave/OT/Attendance còn conflict: "
+							+ String.join(" | ", closeConflicts));
+					response.sendRedirect(request.getContextPath() + "/monthly-sheet-list");
+					return;
+				}
+
 				boolean closed = monthlySheetDAO.directorClose(conn, sheetId, authUser.getId());
 				if (!closed) {
 					conn.rollback();

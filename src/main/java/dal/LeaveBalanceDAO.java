@@ -2,12 +2,16 @@ package dal;
 
 import java.math.BigDecimal;
 import java.sql.Connection;
+import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import model.LeaveBalance;
+import model.LeaveType;
+import util.LeavePolicyUtil;
 
 public class LeaveBalanceDAO {
 
@@ -18,12 +22,19 @@ public class LeaveBalanceDAO {
 				       lb.created_at, lb.updated_at,
 				       u.employee_code, u.full_name AS employee_name,
 				       d.name AS department_name,
-				       lt.code AS leave_type_code, lt.name AS leave_type_name
+				       lt.code AS leave_type_code, lt.name AS leave_type_name,
+				       first_contract.first_contract_start
 				FROM leave_balances lb
 				INNER JOIN users u ON u.id = lb.user_id
 				LEFT JOIN departments d ON d.id = u.department_id
 				INNER JOIN leave_types lt ON lt.id = lb.leave_type_id
+				LEFT JOIN (
+				    SELECT user_id, MIN(start_date) AS first_contract_start
+				    FROM contracts
+				    GROUP BY user_id
+				) first_contract ON first_contract.user_id = lb.user_id
 				WHERE 1 = 1
+				  AND lt.is_annual_leave = TRUE
 				""");
 		List<Object> params = new ArrayList<>();
 		appendFilters(sql, params, year, departmentId);
@@ -50,7 +61,9 @@ public class LeaveBalanceDAO {
 				SELECT COUNT(*)
 				FROM leave_balances lb
 				INNER JOIN users u ON u.id = lb.user_id
+				INNER JOIN leave_types lt ON lt.id = lb.leave_type_id
 				WHERE 1 = 1
+				  AND lt.is_annual_leave = TRUE
 				""");
 		List<Object> params = new ArrayList<>();
 		appendFilters(sql, params, year, departmentId);
@@ -79,11 +92,17 @@ public class LeaveBalanceDAO {
 				       lb.created_at, lb.updated_at,
 				       u.employee_code, u.full_name AS employee_name,
 				       d.name AS department_name,
-				       lt.code AS leave_type_code, lt.name AS leave_type_name
+				       lt.code AS leave_type_code, lt.name AS leave_type_name,
+				       first_contract.first_contract_start
 				FROM leave_balances lb
 				INNER JOIN users u ON u.id = lb.user_id
 				LEFT JOIN departments d ON d.id = u.department_id
 				INNER JOIN leave_types lt ON lt.id = lb.leave_type_id
+				LEFT JOIN (
+				    SELECT user_id, MIN(start_date) AS first_contract_start
+				    FROM contracts
+				    GROUP BY user_id
+				) first_contract ON first_contract.user_id = lb.user_id
 				WHERE lb.user_id = ? AND lb.leave_type_id = ? AND lb.year = ?
 				""";
 
@@ -113,12 +132,19 @@ public class LeaveBalanceDAO {
 				       lb.created_at, lb.updated_at,
 				       u.employee_code, u.full_name AS employee_name,
 				       d.name AS department_name,
-				       lt.code AS leave_type_code, lt.name AS leave_type_name
+				       lt.code AS leave_type_code, lt.name AS leave_type_name,
+				       first_contract.first_contract_start
 				FROM leave_balances lb
 				INNER JOIN users u ON u.id = lb.user_id
 				LEFT JOIN departments d ON d.id = u.department_id
 				INNER JOIN leave_types lt ON lt.id = lb.leave_type_id
+				LEFT JOIN (
+				    SELECT user_id, MIN(start_date) AS first_contract_start
+				    FROM contracts
+				    GROUP BY user_id
+				) first_contract ON first_contract.user_id = lb.user_id
 				WHERE lb.user_id = ? AND lb.year = ?
+				  AND lt.is_annual_leave = TRUE
 				ORDER BY lt.code ASC
 				""";
 
@@ -145,7 +171,7 @@ public class LeaveBalanceDAO {
 				INSERT INTO leave_balances (user_id, leave_type_id, year, total_days, used_days)
 				VALUES (?, ?, ?, ?, 0)
 				ON DUPLICATE KEY UPDATE
-				    total_days = VALUES(total_days),
+				    total_days = GREATEST(VALUES(total_days), used_days),
 				    updated_at = CURRENT_TIMESTAMP
 				""";
 
@@ -159,6 +185,61 @@ public class LeaveBalanceDAO {
 			System.err.println("LeaveBalanceDAO.upsert() ERROR: " + e.getMessage());
 		}
 		return false;
+	}
+
+	public boolean syncAnnualBalance(Long userId, Integer year) {
+		if (userId == null || year == null) {
+			return false;
+		}
+
+		try (Connection conn = DBContext.getConnection()) {
+			LeaveType annualType = getAnnualLeaveType(conn);
+			LocalDate firstContractStart = getFirstContractStart(conn, userId);
+			if (annualType == null || firstContractStart == null) {
+				return false;
+			}
+			BigDecimal totalDays = LeavePolicyUtil.calculateAnnualEntitlement(annualType, firstContractStart, year);
+			return upsert(conn, userId, annualType.getId(), year, totalDays);
+		} catch (SQLException e) {
+			System.err.println("LeaveBalanceDAO.syncAnnualBalance() ERROR: " + e.getMessage());
+		}
+		return false;
+	}
+
+	public int syncAnnualBalances(Integer year) {
+		if (year == null) {
+			return 0;
+		}
+
+		String usersSql = """
+				SELECT u.id, MIN(c.start_date) AS first_contract_start
+				FROM users u
+				INNER JOIN contracts c ON c.user_id = u.id
+				WHERE u.is_active = TRUE
+				GROUP BY u.id
+				ORDER BY u.id
+				""";
+		int synced = 0;
+		try (Connection conn = DBContext.getConnection()) {
+			LeaveType annualType = getAnnualLeaveType(conn);
+			if (annualType == null) {
+				return 0;
+			}
+			try (PreparedStatement ps = conn.prepareStatement(usersSql); ResultSet rs = ps.executeQuery()) {
+				while (rs.next()) {
+					Long userId = rs.getLong("id");
+					Date firstContractStart = rs.getDate("first_contract_start");
+					BigDecimal totalDays = LeavePolicyUtil.calculateAnnualEntitlement(annualType,
+							firstContractStart.toLocalDate(), year);
+					if (upsert(conn, userId, annualType.getId(), year, totalDays)) {
+						synced++;
+					}
+				}
+			}
+		} catch (SQLException e) {
+			System.err.println("LeaveBalanceDAO.syncAnnualBalances() ERROR: " + e.getMessage());
+		}
+		return synced;
 	}
 
 	public boolean incrementUsedDays(Long userId, Long leaveTypeId, Integer year, BigDecimal days) {
@@ -195,6 +276,82 @@ public class LeaveBalanceDAO {
 		}
 	}
 
+	private boolean upsert(Connection conn, Long userId, Long leaveTypeId, Integer year, BigDecimal totalDays)
+			throws SQLException {
+		if (conn == null || userId == null || leaveTypeId == null || year == null || totalDays == null) {
+			return false;
+		}
+
+		String sql = """
+				INSERT INTO leave_balances (user_id, leave_type_id, year, total_days, used_days)
+				VALUES (?, ?, ?, ?, 0)
+				ON DUPLICATE KEY UPDATE
+				    total_days = GREATEST(VALUES(total_days), used_days),
+				    updated_at = CURRENT_TIMESTAMP
+				""";
+
+		try (PreparedStatement ps = conn.prepareStatement(sql)) {
+			ps.setLong(1, userId);
+			ps.setLong(2, leaveTypeId);
+			ps.setInt(3, year);
+			ps.setBigDecimal(4, totalDays);
+			return ps.executeUpdate() > 0;
+		}
+	}
+
+	private LeaveType getAnnualLeaveType(Connection conn) throws SQLException {
+		String sql = """
+				SELECT id, code, name, description, is_paid, salary_paid_by, is_annual_leave,
+				       requires_balance, base_days, max_days, has_seniority_bonus,
+				       seniority_interval_years, seniority_bonus_days, day_count_method,
+				       is_active, created_at, updated_at
+				FROM leave_types
+				WHERE is_annual_leave = TRUE
+				  AND requires_balance = TRUE
+				  AND is_active = TRUE
+				ORDER BY id ASC
+				LIMIT 1
+				""";
+		try (PreparedStatement ps = conn.prepareStatement(sql); ResultSet rs = ps.executeQuery()) {
+			if (rs.next()) {
+				LeaveType leaveType = new LeaveType();
+				leaveType.setId(rs.getLong("id"));
+				leaveType.setCode(rs.getString("code"));
+				leaveType.setName(rs.getString("name"));
+				leaveType.setDescription(rs.getString("description"));
+				leaveType.setIsPaid(rs.getBoolean("is_paid"));
+				leaveType.setSalaryPaidBy(rs.getString("salary_paid_by"));
+				leaveType.setIsAnnualLeave(rs.getBoolean("is_annual_leave"));
+				leaveType.setRequiresBalance(rs.getBoolean("requires_balance"));
+				leaveType.setBaseDays(rs.getBigDecimal("base_days"));
+				leaveType.setMaxDays(rs.getBigDecimal("max_days"));
+				leaveType.setHasSeniorityBonus(rs.getBoolean("has_seniority_bonus"));
+				leaveType.setSeniorityIntervalYears(rs.getInt("seniority_interval_years"));
+				leaveType.setSeniorityBonusDays(rs.getBigDecimal("seniority_bonus_days"));
+				leaveType.setDayCountMethod(rs.getString("day_count_method"));
+				leaveType.setIsActive(rs.getBoolean("is_active"));
+				leaveType.setCreatedAt(rs.getTimestamp("created_at"));
+				leaveType.setUpdatedAt(rs.getTimestamp("updated_at"));
+				return leaveType;
+			}
+		}
+		return null;
+	}
+
+	private LocalDate getFirstContractStart(Connection conn, Long userId) throws SQLException {
+		String sql = "SELECT MIN(start_date) AS first_contract_start FROM contracts WHERE user_id = ?";
+		try (PreparedStatement ps = conn.prepareStatement(sql)) {
+			ps.setLong(1, userId);
+			try (ResultSet rs = ps.executeQuery()) {
+				if (rs.next()) {
+					Date firstContractStart = rs.getDate("first_contract_start");
+					return firstContractStart == null ? null : firstContractStart.toLocalDate();
+				}
+			}
+		}
+		return null;
+	}
+
 	private void appendFilters(StringBuilder sql, List<Object> params, Integer year, Long departmentId) {
 		if (year != null) {
 			sql.append(" AND lb.year = ?");
@@ -227,6 +384,7 @@ public class LeaveBalanceDAO {
 		balance.setDepartmentName(rs.getString("department_name"));
 		balance.setLeaveTypeCode(rs.getString("leave_type_code"));
 		balance.setLeaveTypeName(rs.getString("leave_type_name"));
+		balance.setFirstContractStartDate(rs.getDate("first_contract_start"));
 		return balance;
 	}
 }

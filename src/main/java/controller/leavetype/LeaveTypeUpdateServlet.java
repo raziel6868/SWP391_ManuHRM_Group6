@@ -13,8 +13,6 @@ import util.ValidationUtil;
 @WebServlet(name = "LeaveTypeUpdateServlet", urlPatterns = {"/leave-type-update"})
 public class LeaveTypeUpdateServlet extends HttpServlet {
 
-	private static final String CODE_REGEX = "^[A-Z][A-Z0-9_]*$";
-
 	private final LeaveTypeDAO leaveTypeDAO = new LeaveTypeDAO();
 
 	@Override
@@ -57,25 +55,19 @@ public class LeaveTypeUpdateServlet extends HttpServlet {
 			return;
 		}
 
-		String code = normalizeCode(request.getParameter("code"));
-		String name = normalizeText(request.getParameter("name"));
-		String description = normalizeText(request.getParameter("description"));
-		boolean isPaid = "true".equalsIgnoreCase(request.getParameter("isPaid"));
+		LeaveType submitted = buildLeaveType(request, existingLeaveType);
+		submitted.setId(id);
+		submitted.setIsActive(existingLeaveType.getIsActive());
 
-		existingLeaveType.setCode(code);
-		existingLeaveType.setName(name);
-		existingLeaveType.setDescription(description);
-		existingLeaveType.setIsPaid(isPaid);
-
-		String validationError = validate(code, name, id);
+		String validationError = validate(submitted);
 		if (validationError != null) {
 			request.setAttribute("errorMsg", validationError);
-			request.setAttribute("leaveType", existingLeaveType);
+			request.setAttribute("leaveType", submitted);
 			request.getRequestDispatcher("/views/leavetype/leave-type-update.jsp").forward(request, response);
 			return;
 		}
 
-		boolean success = leaveTypeDAO.update(existingLeaveType);
+		boolean success = leaveTypeDAO.update(submitted);
 		if (success) {
 			request.getSession().setAttribute("successMsg", "Cập nhật loại nghỉ thành công.");
 			response.sendRedirect(request.getContextPath() + "/leave-type-list");
@@ -83,28 +75,34 @@ public class LeaveTypeUpdateServlet extends HttpServlet {
 		}
 
 		request.setAttribute("errorMsg", "Không thể cập nhật loại nghỉ. Vui lòng thử lại.");
-		request.setAttribute("leaveType", existingLeaveType);
+		request.setAttribute("leaveType", submitted);
 		request.getRequestDispatcher("/views/leavetype/leave-type-update.jsp").forward(request, response);
 	}
 
-	private String validate(String code, String name, Long id) {
-		if (ValidationUtil.isBlank(code)) {
-			return "Mã loại nghỉ không được để trống.";
-		}
-		if (code.length() > 30) {
-			return "Mã loại nghỉ không được vượt quá 30 ký tự.";
-		}
-		if (!ValidationUtil.matchRegex(code, CODE_REGEX)) {
-			return "Mã loại nghỉ phải viết hoa, bắt đầu bằng chữ cái và chỉ chứa chữ hoa, số hoặc dấu gạch dưới.";
-		}
-		if (ValidationUtil.isBlank(name)) {
+	private LeaveType buildLeaveType(HttpServletRequest request, LeaveType existingLeaveType) {
+		LeaveType leaveType = new LeaveType();
+		leaveType.setCode(existingLeaveType.getCode());
+		leaveType.setName(normalizeText(request.getParameter("name")));
+		leaveType.setDescription(normalizeText(request.getParameter("description")));
+		leaveType.setIsPaid(existingLeaveType.getIsPaid());
+		leaveType.setSalaryPaidBy(existingLeaveType.getSalaryPaidBy());
+		leaveType.setIsAnnualLeave(existingLeaveType.getIsAnnualLeave());
+		leaveType.setRequiresBalance(existingLeaveType.getRequiresBalance());
+		leaveType.setBaseDays(existingLeaveType.getBaseDays());
+		leaveType.setMaxDays(existingLeaveType.getMaxDays());
+		leaveType.setHasSeniorityBonus(existingLeaveType.getHasSeniorityBonus());
+		leaveType.setSeniorityIntervalYears(existingLeaveType.getSeniorityIntervalYears());
+		leaveType.setSeniorityBonusDays(existingLeaveType.getSeniorityBonusDays());
+		leaveType.setDayCountMethod(existingLeaveType.getDayCountMethod());
+		return leaveType;
+	}
+
+	private String validate(LeaveType leaveType) {
+		if (ValidationUtil.isBlank(leaveType.getName())) {
 			return "Tên loại nghỉ không được để trống.";
 		}
-		if (name.length() > 100) {
+		if (leaveType.getName().length() > 100) {
 			return "Tên loại nghỉ không được vượt quá 100 ký tự.";
-		}
-		if (leaveTypeDAO.existsByCodeExceptId(code, id)) {
-			return "Mã loại nghỉ đã tồn tại. Vui lòng nhập mã khác.";
 		}
 		return null;
 	}
@@ -118,14 +116,6 @@ public class LeaveTypeUpdateServlet extends HttpServlet {
 		} catch (NumberFormatException e) {
 			return null;
 		}
-	}
-
-	private String normalizeCode(String code) {
-		if (code == null) {
-			return null;
-		}
-		String trimmed = code.trim().toUpperCase();
-		return trimmed.isEmpty() ? null : trimmed;
 	}
 
 	private String normalizeText(String value) {

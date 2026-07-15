@@ -86,7 +86,7 @@ public class MonthlySalaryDAO {
 				LEFT JOIN departments d ON u.department_id = d.id
 				JOIN monthly_sheets msys ON ms.monthly_sheet_id = msys.id
 				WHERE ms.user_id = ?
-				ORDER BY ms.updated_at DESC
+				ORDER BY msys.year DESC, msys.month DESC, ms.updated_at DESC
 				LIMIT 1
 				""".formatted(SELECT_COLUMNS);
 
@@ -111,7 +111,7 @@ public class MonthlySalaryDAO {
 				LEFT JOIN departments d ON u.department_id = d.id
 				JOIN monthly_sheets msys ON ms.monthly_sheet_id = msys.id
 				WHERE ms.user_id = ? AND ms.status IN ('FINAL', 'PAID')
-				ORDER BY ms.updated_at DESC
+				ORDER BY msys.year DESC, msys.month DESC, ms.updated_at DESC
 				LIMIT 1
 				""".formatted(SELECT_COLUMNS);
 
@@ -126,6 +126,44 @@ public class MonthlySalaryDAO {
 			System.err.println("getLatestFinalizedByUser error: " + e.getMessage());
 		}
 		return null;
+	}
+
+	public List<MonthlySalary> getByUser(Long userId) {
+		return getByUser(userId, false);
+	}
+
+	public List<MonthlySalary> getFinalizedByUser(Long userId) {
+		return getByUser(userId, true);
+	}
+
+	private List<MonthlySalary> getByUser(Long userId, boolean finalizedOnly) {
+		List<MonthlySalary> salaries = new ArrayList<>();
+		if (userId == null) {
+			return salaries;
+		}
+
+		String sql = """
+				SELECT %s
+				FROM monthly_salaries ms
+				JOIN users u ON ms.user_id = u.id
+				LEFT JOIN departments d ON u.department_id = d.id
+				JOIN monthly_sheets msys ON ms.monthly_sheet_id = msys.id
+				WHERE ms.user_id = ?
+				%s
+				ORDER BY msys.year DESC, msys.month DESC, ms.updated_at DESC
+				""".formatted(SELECT_COLUMNS, finalizedOnly ? "AND ms.status IN ('FINAL', 'PAID')" : "");
+
+		try (Connection conn = DBContext.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+			ps.setLong(1, userId);
+			try (ResultSet rs = ps.executeQuery()) {
+				while (rs.next()) {
+					salaries.add(mapRow(rs));
+				}
+			}
+		} catch (SQLException e) {
+			System.err.println("getByUser error: " + e.getMessage());
+		}
+		return salaries;
 	}
 
 	public boolean hasGeneratedRows(Long sheetId) {

@@ -4,6 +4,7 @@ import dal.AttendanceDAO;
 import dal.DBContext;
 import dal.LeaveBalanceDAO;
 import dal.LeaveRequestDAO;
+import dal.MonthlySheetDAO;
 import dal.OvertimeDAO;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
@@ -15,17 +16,21 @@ import java.io.IOException;
 import java.sql.Connection;
 import java.sql.SQLException;
 import model.LeaveRequest;
+import model.MonthlySheet;
 import model.User;
 
 @WebServlet(name = "LeaveRequestApproveServlet", urlPatterns = {"/leave-request-approve"})
 public class LeaveRequestApproveServlet extends HttpServlet {
 
 	private static final String ROLE_EMPLOYEE = "EMPLOYEE";
+	private static final String ROLE_HR_MANAGER = "HR_MANAGER";
+	private static final String ROLE_SYSADMIN = "SYSADMIN";
 
 	private final LeaveBalanceDAO leaveBalanceDAO = new LeaveBalanceDAO();
 	private final LeaveRequestDAO leaveRequestDAO = new LeaveRequestDAO();
 	private final AttendanceDAO attendanceDAO = new AttendanceDAO();
 	private final OvertimeDAO overtimeDAO = new OvertimeDAO();
+	private final MonthlySheetDAO monthlySheetDAO = new MonthlySheetDAO();
 
 	@Override
 	protected void doPost(HttpServletRequest request, HttpServletResponse response)
@@ -67,29 +72,40 @@ public class LeaveRequestApproveServlet extends HttpServlet {
 			}
 			session.setAttribute("successMsg",
 					isEmployeeRequest
-							? "Duyệt cấp 1 đơn nghỉ phép thành công. Đơn sẽ được chuyển đến HR để duyệt cuối."
-							: "Duyệt đơn nghỉ phép thành công.");
+							? "Duyệt cấp 1 đơn nghỉ thành công. Đơn sẽ được chuyển đến HR để duyệt cuối."
+							: "Duyệt đơn nghỉ thành công.");
 		} else {
-			session.setAttribute("errorMsg", "Không thể duyệt đơn nghỉ phép. Vui lòng thử lại.");
+			session.setAttribute("errorMsg", "Không thể duyệt đơn nghỉ. Vui lòng thử lại.");
 		}
 		response.sendRedirect(redirectUrl);
 	}
 
 	private String validateFirstApproval(User authUser, LeaveRequest leaveRequest) {
 		if (leaveRequest == null) {
-			return "Không tìm thấy đơn nghỉ phép.";
+			return "Không tìm thấy đơn nghỉ.";
 		}
 		if (authUser.getId() != null && authUser.getId().equals(leaveRequest.getUserId())) {
-			return "Không thể tự duyệt đơn nghỉ phép của chính mình.";
+			return "Không thể tự duyệt đơn nghỉ của chính mình.";
 		}
 		if (!"PENDING".equals(leaveRequest.getStatus())) {
 			return "Chỉ có thể duyệt đơn đang chờ duyệt.";
 		}
-		if (!isDirectManager(authUser, leaveRequest)) {
-			return "Chỉ manager trực tiếp mới có thể duyệt đơn nghỉ phép này.";
+		if (!canApprovePending(authUser, leaveRequest)) {
+			return "Chỉ quản lý trực tiếp hoặc HR/SYSADMIN mới có thể duyệt đơn nghỉ này.";
 		}
-		if (leaveRequest.getStartDate() == null || leaveRequest.getDays() == null) {
-			return "Dữ liệu đơn nghỉ phép không hợp lệ.";
+		if (leaveRequest.getStartDate() == null || leaveRequest.getEndDate() == null
+				|| leaveRequest.getDays() == null) {
+			return "Dữ liệu đơn nghỉ không hợp lệ.";
+		}
+		MonthlySheet lockedPeriod = monthlySheetDAO.findLockedPeriodInRange(leaveRequest.getStartDate(),
+				leaveRequest.getEndDate());
+		if (lockedPeriod != null) {
+			return "Không thể duyệt đơn nghỉ vì bảng công tháng " + lockedPeriod.getMonth() + "/"
+					+ lockedPeriod.getYear() + " đang ở trạng thái " + lockedPeriod.getStatus() + ".";
+		}
+		if (leaveRequestDAO.hasOverlappingActiveRequest(leaveRequest.getUserId(), leaveRequest.getStartDate(),
+				leaveRequest.getEndDate(), leaveRequest.getId())) {
+			return "Nhân viên đã có đơn nghỉ khác trùng với khoảng thời gian này.";
 		}
 		if (attendanceDAO.hasAnyAttendanceInRange(leaveRequest.getUserId(), leaveRequest.getStartDate(),
 				leaveRequest.getEndDate())) {
@@ -105,8 +121,8 @@ public class LeaveRequestApproveServlet extends HttpServlet {
 			conn.setAutoCommit(false);
 			try {
 				boolean requestUpdated = leaveRequestDAO.directApprove(conn, id, approverId);
-				boolean balanceUpdated = false;
-				if (requestUpdated) {
+				boolean balanceUpdated = true;
+				if (requestUpdated && requiresBalance(leaveRequest)) {
 					balanceUpdated = leaveBalanceDAO.incrementUsedDays(conn, leaveRequest.getUserId(),
 							leaveRequest.getLeaveTypeId(), year, leaveRequest.getDays());
 				}
@@ -128,8 +144,24 @@ public class LeaveRequestApproveServlet extends HttpServlet {
 		return false;
 	}
 
+	private boolean requiresBalance(LeaveRequest leaveRequest) {
+		return Boolean.TRUE.equals(leaveRequest.getLeaveTypeRequiresBalance())
+				|| Boolean.TRUE.equals(leaveRequest.getLeaveTypeAnnualLeave());
+	}
+
+	private boolean canApprovePending(User authUser, LeaveRequest leaveRequest) {
+		if (isDirectManager(authUser, leaveRequest)) {
+			return true;
+		}
+		return leaveRequest.getRequesterManagerId() == null && isHighScopeRole(authUser);
+	}
+
 	private boolean isDirectManager(User authUser, LeaveRequest leaveRequest) {
 		return authUser.getId() != null && authUser.getId().equals(leaveRequest.getRequesterManagerId());
+	}
+
+	private boolean isHighScopeRole(User authUser) {
+		return ROLE_HR_MANAGER.equals(authUser.getRoleName()) || ROLE_SYSADMIN.equals(authUser.getRoleName());
 	}
 
 	private String resolveRedirectUrl(HttpServletRequest request) {

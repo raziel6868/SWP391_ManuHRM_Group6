@@ -1,6 +1,5 @@
 package controller.monthlysheet;
 
-import dal.DepartmentDAO;
 import dal.MonthlySheetDAO;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
@@ -18,7 +17,6 @@ import model.User;
 public class MonthlySheetListServlet extends HttpServlet {
 
 	private final MonthlySheetDAO monthlySheetDAO = new MonthlySheetDAO();
-	private final DepartmentDAO departmentDAO = new DepartmentDAO();
 
 	@Override
 	protected void doGet(HttpServletRequest request, HttpServletResponse response)
@@ -58,7 +56,6 @@ public class MonthlySheetListServlet extends HttpServlet {
 		boolean canReopen = hasPermission(session, "MONTHLY_SHEET_REOPEN");
 
 		request.setAttribute("sheets", sheets);
-		request.setAttribute("departments", departmentDAO.getActiveDepartments());
 		request.setAttribute("isHR", isHR);
 		request.setAttribute("isDirector", isDirector);
 		request.setAttribute("canSubmit", canSubmit);

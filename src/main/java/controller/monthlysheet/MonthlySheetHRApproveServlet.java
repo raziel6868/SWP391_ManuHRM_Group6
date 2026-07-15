@@ -1,5 +1,6 @@
 package controller.monthlysheet;
 
+import dal.DBContext;
 import dal.MonthlySheetDAO;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
@@ -8,6 +9,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
+import java.sql.Connection;
 import java.util.List;
 import model.MonthlySheet;
 import model.Permission;
@@ -45,12 +47,37 @@ public class MonthlySheetHRApproveServlet extends HttpServlet {
 			return;
 		}
 
-		boolean approved = monthlySheetDAO.hrApprove(sheetId, authUser.getId());
-		if (approved) {
-			session.setAttribute("successMsg", "Đã chốt bảng công tháng " + sheet.getMonth() + "/" + sheet.getYear()
-					+ ". Đang chờ Giám đốc phê duyệt cuối.");
-		} else {
-			session.setAttribute("errorMsg", "Không thể chốt. Vui lòng thử lại.");
+		try (Connection conn = DBContext.getConnection()) {
+			conn.setAutoCommit(false);
+			try {
+				List<String> closeConflicts = monthlySheetDAO.findCloseConflicts(conn, sheet.getYear(),
+						sheet.getMonth());
+				if (!closeConflicts.isEmpty()) {
+					conn.rollback();
+					session.setAttribute("errorMsg", "Không thể chốt HR vì dữ liệu Leave/OT/Attendance còn conflict: "
+							+ String.join(" | ", closeConflicts));
+					response.sendRedirect(request.getContextPath() + "/monthly-sheet-list");
+					return;
+				}
+
+				boolean approved = monthlySheetDAO.hrApprove(conn, sheetId, authUser.getId());
+				if (!approved) {
+					conn.rollback();
+					session.setAttribute("errorMsg", "Không thể chốt. Vui lòng thử lại.");
+					response.sendRedirect(request.getContextPath() + "/monthly-sheet-list");
+					return;
+				}
+
+				conn.commit();
+				session.setAttribute("successMsg", "Đã chốt bảng công tháng " + sheet.getMonth() + "/" + sheet.getYear()
+						+ ". Đang chờ Giám đốc phê duyệt cuối.");
+			} catch (Exception e) {
+				conn.rollback();
+				throw e;
+			}
+		} catch (Exception e) {
+			System.err.println("MonthlySheetHRApproveServlet ERROR: " + e.getMessage());
+			session.setAttribute("errorMsg", "Lỗi hệ thống khi HR chốt bảng công.");
 		}
 
 		response.sendRedirect(request.getContextPath() + "/monthly-sheet-list");

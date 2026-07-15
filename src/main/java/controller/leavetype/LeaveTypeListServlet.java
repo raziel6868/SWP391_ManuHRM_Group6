@@ -57,7 +57,7 @@ public class LeaveTypeListServlet extends HttpServlet {
 		request.setAttribute("selectedStatus", statusParam);
 		request.setAttribute("currentPage", currentPage);
 		request.setAttribute("totalPages", totalPages);
-		request.setAttribute("canCreate", hasPermission(session, "LEAVE_TYPE_CREATE"));
+		request.setAttribute("canViewDetail", hasPermission(session, "LEAVE_TYPE_DETAIL"));
 		request.setAttribute("canUpdate", hasPermission(session, "LEAVE_TYPE_UPDATE"));
 		request.setAttribute("canChangeStatus", hasPermission(session, "LEAVE_TYPE_STATUS"));
 

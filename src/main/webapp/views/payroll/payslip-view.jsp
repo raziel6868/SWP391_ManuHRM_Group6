@@ -58,6 +58,66 @@
                     </div>
                 </div>
 
+                <c:if test="${not empty payslipPeriods}">
+                    <div class="card-premium overflow-hidden mb-4 no-print" style="max-width: 760px;">
+                        <div class="p-3 bg-surface border-bottom border-outline-variant">
+                            <h3 class="h5 fw-bold mb-1">Danh s&aacute;ch k&#7923; l&#432;&#417;ng</h3>
+                            <p class="body-sm text-on-surface-variant mb-0">
+                                Ch&#7885;n th&aacute;ng l&#432;&#417;ng c&#7847;n xem; danh s&aacute;ch s&#7855;p x&#7871;p t&#7915; m&#7899;i &#273;&#7871;n c&#361;.
+                            </p>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-premium mb-0 w-100">
+                                <thead>
+                                    <tr>
+                                        <th>K&#7923; l&#432;&#417;ng</th>
+                                        <th>Tr&#7841;ng th&aacute;i</th>
+                                        <th class="text-end">L&#432;&#417;ng th&#7921;c nh&#7853;n</th>
+                                        <th>Ng&agrave;y c&#7853;p nh&#7853;t</th>
+                                        <th class="text-end">Thao t&aacute;c</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <c:forEach var="item" items="${payslipPeriods}">
+                                        <c:url var="periodUrl" value="/payslip-view">
+                                            <c:param name="sheetId" value="${item.monthlySheetId}" />
+                                            <c:param name="userId" value="${item.userId}" />
+                                        </c:url>
+                                        <tr style="${selectedSheetId == item.monthlySheetId ? 'background-color: var(--primary-container);' : ''}">
+                                            <td class="fw-medium">Th&aacute;ng ${item.month}/${item.year}</td>
+                                            <td>
+                                                <c:choose>
+                                                    <c:when test="${item.status == 'PAID'}">
+                                                        <span class="badge-premium badge-success">&#272;&atilde; thanh to&aacute;n</span>
+                                                    </c:when>
+                                                    <c:when test="${item.status == 'FINAL'}">
+                                                        <span class="badge-premium badge-primary">&#272;&atilde; ch&#7889;t</span>
+                                                    </c:when>
+                                                    <c:otherwise>
+                                                        <span class="badge-premium badge-warning">Nh&aacute;p</span>
+                                                    </c:otherwise>
+                                                </c:choose>
+                                            </td>
+                                            <td class="text-end fw-medium">
+                                                <fmt:formatNumber value="${item.netSalary}" pattern="#,##0" /> VND
+                                            </td>
+                                            <td>
+                                                <fmt:formatDate value="${item.generatedAt}" pattern="dd/MM/yyyy" />
+                                            </td>
+                                            <td class="text-end">
+                                                <a href="${periodUrl}" class="btn btn-light border px-3 py-2">
+                                                    <span class="material-symbols-outlined" style="font-size: 1rem;">visibility</span>
+                                                    Xem
+                                                </a>
+                                            </td>
+                                        </tr>
+                                    </c:forEach>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </c:if>
+
                 <c:choose>
                     <c:when test="${noPayslip}">
                         <div class="card-premium p-5 text-center">
@@ -122,7 +182,7 @@
                                             <td class="text-end fw-medium text-on-surface"><fmt:formatNumber value="${salary.overtimePay}" pattern="#,##0" /> VND</td>
                                         </tr>
                                         <tr>
-                                            <td class="text-on-surface-variant">Phụ cấp</td>
+                                            <td class="text-on-surface-variant">Phụ cấp hợp lệ</td>
                                             <td class="text-end fw-medium text-on-surface"><fmt:formatNumber value="${salary.totalAllowances}" pattern="#,##0" /> VND</td>
                                         </tr>
                                         <tr>
@@ -168,6 +228,10 @@
                                         <tr>
                                             <td class="text-on-surface-variant">Phụ cấp không tính thuế</td>
                                             <td class="text-end fw-medium text-on-surface"><fmt:formatNumber value="${salary.nonTaxableAllowances}" pattern="#,##0" /> VND</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="text-on-surface-variant">Tiền OT miễn thuế</td>
+                                            <td class="text-end fw-medium text-on-surface"><fmt:formatNumber value="${salary.overtimePay}" pattern="#,##0" /> VND</td>
                                         </tr>
                                         <tr>
                                             <td class="text-on-surface-variant">Thu nhập chịu thuế</td>
@@ -223,6 +287,11 @@
                                             <td class="text-end"><fmt:formatNumber value="${salary.overtimePay}" pattern="#,##0" /> VND</td>
                                         </tr>
                                         <tr>
+                                            <td class="fw-medium">Phụ cấp hợp lệ</td>
+                                            <td>Phụ cấp đang hiệu lực; ATTENDANCE_BONUS chỉ cộng khi không có LATE và không có ABSENT không phép trong kỳ</td>
+                                            <td class="text-end"><fmt:formatNumber value="${salary.totalAllowances}" pattern="#,##0" /> VND</td>
+                                        </tr>
+                                        <tr>
                                             <td class="fw-medium">Tổng trước khấu trừ</td>
                                             <td><fmt:formatNumber value="${salary.proratedBaseSalary}" pattern="#,##0" /> + <fmt:formatNumber value="${salary.paidLeaveSalary}" pattern="#,##0" /> + <fmt:formatNumber value="${salary.overtimePay}" pattern="#,##0" /> + <fmt:formatNumber value="${salary.totalAllowances}" pattern="#,##0" /></td>
                                             <td class="text-end fw-bold"><fmt:formatNumber value="${salary.grossIncome}" pattern="#,##0" /> VND</td>
@@ -239,7 +308,7 @@
                                         </tr>
                                         <tr>
                                             <td class="fw-medium">Thu nhập chịu thuế</td>
-                                            <td>Max(0, <fmt:formatNumber value="${salary.grossIncome}" pattern="#,##0" /> - <fmt:formatNumber value="${salary.employeeInsurance}" pattern="#,##0" /> - <fmt:formatNumber value="${salary.personalDeduction}" pattern="#,##0" /> - <fmt:formatNumber value="${salary.dependentDeduction}" pattern="#,##0" /> - <fmt:formatNumber value="${salary.nonTaxableAllowances}" pattern="#,##0" />)</td>
+                                            <td>Max(0, <fmt:formatNumber value="${salary.grossIncome}" pattern="#,##0" /> - <fmt:formatNumber value="${salary.employeeInsurance}" pattern="#,##0" /> - <fmt:formatNumber value="${salary.personalDeduction}" pattern="#,##0" /> - <fmt:formatNumber value="${salary.dependentDeduction}" pattern="#,##0" /> - <fmt:formatNumber value="${salary.nonTaxableAllowances}" pattern="#,##0" /> - <fmt:formatNumber value="${salary.overtimePay}" pattern="#,##0" />)</td>
                                             <td class="text-end"><fmt:formatNumber value="${salary.taxableIncome}" pattern="#,##0" /> VND</td>
                                         </tr>
                                         <tr>

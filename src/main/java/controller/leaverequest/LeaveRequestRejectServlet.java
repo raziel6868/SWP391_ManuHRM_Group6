@@ -16,6 +16,9 @@ import model.User;
 @WebServlet(name = "LeaveRequestRejectServlet", urlPatterns = {"/leave-request-reject"})
 public class LeaveRequestRejectServlet extends HttpServlet {
 
+	private static final String ROLE_HR_MANAGER = "HR_MANAGER";
+	private static final String ROLE_SYSADMIN = "SYSADMIN";
+
 	private final LeaveRequestDAO leaveRequestDAO = new LeaveRequestDAO();
 
 	@Override
@@ -42,24 +45,24 @@ public class LeaveRequestRejectServlet extends HttpServlet {
 
 		boolean success = leaveRequestDAO.reject(id, authUser.getId());
 		if (success) {
-			session.setAttribute("successMsg", "Từ chối đơn nghỉ phép thành công.");
+			session.setAttribute("successMsg", "Từ chối đơn nghỉ thành công.");
 		} else {
-			session.setAttribute("errorMsg", "Không thể từ chối đơn nghỉ phép. Vui lòng thử lại.");
+			session.setAttribute("errorMsg", "Không thể từ chối đơn nghỉ. Vui lòng thử lại.");
 		}
 		response.sendRedirect(redirectUrl);
 	}
 
 	private String validateReject(HttpSession session, User authUser, LeaveRequest leaveRequest) {
 		if (leaveRequest == null) {
-			return "Không tìm thấy đơn nghỉ phép.";
+			return "Không tìm thấy đơn nghỉ.";
 		}
 		if (authUser.getId() != null && authUser.getId().equals(leaveRequest.getUserId())) {
-			return "Không thể tự từ chối đơn nghỉ phép của chính mình.";
+			return "Không thể tự từ chối đơn nghỉ của chính mình.";
 		}
 		if ("PENDING".equals(leaveRequest.getStatus())) {
-			return isDirectManager(authUser, leaveRequest)
+			return canRejectPending(authUser, leaveRequest)
 					? null
-					: "Chỉ manager trực tiếp mới có thể từ chối đơn đang chờ duyệt.";
+					: "Chỉ quản lý trực tiếp hoặc HR/SYSADMIN mới có thể từ chối đơn đang chờ duyệt.";
 		}
 		if ("APPROVED_LEVEL_1".equals(leaveRequest.getStatus())) {
 			return hasPermission(session, "LEAVE_REQUEST_APPROVE_L2")
@@ -69,8 +72,19 @@ public class LeaveRequestRejectServlet extends HttpServlet {
 		return "Chỉ có thể từ chối đơn đang chờ duyệt.";
 	}
 
+	private boolean canRejectPending(User authUser, LeaveRequest leaveRequest) {
+		if (isDirectManager(authUser, leaveRequest)) {
+			return true;
+		}
+		return leaveRequest.getRequesterManagerId() == null && isHighScopeRole(authUser);
+	}
+
 	private boolean isDirectManager(User authUser, LeaveRequest leaveRequest) {
 		return authUser.getId() != null && authUser.getId().equals(leaveRequest.getRequesterManagerId());
+	}
+
+	private boolean isHighScopeRole(User authUser) {
+		return ROLE_HR_MANAGER.equals(authUser.getRoleName()) || ROLE_SYSADMIN.equals(authUser.getRoleName());
 	}
 
 	@SuppressWarnings("unchecked")

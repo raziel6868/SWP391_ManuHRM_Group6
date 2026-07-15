@@ -101,10 +101,7 @@
                                         </td>
                                         <td><c:out value="${empty leaveRequest.departmentName ? '-' : leaveRequest.departmentName}" /></td>
                                         <td>
-                                            <span class="badge" style="background-color: var(--primary-fixed); color: var(--on-primary-fixed-variant);">
-                                                <c:out value="${leaveRequest.leaveTypeCode}" />
-                                            </span>
-                                            <span class="ms-2"><c:out value="${leaveRequest.leaveTypeName}" /></span>
+                                            <span class="fw-medium text-on-surface"><c:out value="${leaveRequest.leaveTypeName}" /></span>
                                         </td>
                                         <td>
                                             <div><c:out value="${leaveRequest.startDate}" /></div>
@@ -193,7 +190,7 @@
                                         </td>
                                         <td class="text-end">
                                             <div class="d-inline-flex gap-2 justify-content-end">
-                                                <c:if test="${canApproveLevel1 and leaveRequest.status == 'PENDING' and currentUserId == leaveRequest.requesterManagerId and currentUserId != leaveRequest.userId}">
+                                                <c:if test="${canApproveLevel1 and leaveRequest.status == 'PENDING' and currentUserId != leaveRequest.userId and (currentUserId == leaveRequest.requesterManagerId or (canApproveUnmanaged and empty leaveRequest.requesterManagerId))}">
                                                     <form action="${pageContext.request.contextPath}/leave-request-approve" method="POST" class="d-inline">
                                                         <input type="hidden" name="id" value="${leaveRequest.id}" />
                                                         <button type="submit"
@@ -215,7 +212,7 @@
                                                         </button>
                                                     </form>
                                                 </c:if>
-                                                <c:if test="${canReject and currentUserId != leaveRequest.userId and ((leaveRequest.status == 'PENDING' and currentUserId == leaveRequest.requesterManagerId) or (leaveRequest.status == 'APPROVED_LEVEL_1' and canFinalApprove))}">
+                                                <c:if test="${canReject and currentUserId != leaveRequest.userId and ((leaveRequest.status == 'PENDING' and (currentUserId == leaveRequest.requesterManagerId or (canApproveUnmanaged and empty leaveRequest.requesterManagerId))) or (leaveRequest.status == 'APPROVED_LEVEL_1' and canFinalApprove))}">
                                                     <form action="${pageContext.request.contextPath}/leave-request-reject" method="POST" class="d-inline">
                                                         <input type="hidden" name="id" value="${leaveRequest.id}" />
                                                         <button type="submit"

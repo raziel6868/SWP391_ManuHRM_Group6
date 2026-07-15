@@ -29,8 +29,6 @@ import util.WorkScheduleConfig;
 @WebServlet(name = "OvertimeEditServlet", urlPatterns = {"/overtime-edit"})
 public class OvertimeEditServlet extends HttpServlet {
 
-	// OT tối đa trong ngày theo quy định hiện hành: 2h/ngày.
-	private static final BigDecimal MAX_HOURS_PER_DAY = new BigDecimal("2");
 	private static final BigDecimal MAX_HOURS_PER_MONTH = new BigDecimal("40");
 	private static final BigDecimal MAX_HOURS_PER_YEAR = new BigDecimal("200");
 
@@ -71,8 +69,9 @@ public class OvertimeEditServlet extends HttpServlet {
 
 		int recYear = record.getDate().toLocalDate().getYear();
 		int recMonth = record.getDate().toLocalDate().getMonthValue();
-		if (monthlySheetDAO.isPeriodClosed(recYear, recMonth)) {
-			session.setAttribute("errorMsg", "Tháng " + recMonth + "/" + recYear + " đã chốt công, không thể sửa OT.");
+		if (!monthlySheetDAO.isEditablePeriod(recYear, recMonth)) {
+			session.setAttribute("errorMsg",
+					"Tháng " + recMonth + "/" + recYear + " không còn ở trạng thái OPEN, không thể sửa OT.");
 			response.sendRedirect(request.getContextPath() + "/overtime-list?year=" + recYear + "&month=" + recMonth);
 			return;
 		}
@@ -121,8 +120,9 @@ public class OvertimeEditServlet extends HttpServlet {
 			return;
 		}
 
-		if (monthlySheetDAO.isPeriodClosed(recYear, recMonth)) {
-			session.setAttribute("errorMsg", "Tháng " + recMonth + "/" + recYear + " đã chốt công, không thể sửa OT.");
+		if (!monthlySheetDAO.isEditablePeriod(recYear, recMonth)) {
+			session.setAttribute("errorMsg",
+					"Tháng " + recMonth + "/" + recYear + " không còn ở trạng thái OPEN, không thể sửa OT.");
 			response.sendRedirect(redirectList);
 			return;
 		}
@@ -138,9 +138,9 @@ public class OvertimeEditServlet extends HttpServlet {
 			return;
 		}
 
-		if (hours.compareTo(MAX_HOURS_PER_DAY) > 0) {
-			session.setAttribute("errorMsg",
-					"Số giờ OT (" + hours + "h) vượt quá tối đa " + MAX_HOURS_PER_DAY + "h/ngày.");
+		if (hours.compareTo(WorkScheduleConfig.MAX_OT_HOURS_PER_DAY) > 0) {
+			session.setAttribute("errorMsg", "Số giờ OT (" + hours + "h) vượt quá tối đa "
+					+ WorkScheduleConfig.MAX_OT_HOURS_PER_DAY + "h/ngày.");
 			response.sendRedirect(request.getContextPath() + "/overtime-edit?id=" + id);
 			return;
 		}
@@ -156,7 +156,7 @@ public class OvertimeEditServlet extends HttpServlet {
 		}
 		if (existingAttendance != null && existingAttendance.getCheckOut() != null) {
 			long otMinutes = hours.multiply(BigDecimal.valueOf(60)).longValue();
-			LocalTime expectedCheckout = WorkScheduleConfig.STANDARD_END.plusMinutes(otMinutes);
+			LocalTime expectedCheckout = WorkScheduleConfig.OVERTIME_START.plusMinutes(otMinutes);
 			if (existingAttendance.getCheckOut().toLocalTime().isBefore(expectedCheckout)) {
 				session.setAttribute("errorMsg",
 						"Nhân viên đã chấm công ra lúc " + existingAttendance.getCheckOut().toLocalTime() + " ngày "

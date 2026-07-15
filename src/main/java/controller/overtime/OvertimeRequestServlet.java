@@ -63,8 +63,10 @@ public class OvertimeRequestServlet extends HttpServlet {
 			redirectBack(request, response, year, month);
 			return;
 		}
-		if (monthlySheetDAO.isPeriodClosed(year, month)) {
-			session.setAttribute("errorMsg", "Tháng " + month + "/" + year + " đã chốt công, không thể import OT.");
+		String sheetStatus = monthlySheetDAO.getStatusByYearMonth(year, month);
+		if (sheetStatus != null && !"OPEN".equals(sheetStatus)) {
+			session.setAttribute("errorMsg",
+					"Tháng " + month + "/" + year + " đang ở trạng thái " + sheetStatus + ", không thể import OT.");
 			redirectBack(request, response, year, month);
 			return;
 		}

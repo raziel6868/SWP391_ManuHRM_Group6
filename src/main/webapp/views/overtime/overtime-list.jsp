@@ -1,6 +1,7 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 <%@ taglib prefix="c" uri="jakarta.tags.core" %>
 <%@ taglib prefix="fmt" uri="jakarta.tags.fmt" %>
+<%@ taglib prefix="fn" uri="jakarta.tags.functions" %>
 <!DOCTYPE html>
 <html lang="vi">
 <head>
@@ -68,12 +69,20 @@
                         </p>
                     </div>
                     <c:if test="${canRequest}">
-                        <button type="button"
-                                class="btn-primary-gradient text-decoration-none px-3 py-2 d-flex align-items-center gap-2 shadow-sm border-0 flex-shrink-0"
-                                onclick="document.getElementById('otImportModal').classList.add('show')">
-                            <span class="material-symbols-outlined" style="font-size: 1.125rem;">upload_file</span>
-                            Tạo yêu cầu OT
-                        </button>
+                        <div class="d-flex gap-2 flex-wrap">
+                            <button type="button"
+                                    class="btn btn-light border d-flex align-items-center gap-2 flex-shrink-0"
+                                    onclick="document.getElementById('otBulkModal').classList.add('show')">
+                                <span class="material-symbols-outlined" style="font-size: 1.125rem;">checklist</span>
+                                Tạo OT theo danh sách
+                            </button>
+                            <button type="button"
+                                    class="btn-primary-gradient text-decoration-none px-3 py-2 d-flex align-items-center gap-2 shadow-sm border-0 flex-shrink-0"
+                                    onclick="document.getElementById('otImportModal').classList.add('show')">
+                                <span class="material-symbols-outlined" style="font-size: 1.125rem;">upload_file</span>
+                                Tạo yêu cầu OT
+                            </button>
+                        </div>
                     </c:if>
                 </div>
 
@@ -288,6 +297,74 @@
             overflow-y: auto;
             box-shadow: 0 20px 60px rgba(0,0,0,0.3);
         }
+        .modal-content.modal-wide {
+            max-width: 640px;
+        }
+        .bulk-cal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+        }
+        .bulk-cal-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 5px;
+        }
+        .bulk-cal-dow {
+            text-align: center;
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: var(--on-surface-variant);
+            padding-bottom: 3px;
+        }
+        .bulk-cal-day {
+            aspect-ratio: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 7px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            border: 1px solid var(--outline-variant, #d1d5db);
+            background: var(--surface, #fff);
+            user-select: none;
+        }
+        .bulk-cal-day:hover { border-color: #6366f1; }
+        .bulk-cal-day.weekend {
+            background: var(--surface-container-lowest, #f3f4f6);
+            color: #dc2626;
+            cursor: not-allowed;
+            pointer-events: none;
+            opacity: 0.6;
+        }
+        .bulk-cal-day.empty { visibility: hidden; pointer-events: none; }
+        .bulk-cal-day.selected {
+            background: #4f46e5;
+            border-color: #4f46e5;
+            color: #fff;
+        }
+        .bulk-emp-list {
+            max-height: 220px;
+            overflow-y: auto;
+            border: 1px solid var(--outline-variant, #eee);
+            border-radius: 8px;
+        }
+        .bulk-emp-row {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            padding: 0.45rem 0.6rem;
+            border-bottom: 1px solid var(--outline-variant, #eee);
+            cursor: pointer;
+        }
+        .bulk-emp-row:last-child { border-bottom: none; }
+        .bulk-warning {
+            font-size: 0.78rem;
+            color: #dc2626;
+            display: none;
+        }
     </style>
 
     <script>
@@ -296,6 +373,105 @@
                 document.getElementById('otImportModal').classList.remove('show');
             }
         }
+    </script>
+
+    <script>
+        function closeOtBulkModalOnOverlay(event) {
+            if (event.target.id === 'otBulkModal') {
+                document.getElementById('otBulkModal').classList.remove('show');
+            }
+        }
+
+        const OT_DOW_LABELS = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
+        let bulkViewYear = new Date().getFullYear();
+        let bulkViewMonth = new Date().getMonth() + 1; // 1-12
+        const bulkSelectedDates = new Set();
+
+        function otPad2(n) {
+            return String(n).padStart(2, '0');
+        }
+
+        function otDateKey(y, m, d) {
+            return y + '-' + otPad2(m) + '-' + otPad2(d);
+        }
+
+        function renderBulkCalendar() {
+            document.getElementById('bulkCalTitle').textContent = 'Tháng ' + bulkViewMonth + '/' + bulkViewYear;
+
+            document.getElementById('bulkCalDowRow').innerHTML =
+                OT_DOW_LABELS.map(function (l) { return '<div class="bulk-cal-dow">' + l + '</div>'; }).join('');
+
+            const daysInMonth = new Date(bulkViewYear, bulkViewMonth, 0).getDate();
+            const firstDow = new Date(bulkViewYear, bulkViewMonth - 1, 1).getDay(); // 0=CN..6=T7
+            const leadingEmpty = (firstDow + 6) % 7; // đổi sang tuần bắt đầu từ T2
+
+            let html = '';
+            for (let i = 0; i < leadingEmpty; i++) {
+                html += '<div class="bulk-cal-day empty"></div>';
+            }
+            for (let d = 1; d <= daysInMonth; d++) {
+                const dow = new Date(bulkViewYear, bulkViewMonth - 1, d).getDay();
+                const isWeekend = dow === 0 || dow === 6;
+                const key = otDateKey(bulkViewYear, bulkViewMonth, d);
+                const cls = ['bulk-cal-day'];
+                if (isWeekend) cls.push('weekend');
+                if (bulkSelectedDates.has(key)) cls.push('selected');
+                html += '<div class="' + cls.join(' ') + '" data-date="' + key + '" '
+                        + (isWeekend ? '' : 'onclick="toggleBulkDate(\'' + key + '\', this)"') + '>' + d + '</div>';
+            }
+            document.getElementById('bulkCalDaysGrid').innerHTML = html;
+        }
+
+        function toggleBulkDate(key, el) {
+            if (bulkSelectedDates.has(key)) {
+                bulkSelectedDates.delete(key);
+                el.classList.remove('selected');
+            } else {
+                bulkSelectedDates.add(key);
+                el.classList.add('selected');
+            }
+        }
+
+        function changeBulkMonth(delta) {
+            bulkViewMonth += delta;
+            if (bulkViewMonth < 1) { bulkViewMonth = 12; bulkViewYear--; }
+            if (bulkViewMonth > 12) { bulkViewMonth = 1; bulkViewYear++; }
+            renderBulkCalendar();
+        }
+
+        function toggleBulkAll(checkbox) {
+            document.querySelectorAll('#otBulkModal .bulk-emp-row:not([style*="display: none"]) .bulk-emp-chk')
+                .forEach(function (chk) { chk.checked = checkbox.checked; });
+        }
+
+        function filterBulkEmployees() {
+            const q = document.getElementById('bulkEmpFilterInput').value.trim().toLowerCase();
+            document.querySelectorAll('#otBulkModal .bulk-emp-row').forEach(function (row) {
+                const match = row.getAttribute('data-search').includes(q);
+                row.style.display = match ? '' : 'none';
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            renderBulkCalendar();
+
+            const bulkForm = document.getElementById('bulkOtForm');
+            if (bulkForm) {
+                bulkForm.addEventListener('submit', function (e) {
+                    const warningEl = document.getElementById('bulkWarning');
+                    const checkedCount = document.querySelectorAll('#otBulkModal .bulk-emp-chk:checked').length;
+
+                    if (bulkSelectedDates.size === 0 || checkedCount === 0) {
+                        e.preventDefault();
+                        warningEl.textContent = 'Vui lòng chọn ít nhất 1 ngày và 1 nhân viên.';
+                        warningEl.style.display = 'block';
+                        return;
+                    }
+                    warningEl.style.display = 'none';
+                    document.getElementById('bulkDatesInput').value = Array.from(bulkSelectedDates).sort().join(',');
+                });
+            }
+        });
     </script>
 
     <c:if test="${canRequest}">
@@ -323,6 +499,85 @@
                                 <span class="material-symbols-outlined me-1">upload</span>
                                 Import
                             </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </c:if>
+
+    <c:if test="${canRequest}">
+        <div id="otBulkModal" class="modal-overlay" onclick="closeOtBulkModalOnOverlay(event)">
+            <div class="modal-content modal-wide card-premium">
+                <div class="d-flex justify-content-between align-items-center p-3 border-bottom">
+                    <h5 class="mb-0">Tạo OT theo danh sách</h5>
+                    <button type="button" class="btn-close"
+                            onclick="document.getElementById('otBulkModal').classList.remove('show')"></button>
+                </div>
+                <div class="p-4">
+                    <form id="bulkOtForm" action="${pageContext.request.contextPath}/overtime-request" method="POST">
+                        <input type="hidden" name="mode" value="bulk" />
+                        <input type="hidden" name="dates" id="bulkDatesInput" value="" />
+
+                        <div class="bulk-cal-header">
+                            <button type="button" class="btn btn-sm btn-light border" onclick="changeBulkMonth(-1)">
+                                <span class="material-symbols-outlined">chevron_left</span>
+                            </button>
+                            <span class="fw-semibold" id="bulkCalTitle"></span>
+                            <button type="button" class="btn btn-sm btn-light border" onclick="changeBulkMonth(1)">
+                                <span class="material-symbols-outlined">chevron_right</span>
+                            </button>
+                        </div>
+                        <div class="bulk-cal-grid mb-2" id="bulkCalDowRow"></div>
+                        <div class="bulk-cal-grid mb-3" id="bulkCalDaysGrid"></div>
+
+                        <div class="d-flex flex-wrap gap-3 mb-3">
+                            <div style="width: 140px;">
+                                <label class="form-label text-on-surface fw-medium mb-1">Số giờ OT/ngày</label>
+                                <input type="number" step="0.5" min="0.5" name="hours"
+                                       class="form-control input-premium" placeholder="VD: 2" required />
+                            </div>
+                            <div style="flex: 1; min-width: 200px;">
+                                <label class="form-label text-on-surface fw-medium mb-1">Lý do</label>
+                                <input type="text" name="reason" class="form-control input-premium"
+                                       placeholder="VD: Gấp đơn hàng" required />
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <div class="d-flex align-items-center gap-2">
+                                <input type="checkbox" id="bulkSelectAllChk" class="form-check-input" onchange="toggleBulkAll(this)" />
+                                <label for="bulkSelectAllChk" class="fw-medium mb-0">Chọn tất cả</label>
+                            </div>
+                            <div style="width: 180px;">
+                                <input type="text" id="bulkEmpFilterInput" class="form-control input-premium"
+                                       placeholder="🔍 Tìm nhân viên" oninput="filterBulkEmployees()" />
+                            </div>
+                        </div>
+                        <div class="bulk-emp-list mb-2">
+                            <c:forEach var="emp" items="${employees}">
+                                <label class="bulk-emp-row" data-search="${fn:toLowerCase(emp.employeeCode)} ${fn:toLowerCase(emp.fullName)}">
+                                    <input type="checkbox" name="userIds" value="${emp.id}" class="form-check-input bulk-emp-chk" />
+                                    <div>
+                                        <div class="fw-medium text-on-surface"><c:out value="${emp.fullName}" /></div>
+                                        <div class="body-sm text-on-surface-variant"><c:out value="${emp.employeeCode}" /></div>
+                                    </div>
+                                </label>
+                            </c:forEach>
+                            <c:if test="${empty employees}">
+                                <div class="p-3 text-center text-on-surface-variant">
+                                    Bạn chưa có nhân viên nào dưới quyền quản lý.
+                                </div>
+                            </c:if>
+                        </div>
+
+                        <div class="bulk-warning mb-2" id="bulkWarning"></div>
+                        <div class="d-flex gap-2 justify-content-end">
+                            <button type="button" class="btn btn-light border"
+                                    onclick="document.getElementById('otBulkModal').classList.remove('show')">
+                                Hủy
+                            </button>
+                            <button type="submit" class="btn btn-primary">Tạo OT</button>
                         </div>
                     </form>
                 </div>

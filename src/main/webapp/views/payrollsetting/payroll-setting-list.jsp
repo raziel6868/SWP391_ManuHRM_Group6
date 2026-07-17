@@ -33,7 +33,7 @@
                     <div>
                         <h2 class="h3 text-on-surface fw-bold mb-1">Cấu hình payroll</h2>
                         <p class="body-md text-on-surface-variant mb-0">
-                            Quản lý ngày công chuẩn, giờ công chuẩn và hệ số OT theo thời gian áp dụng.
+                            Quản lý giờ công chuẩn, hệ số OT và giá trị ngày công chuẩn dự phòng theo thời gian áp dụng.
                         </p>
                     </div>
                     <c:if test="${canSetup}">
@@ -53,7 +53,7 @@
                         </div>
                         <div class="col-md-4">
                             <div class="small text-on-surface-variant mb-1">Số ngày công chuẩn</div>
-                            <div>Lấy từ <code>payroll_settings.standard_work_days</code></div>
+                            <div>Tự tính theo lịch T2-T6 của từng tháng khi tạo payroll</div>
                         </div>
                         <div class="col-md-4">
                             <div class="small text-on-surface-variant mb-1">Số giờ công chuẩn mỗi ngày</div>
@@ -69,7 +69,7 @@
                                 <tr>
                                     <th>Hiệu lực từ</th>
                                     <th>Hiệu lực đến</th>
-                                    <th class="text-end">Ngày công chuẩn</th>
+                                    <th class="text-end">Ngày công dự phòng</th>
                                     <th class="text-end">Giờ/ngày</th>
                                     <th class="text-end">Hệ số OT</th>
                                     <th class="text-end">Thao tác</th>

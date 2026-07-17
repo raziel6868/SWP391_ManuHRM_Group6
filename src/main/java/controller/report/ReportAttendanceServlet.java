@@ -14,6 +14,7 @@ import jakarta.servlet.http.HttpSession;
 import model.Department;
 import model.Permission;
 import model.User;
+import util.YearOptionUtil;
 
 @WebServlet(name = "ReportAttendanceServlet", urlPatterns = {"/report-attendance"})
 public class ReportAttendanceServlet extends HttpServlet {
@@ -70,6 +71,7 @@ public class ReportAttendanceServlet extends HttpServlet {
 
 		request.setAttribute("rows", rows);
 		request.setAttribute("departments", departments);
+		request.setAttribute("yearOptions", YearOptionUtil.dataYearsWithCurrent(reportDAO.getAttendanceYears()));
 		request.setAttribute("selectedYear", year);
 		request.setAttribute("selectedMonth", month);
 		request.setAttribute("selectedDepartmentId", departmentId);

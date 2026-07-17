@@ -22,6 +22,7 @@ import model.MonthlySheet;
 import model.MonthlySheetApproval;
 import model.Permission;
 import model.User;
+import util.YearOptionUtil;
 
 @WebServlet(name = "MonthlySheetSupervisorServlet", urlPatterns = {"/monthly-sheet-supervisor"})
 public class MonthlySheetSupervisorServlet extends HttpServlet {
@@ -83,6 +84,7 @@ public class MonthlySheetSupervisorServlet extends HttpServlet {
 		request.setAttribute("subordinates", subordinates);
 		request.setAttribute("canApprove", canApprove);
 		request.setAttribute("hasPendingCorrections", hasPendingCorrections);
+		request.setAttribute("yearOptions", YearOptionUtil.dataYearsWithCurrent(monthlySheetDAO.getAvailableYears()));
 		request.setAttribute("selectedYear", year);
 		request.setAttribute("selectedMonth", month);
 		request.setAttribute("selectedUserId", filterUserId);

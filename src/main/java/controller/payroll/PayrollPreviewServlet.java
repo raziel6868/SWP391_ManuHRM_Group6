@@ -1,9 +1,11 @@
 package controller.payroll;
 
+import dal.DepartmentDAO;
 import dal.MonthlySalaryDAO;
 import dal.MonthlySheetDAO;
 import dal.PayrollDAO;
 import dto.PayrollPreviewRow;
+import dto.PayrollSummaryStats;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
@@ -13,15 +15,18 @@ import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import model.Department;
 import model.MonthlySalary;
 import model.MonthlySheet;
 import model.Permission;
 import model.User;
+import util.YearOptionUtil;
 
 @WebServlet(name = "PayrollPreviewServlet", urlPatterns = {"/payroll-preview"})
 public class PayrollPreviewServlet extends HttpServlet {
@@ -29,6 +34,7 @@ public class PayrollPreviewServlet extends HttpServlet {
 	private final PayrollDAO payrollDAO = new PayrollDAO();
 	private final MonthlySheetDAO monthlySheetDAO = new MonthlySheetDAO();
 	private final MonthlySalaryDAO monthlySalaryDAO = new MonthlySalaryDAO();
+	private final DepartmentDAO departmentDAO = new DepartmentDAO();
 
 	@Override
 	protected void doGet(HttpServletRequest request, HttpServletResponse response)
@@ -53,6 +59,7 @@ public class PayrollPreviewServlet extends HttpServlet {
 
 		String yearParam = request.getParameter("year");
 		String monthParam = request.getParameter("month");
+		Long selectedDepartmentId = parseOptionalLong(request.getParameter("departmentId"));
 
 		int year = currentYear;
 		int month = currentMonth;
@@ -83,6 +90,7 @@ public class PayrollPreviewServlet extends HttpServlet {
 
 		MonthlySheet sheet = monthlySheetDAO.getByYearMonth(year, month);
 		List<MonthlySalary> generatedSalaries = sheet != null ? monthlySalaryDAO.getBySheet(sheet.getId()) : null;
+		boolean isMonthlySheetClosed = sheet != null && "CLOSED".equals(sheet.getStatus());
 
 		Map<Long, String> generatedStatusByUserId = new HashMap<>();
 		boolean hasGeneratedRows = generatedSalaries != null && !generatedSalaries.isEmpty();
@@ -105,12 +113,21 @@ public class PayrollPreviewServlet extends HttpServlet {
 				? List.of()
 				: payrollDAO.validateRequiredConfiguration(year, month);
 		List<PayrollPreviewRow> previewRows;
+		String previewUnavailableMsg = null;
 		if (hasGeneratedRows) {
 			previewRows = toPreviewRows(generatedSalaries);
 			if (!configErrors.isEmpty()) {
 				request.setAttribute("errorMsg",
 						String.join(" ", configErrors) + " Đang hiển thị dữ liệu bảng lương đã lưu.");
 			}
+		} else if (sheet == null) {
+			previewRows = List.of();
+			previewUnavailableMsg = "Chưa có bảng công tháng " + month + "/" + year
+					+ ", nên chưa thể xem trước hoặc tạo bảng lương.";
+		} else if (!isMonthlySheetClosed) {
+			previewRows = List.of();
+			previewUnavailableMsg = "Bảng công tháng " + month + "/" + year
+					+ " chưa đóng sổ, nên chưa thể xem trước hoặc tạo bảng lương.";
 		} else if (configErrors.isEmpty()) {
 			previewRows = payrollDAO.buildPayrollPreview(year, month);
 		} else {
@@ -118,16 +135,32 @@ public class PayrollPreviewServlet extends HttpServlet {
 			request.setAttribute("errorMsg", String.join(" ", configErrors));
 		}
 
-		boolean isMonthlySheetClosed = sheet != null && "CLOSED".equals(sheet.getStatus());
-		boolean canGeneratePayroll = configErrors.isEmpty() && !previewRows.isEmpty() && sheet != null
+		List<PayrollPreviewRow> allPreviewRows = previewRows;
+		previewRows = filterByDepartment(allPreviewRows, selectedDepartmentId);
+		PayrollSummaryStats summaryStats = buildSummaryStats(previewRows);
+		YearMonth previousPeriod = YearMonth.of(year, month).minusMonths(1);
+		PayrollSummaryStats previousSummaryStats = buildPreviousSummaryStats(previousPeriod, selectedDepartmentId);
+
+		boolean canGeneratePayroll = configErrors.isEmpty() && !allPreviewRows.isEmpty() && sheet != null
 				&& isMonthlySheetClosed && !hasFinalOrPaidPayroll;
 		boolean canClosePayroll = hasPermission(permissions, "PAYROLL_CLOSE") && isMonthlySheetClosed
 				&& hasGeneratedRows && hasDraftPayroll;
 
+		List<Department> departments = departmentDAO.getActiveDepartments();
 		request.setAttribute("previewRows", previewRows);
 		request.setAttribute("generatedSalaries", generatedSalaries);
+		request.setAttribute("departments", departments);
+		request.setAttribute("yearOptions",
+				YearOptionUtil.dataYearsWithCurrentAndNext(monthlySheetDAO.getAvailableYears()));
+		request.setAttribute("selectedDepartmentId", selectedDepartmentId);
 		request.setAttribute("selectedYear", year);
 		request.setAttribute("selectedMonth", month);
+		request.setAttribute("previousYear", previousPeriod.getYear());
+		request.setAttribute("previousMonth", previousPeriod.getMonthValue());
+		request.setAttribute("summaryStats", summaryStats);
+		request.setAttribute("previousSummaryStats", previousSummaryStats);
+		request.setAttribute("hasPreviousSummary", previousSummaryStats.getEmployeeCount() > 0);
+		request.setAttribute("previewUnavailableMsg", previewUnavailableMsg);
 		request.setAttribute("sheet", sheet);
 		request.setAttribute("generatedSheetId", sheet != null ? sheet.getId() : null);
 		request.setAttribute("generatedStatusByUserId", generatedStatusByUserId);
@@ -151,6 +184,7 @@ public class PayrollPreviewServlet extends HttpServlet {
 			row.setUserId(salary.getUserId());
 			row.setUserFullName(salary.getUserFullName());
 			row.setEmployeeCode(salary.getEmployeeCode());
+			row.setDepartmentId(salary.getDepartmentId());
 			row.setDepartmentName(salary.getDepartmentName());
 			row.setBaseSalary(salary.getBaseSalary());
 			row.setStandardWorkDays(salary.getStandardWorkDays());
@@ -190,6 +224,64 @@ public class PayrollPreviewServlet extends HttpServlet {
 		return rows;
 	}
 
+	private PayrollSummaryStats buildPreviousSummaryStats(YearMonth period, Long departmentId) {
+		if (period == null) {
+			return new PayrollSummaryStats();
+		}
+
+		List<PayrollPreviewRow> rows = List.of();
+		MonthlySheet previousSheet = monthlySheetDAO.getByYearMonth(period.getYear(), period.getMonthValue());
+		if (previousSheet != null) {
+			List<MonthlySalary> salaries = monthlySalaryDAO.getBySheet(previousSheet.getId());
+			if (salaries != null && !salaries.isEmpty()) {
+				rows = toPreviewRows(salaries);
+			}
+		}
+
+		if (rows.isEmpty()
+				&& payrollDAO.validateRequiredConfiguration(period.getYear(), period.getMonthValue()).isEmpty()) {
+			rows = payrollDAO.buildPayrollPreview(period.getYear(), period.getMonthValue());
+		}
+
+		return buildSummaryStats(filterByDepartment(rows, departmentId));
+	}
+
+	private List<PayrollPreviewRow> filterByDepartment(List<PayrollPreviewRow> rows, Long departmentId) {
+		if (rows == null || rows.isEmpty()) {
+			return List.of();
+		}
+		if (departmentId == null) {
+			return rows;
+		}
+		List<PayrollPreviewRow> filtered = new ArrayList<>();
+		for (PayrollPreviewRow row : rows) {
+			if (departmentId.equals(row.getDepartmentId())) {
+				filtered.add(row);
+			}
+		}
+		return filtered;
+	}
+
+	private PayrollSummaryStats buildSummaryStats(List<PayrollPreviewRow> rows) {
+		PayrollSummaryStats stats = new PayrollSummaryStats();
+		if (rows == null || rows.isEmpty()) {
+			return stats;
+		}
+
+		stats.setEmployeeCount(rows.size());
+		for (PayrollPreviewRow row : rows) {
+			stats.setTotalGrossIncome(stats.getTotalGrossIncome().add(safeNumber(row.getGrossIncome())));
+			stats.setTotalNetSalary(stats.getTotalNetSalary().add(safeNumber(row.getNetSalary())));
+			stats.setTotalAllowances(stats.getTotalAllowances().add(safeNumber(row.getTotalAllowances())));
+			stats.setTotalOvertimePay(stats.getTotalOvertimePay().add(safeNumber(row.getOvertimePay())));
+			stats.setTotalDeductions(stats.getTotalDeductions().add(safeNumber(row.getDeductions())));
+			stats.setTotalEmployeeInsurance(
+					stats.getTotalEmployeeInsurance().add(safeNumber(row.getEmployeeInsurance())));
+			stats.setTotalPitTax(stats.getTotalPitTax().add(safeNumber(row.getPitTax())));
+		}
+		return stats;
+	}
+
 	private int calculateAbsentDays(MonthlySalary salary) {
 		BigDecimal absentDays = safeNumber(salary.getStandardWorkDays())
 				.subtract(safeNumber(salary.getActualWorkDays())).subtract(safeNumber(salary.getPaidLeaveDays()));
@@ -205,6 +297,18 @@ public class PayrollPreviewServlet extends HttpServlet {
 
 	private BigDecimal safeNumber(BigDecimal value) {
 		return value != null ? value : BigDecimal.ZERO;
+	}
+
+	private Long parseOptionalLong(String value) {
+		if (value == null || value.isBlank()) {
+			return null;
+		}
+		try {
+			long parsed = Long.parseLong(value.trim());
+			return parsed > 0 ? parsed : null;
+		} catch (NumberFormatException e) {
+			return null;
+		}
 	}
 
 	private void moveFlash(HttpSession session, HttpServletRequest request, String key) {

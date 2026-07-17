@@ -7,7 +7,7 @@ public class MonthlySheet {
 	private Long id;
 	private Integer year;
 	private Integer month;
-	private String status; // OPEN / PENDING_SUPERVISOR / PENDING_HR / PENDING_DIRECTOR / CLOSED
+	private String status; // OPEN / PENDING_SUPERVISOR / PENDING_HR / CLOSED
 
 	// HR gửi duyệt
 	private Long submittedBy;
@@ -19,7 +19,7 @@ public class MonthlySheet {
 	private String hrApprovedByName;
 	private Timestamp hrApprovedAt;
 
-	// Giám đốc chốt + đóng sổ
+	// Người đóng sổ
 	private Long closedBy;
 	private String closedByName;
 	private Timestamp closedAt;

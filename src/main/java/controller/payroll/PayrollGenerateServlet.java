@@ -61,38 +61,40 @@ public class PayrollGenerateServlet extends HttpServlet {
 			return;
 		}
 
+		String redirectUrl = payrollPreviewUrl(request, year, month);
+
 		MonthlySheet sheet = monthlySheetDAO.getByYearMonth(year, month);
 		if (sheet == null) {
 			session.setAttribute("errorMsg", "Chưa có bảng công tháng " + month + "/" + year
 					+ ". Vui lòng hoàn tất chốt bảng công trước khi tính lương.");
-			response.sendRedirect(request.getContextPath() + "/payroll-preview?year=" + year + "&month=" + month);
+			response.sendRedirect(redirectUrl);
 			return;
 		}
 
 		if (monthlySalaryDAO.hasAnyFinalOrPaid(sheet.getId())) {
 			session.setAttribute("errorMsg", "Bảng lương tháng " + month + "/" + year + " đã chốt, không thể tạo lại.");
-			response.sendRedirect(request.getContextPath() + "/payroll-preview?year=" + year + "&month=" + month);
+			response.sendRedirect(redirectUrl);
 			return;
 		}
 
 		if (!"CLOSED".equals(sheet.getStatus())) {
 			session.setAttribute("errorMsg",
 					"Chỉ có thể tạo bảng lương sau khi bảng công tháng " + month + "/" + year + " đã được đóng sổ.");
-			response.sendRedirect(request.getContextPath() + "/payroll-preview?year=" + year + "&month=" + month);
+			response.sendRedirect(redirectUrl);
 			return;
 		}
 
 		List<String> configErrors = payrollDAO.validateRequiredConfiguration(year, month);
 		if (!configErrors.isEmpty()) {
 			session.setAttribute("errorMsg", String.join(" ", configErrors));
-			response.sendRedirect(request.getContextPath() + "/payroll-preview?year=" + year + "&month=" + month);
+			response.sendRedirect(redirectUrl);
 			return;
 		}
 
 		List<PayrollPreviewRow> previewRows = payrollDAO.buildPayrollPreview(year, month);
 		if (previewRows == null || previewRows.isEmpty()) {
 			session.setAttribute("errorMsg", "Không có dữ liệu bảng lương để tạo cho kỳ đã chọn.");
-			response.sendRedirect(request.getContextPath() + "/payroll-preview?year=" + year + "&month=" + month);
+			response.sendRedirect(redirectUrl);
 			return;
 		}
 
@@ -140,7 +142,17 @@ public class PayrollGenerateServlet extends HttpServlet {
 		} else {
 			session.setAttribute("errorMsg", "Không thể tạo bảng lương. Vui lòng thử lại.");
 		}
-		response.sendRedirect(request.getContextPath() + "/payroll-preview?year=" + year + "&month=" + month);
+		response.sendRedirect(redirectUrl);
+	}
+
+	private String payrollPreviewUrl(HttpServletRequest request, int year, int month) {
+		StringBuilder url = new StringBuilder(request.getContextPath()).append("/payroll-preview?year=").append(year)
+				.append("&month=").append(month);
+		String departmentId = request.getParameter("departmentId");
+		if (departmentId != null && !departmentId.isBlank()) {
+			url.append("&departmentId=").append(departmentId.trim());
+		}
+		return url.toString();
 	}
 
 	private boolean hasPermission(List<Permission> permissions, String code) {

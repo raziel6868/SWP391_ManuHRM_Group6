@@ -21,8 +21,8 @@ import util.OvertimeValidator;
 
 /**
  * Trang sửa 1 bản ghi OT đã tạo (đổi giờ / lý do). Chỉ quản đốc quản lý trực
- * tiếp nhân viên đó mới sửa được, và chỉ khi tháng đang ở trạng thái OPEN. Toàn
- * bộ rule nghiệp vụ dùng chung ở {@link OvertimeValidator} (trần
+ * tiếp nhân viên đó mới sửa được, và chỉ khi kỳ công đang mở cho quản đốc đó.
+ * Toàn bộ rule nghiệp vụ dùng chung ở {@link OvertimeValidator} (trần
  * giờ/ngày-tháng-năm, trùng, conflict nghỉ phép/chấm công...).
  */
 @WebServlet(name = "OvertimeEditServlet", urlPatterns = {"/overtime-edit"})
@@ -66,9 +66,8 @@ public class OvertimeEditServlet extends HttpServlet {
 
 		int recYear = record.getDate().toLocalDate().getYear();
 		int recMonth = record.getDate().toLocalDate().getMonthValue();
-		if (!monthlySheetDAO.isEditablePeriod(recYear, recMonth)) {
-			session.setAttribute("errorMsg",
-					"Tháng " + recMonth + "/" + recYear + " không còn ở trạng thái OPEN, không thể sửa OT.");
+		if (!monthlySheetDAO.isEditablePeriodForSupervisor(recYear, recMonth, authUser.getId())) {
+			session.setAttribute("errorMsg", "Tháng " + recMonth + "/" + recYear + " không còn mở cho bạn sửa OT.");
 			response.sendRedirect(request.getContextPath() + "/overtime-list?year=" + recYear + "&month=" + recMonth);
 			return;
 		}
@@ -118,9 +117,8 @@ public class OvertimeEditServlet extends HttpServlet {
 			return;
 		}
 
-		if (!monthlySheetDAO.isEditablePeriod(recYear, recMonth)) {
-			session.setAttribute("errorMsg",
-					"Tháng " + recMonth + "/" + recYear + " không còn ở trạng thái OPEN, không thể sửa OT.");
+		if (!monthlySheetDAO.isEditablePeriodForSupervisor(recYear, recMonth, authUser.getId())) {
+			session.setAttribute("errorMsg", "Tháng " + recMonth + "/" + recYear + " không còn mở cho bạn sửa OT.");
 			response.sendRedirect(redirectList);
 			return;
 		}

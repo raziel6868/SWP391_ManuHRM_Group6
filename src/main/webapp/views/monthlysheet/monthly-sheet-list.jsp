@@ -1,5 +1,6 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 <%@ taglib prefix="c" uri="jakarta.tags.core" %>
+<%@ taglib prefix="fn" uri="jakarta.tags.functions" %>
 <!DOCTYPE html>
 <html lang="vi">
 <head>
@@ -21,6 +22,76 @@
         .badge-closed     { background:var(--surface-container-high); color:var(--on-surface-variant); }
 
         .sup-progress { font-size: 0.72rem; color: var(--on-surface-variant); }
+
+        .conflict-panel {
+            display: grid;
+            grid-template-columns: auto minmax(0, 1fr);
+            gap: 0.875rem;
+            align-items: start;
+            padding: 1rem;
+        }
+
+        .conflict-panel .material-symbols-outlined {
+            font-size: 1.5rem;
+            line-height: 1;
+            margin-top: 0.125rem;
+        }
+
+        .conflict-title-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+            margin-bottom: 0.625rem;
+        }
+
+        .conflict-title {
+            font-weight: 700;
+            color: var(--error);
+        }
+
+        .conflict-count {
+            display: inline-flex;
+            align-items: center;
+            border-radius: 999px;
+            padding: 0.2rem 0.625rem;
+            background: #fee2e2;
+            color: #991b1b;
+            font-size: 0.78rem;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        .conflict-list {
+            display: grid;
+            gap: 0.45rem;
+            max-height: 220px;
+            overflow-y: auto;
+            padding-right: 0.25rem;
+        }
+
+        .conflict-item {
+            display: flex;
+            gap: 0.5rem;
+            align-items: flex-start;
+            border: 1px solid #fecaca;
+            border-radius: 0.5rem;
+            background: #fff7f7;
+            padding: 0.55rem 0.7rem;
+            color: #991b1b;
+            font-size: 0.92rem;
+            line-height: 1.4;
+        }
+
+        .conflict-index {
+            flex: 0 0 auto;
+            display: inline-flex;
+            justify-content: center;
+            min-width: 1.5rem;
+            font-weight: 700;
+            color: #b91c1c;
+        }
     </style>
 </head>
 <body class="bg-background text-on-surface">
@@ -36,7 +107,28 @@
                     <c:out value="${successMsg}" />
                 </div>
             </c:if>
-            <c:if test="${not empty errorMsg}">
+            <c:if test="${not empty monthlySheetConflicts}">
+                <div class="alert alert-error conflict-panel mb-3" role="alert">
+                    <span class="material-symbols-outlined">error</span>
+                    <div>
+                        <div class="conflict-title-row">
+                            <div class="conflict-title">
+                                <c:out value="${monthlySheetConflictTitle}" />
+                            </div>
+                            <span class="conflict-count">${fn:length(monthlySheetConflicts)} conflict</span>
+                        </div>
+                        <div class="conflict-list">
+                            <c:forEach var="conflict" items="${monthlySheetConflicts}" varStatus="loop">
+                                <div class="conflict-item">
+                                    <span class="conflict-index">${loop.index + 1}</span>
+                                    <span><c:out value="${conflict}" /></span>
+                                </div>
+                            </c:forEach>
+                        </div>
+                    </div>
+                </div>
+            </c:if>
+            <c:if test="${not empty errorMsg and empty monthlySheetConflicts}">
                 <div class="alert alert-error d-flex align-items-center gap-2 mb-3" role="alert">
                     <span class="material-symbols-outlined">error</span>
                     <c:out value="${errorMsg}" />
@@ -58,7 +150,7 @@
                         <div class="col-md-2">
                             <label class="form-label fw-medium mb-1">Năm</label>
                             <select name="year" class="form-select input-premium">
-                                <c:forEach var="y" begin="2024" end="2027">
+                                <c:forEach var="y" items="${yearOptions}">
                                     <option value="${y}" ${selectedYear == y ? 'selected' : ''}>${y}</option>
                                 </c:forEach>
                             </select>
@@ -79,7 +171,6 @@
                                 <option value="OPEN"             ${selectedStatus == 'OPEN'             ? 'selected' : ''}>Mở</option>
                                 <option value="PENDING_SUPERVISOR" ${selectedStatus == 'PENDING_SUPERVISOR' ? 'selected' : ''}>Chờ quản đốc</option>
                                 <option value="PENDING_HR"       ${selectedStatus == 'PENDING_HR'       ? 'selected' : ''}>Chờ HR</option>
-                                <option value="PENDING_DIRECTOR" ${selectedStatus == 'PENDING_DIRECTOR' ? 'selected' : ''}>Chờ Giám đốc</option>
                                 <option value="CLOSED"           ${selectedStatus == 'CLOSED'           ? 'selected' : ''}>Đã đóng</option>
                             </select>
                         </div>
@@ -102,7 +193,6 @@
                                 <th>Trạng thái</th>
                                 <th>Quản đốc xác nhận</th>
                                 <th>HR chốt</th>
-                                <th>Giám đốc đóng sổ</th>
                                 <th class="text-end">Thao tác</th>
                             </tr>
                         </thead>
@@ -110,7 +200,7 @@
                             <c:choose>
                                 <c:when test="${empty sheets}">
                                     <tr>
-                                        <td colspan="6" class="text-center py-4 text-on-surface-variant">
+                                        <td colspan="5" class="text-center py-4 text-on-surface-variant">
                                             Không có bảng công nào.
                                         </td>
                                     </tr>
@@ -166,17 +256,6 @@
                                                 </c:choose>
                                             </td>
 
-                                            <%-- Giám đốc đóng sổ --%>
-                                            <td class="body-sm">
-                                                <c:choose>
-                                                    <c:when test="${not empty sheet.closedByName}">
-                                                        <div>${sheet.closedByName}</div>
-                                                        <div class="text-on-surface-variant">${sheet.closedAt}</div>
-                                                    </c:when>
-                                                    <c:otherwise>—</c:otherwise>
-                                                </c:choose>
-                                            </td>
-
                                             <%-- Thao tác --%>
                                             <td class="text-end">
                                                 <div class="d-flex gap-2 justify-content-end flex-wrap">
@@ -192,26 +271,14 @@
                                                         </form>
                                                     </c:if>
 
-                                                    <%-- HR: chốt bước 2 --%>
+                                                    <%-- HR: chốt và đóng sổ --%>
                                                     <c:if test="${sheet.status == 'PENDING_HR' && canHrApprove}">
                                                         <form action="${pageContext.request.contextPath}/monthly-sheet-hr-approve"
                                                               method="POST" class="d-inline">
                                                             <input type="hidden" name="id" value="${sheet.id}" />
                                                             <button type="submit" class="btn btn-sm"
                                                                     style="background:#dbeafe;color:#1e40af;border:1px solid #93c5fd;">
-                                                                Chốt (HR)
-                                                            </button>
-                                                        </form>
-                                                    </c:if>
-
-                                                    <%-- Giám đốc: đóng sổ --%>
-                                                    <c:if test="${sheet.status == 'PENDING_DIRECTOR' && canDirectorApprove}">
-                                                        <form action="${pageContext.request.contextPath}/monthly-sheet-director-approve"
-                                                              method="POST" class="d-inline">
-                                                            <input type="hidden" name="id" value="${sheet.id}" />
-                                                            <button type="submit" class="btn btn-sm"
-                                                                    style="background:#ede9fe;color:#4c1d95;border:1px solid #c4b5fd;">
-                                                                Đóng sổ
+                                                                Chốt &amp; đóng sổ
                                                             </button>
                                                         </form>
                                                     </c:if>
@@ -269,20 +336,47 @@
 <%-- Modal reject --%>
 <div id="rejectModalOverlay"
      style="display:none; position:fixed; inset:0; background:rgba(11,28,48,0.45); z-index:1050; align-items:center; justify-content:center;">
-    <div class="card-premium" style="max-width:460px; width:92%; padding:1.5rem;">
+    <div class="card-premium" style="max-width:560px; width:92%; padding:1.5rem;">
         <h5 class="fw-bold mb-1">Từ chối bảng công</h5>
         <p class="body-sm text-on-surface-variant mb-3" id="rejectSheetLabel"></p>
         <form action="${pageContext.request.contextPath}/monthly-sheet-reject" method="POST">
             <input type="hidden" name="id" id="rejectSheetId" />
-            <div class="mb-3 p-3" style="border:1px solid #fde68a; background:#fffbeb; border-radius:8px;">
-                <div class="fw-medium mb-1">Reset toàn bộ xác nhận quản đốc</div>
-                <div class="body-sm text-on-surface-variant">
-                    Bảng công sẽ quay về OPEN và tất cả xác nhận quản đốc cũ sẽ bị xóa. HR cần gửi duyệt lại từ đầu.
-                </div>
+
+            <div class="d-grid gap-2 mb-3">
+                <label class="p-3" style="border:1px solid #fde68a; background:#fffbeb; border-radius:8px; cursor:pointer;">
+                    <div class="d-flex gap-2 align-items-start">
+                        <input type="radio" name="rejectScope" value="all" checked onchange="toggleRejectScope()" />
+                        <div>
+                            <div class="fw-medium mb-1">Reset toàn bộ</div>
+                            <div class="body-sm text-on-surface-variant">
+                                Bảng công quay về OPEN, xóa toàn bộ xác nhận quản đốc. HR cần gửi duyệt lại từ đầu.
+                            </div>
+                        </div>
+                    </div>
+                </label>
+
+                <label class="p-3" style="border:1px solid var(--outline-variant); background:var(--surface-container-lowest); border-radius:8px; cursor:pointer;">
+                    <div class="d-flex gap-2 align-items-start">
+                        <input type="radio" name="rejectScope" value="department" onchange="toggleRejectScope()" />
+                        <div class="flex-grow-1">
+                            <div class="fw-medium mb-1">Reset theo phòng ban</div>
+                            <div class="body-sm text-on-surface-variant mb-2">
+                                Chỉ đưa quản đốc của phòng ban được chọn về trạng thái chờ xác nhận lại. Phòng ban khác giữ nguyên.
+                            </div>
+                            <select name="departmentId" id="rejectDepartmentId" class="form-select input-premium" disabled>
+                                <option value="">-- Chọn phòng ban --</option>
+                                <c:forEach var="dept" items="${departments}">
+                                    <option value="${dept.id}"><c:out value="${dept.name}" /></option>
+                                </c:forEach>
+                            </select>
+                        </div>
+                    </div>
+                </label>
             </div>
+
             <div class="d-flex justify-content-end gap-2">
                 <button type="button" onclick="closeRejectModal()" class="btn btn-light border">Hủy</button>
-                <button type="submit" class="btn btn-danger">Từ chối & Reset</button>
+                <button type="submit" class="btn btn-danger">Xác nhận reset</button>
             </div>
         </form>
     </div>
@@ -292,11 +386,22 @@
 function openRejectModal(id, month, year) {
     document.getElementById('rejectSheetId').value = id;
     document.getElementById('rejectSheetLabel').textContent =
-        'Bảng công tháng ' + month + '/' + year + ' sẽ được reset về trạng thái OPEN.';
+        'Chọn phạm vi reset cho bảng công tháng ' + month + '/' + year + '.';
+    document.querySelector('input[name="rejectScope"][value="all"]').checked = true;
+    toggleRejectScope();
     document.getElementById('rejectModalOverlay').style.display = 'flex';
 }
 function closeRejectModal() {
     document.getElementById('rejectModalOverlay').style.display = 'none';
+}
+function toggleRejectScope() {
+    const isDepartmentScope = document.querySelector('input[name="rejectScope"]:checked').value === 'department';
+    const departmentSelect = document.getElementById('rejectDepartmentId');
+    departmentSelect.disabled = !isDepartmentScope;
+    departmentSelect.required = isDepartmentScope;
+    if (!isDepartmentScope) {
+        departmentSelect.value = '';
+    }
 }
 </script>
 

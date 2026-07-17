@@ -208,7 +208,7 @@
                             <div class="col-md-2">
                                 <label class="form-label fw-medium mb-1">Năm</label>
                                 <select name="year" class="form-select input-premium">
-                                    <c:forEach begin="2024" end="2027" var="y">
+                                    <c:forEach var="y" items="${yearOptions}">
                                         <option value="${y}" ${selectedYear == y ? 'selected' : ''}>${y}</option>
                                     </c:forEach>
                                 </select>

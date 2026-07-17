@@ -7,6 +7,7 @@ public class PayrollPreviewRow {
 	private Long userId;
 	private String userFullName;
 	private String employeeCode;
+	private Long departmentId;
 	private String departmentName;
 	private BigDecimal baseSalary;
 	private BigDecimal standardWorkDays;
@@ -70,6 +71,14 @@ public class PayrollPreviewRow {
 
 	public String getDepartmentName() {
 		return departmentName;
+	}
+
+	public Long getDepartmentId() {
+		return departmentId;
+	}
+
+	public void setDepartmentId(Long departmentId) {
+		this.departmentId = departmentId;
 	}
 
 	public void setDepartmentName(String departmentName) {

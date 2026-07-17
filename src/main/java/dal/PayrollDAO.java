@@ -68,9 +68,10 @@ public class PayrollDAO {
 		BigDecimal personalDeductionAmount = money(personalTaxSetting.getPersonalDeduction());
 		BigDecimal dependentDeductionAmount = money(personalTaxSetting.getDependentDeduction());
 		List<PersonalTaxBracket> taxBrackets = personalTaxBracketDAO.getActiveBracketsForPeriod(year, month);
+		BigDecimal standardWorkDays = countStandardWorkDays(yearMonth);
 
 		String usersSql = """
-				SELECT u.id, u.full_name, u.employee_code, d.name AS department_name,
+				SELECT u.id, u.full_name, u.employee_code, u.department_id, d.name AS department_name,
 				       c.salary AS base_salary
 				FROM users u
 				LEFT JOIN departments d ON u.department_id = d.id
@@ -98,6 +99,7 @@ public class PayrollDAO {
 						Long userId = rs.getLong("id");
 						String fullName = rs.getString("full_name");
 						String empCode = rs.getString("employee_code");
+						Long departmentId = readNullableLong(rs, "department_id");
 						String deptName = rs.getString("department_name");
 						BigDecimal baseSalary = rs.getBigDecimal("base_salary");
 
@@ -117,10 +119,10 @@ public class PayrollDAO {
 								month, attendanceBonusEligible);
 						int dependentCount = employeeDependentDAO.countActiveDependents(userId, year, month);
 
-						PayrollPreviewRow row = calculateRow(userId, fullName, empCode, deptName, baseSalary,
-								actualWorkDays, paidLeaveDays, approvedOtHours, totalAllowances,
+						PayrollPreviewRow row = calculateRow(userId, fullName, empCode, departmentId, deptName,
+								baseSalary, actualWorkDays, paidLeaveDays, approvedOtHours, totalAllowances,
 								insuranceBasedAllowances, nonTaxableAllowances, dependentCount, personalDeductionAmount,
-								dependentDeductionAmount, setting, insuranceRate, taxBrackets);
+								dependentDeductionAmount, standardWorkDays, setting, insuranceRate, taxBrackets);
 						rows.add(row);
 					}
 				}
@@ -137,6 +139,7 @@ public class PayrollDAO {
 				SELECT COUNT(DISTINCT DATE(date)) AS work_days
 				FROM attendance_records
 				WHERE user_id = ? AND YEAR(date) = ? AND MONTH(date) = ? AND status != 'ABSENT'
+				  AND DAYOFWEEK(date) BETWEEN 2 AND 6
 				""";
 
 		try (PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -151,6 +154,13 @@ public class PayrollDAO {
 		}
 
 		return BigDecimal.ZERO;
+	}
+
+	private BigDecimal countStandardWorkDays(YearMonth yearMonth) {
+		if (yearMonth == null) {
+			return DEFAULT_WORK_DAYS;
+		}
+		return LeavePolicyUtil.calculateRequestDays(yearMonth.atDay(1), yearMonth.atEndOfMonth(), "WORKING_DAY");
 	}
 
 	private BigDecimal countPaidLeaveDays(Connection conn, Long userId, Date firstDay, Date lastDay)
@@ -245,14 +255,19 @@ public class PayrollDAO {
 		return BigDecimal.ZERO;
 	}
 
-	private PayrollPreviewRow calculateRow(Long userId, String fullName, String empCode, String deptName,
-			BigDecimal baseSalary, BigDecimal actualWorkDays, BigDecimal paidLeaveDays, BigDecimal approvedOtHours,
-			BigDecimal totalAllowances, BigDecimal insuranceBasedAllowances, BigDecimal nonTaxableAllowances,
-			int dependentCount, BigDecimal personalDeductionAmount, BigDecimal dependentDeductionAmount,
-			PayrollSetting setting, InsuranceRate insuranceRate, List<PersonalTaxBracket> taxBrackets) {
+	private Long readNullableLong(ResultSet rs, String columnName) throws SQLException {
+		long value = rs.getLong(columnName);
+		return rs.wasNull() ? null : value;
+	}
 
-		BigDecimal standardWorkDays = positiveOrDefault(setting != null ? setting.getStandardWorkDays() : null,
-				DEFAULT_WORK_DAYS);
+	private PayrollPreviewRow calculateRow(Long userId, String fullName, String empCode, Long departmentId,
+			String deptName, BigDecimal baseSalary, BigDecimal actualWorkDays, BigDecimal paidLeaveDays,
+			BigDecimal approvedOtHours, BigDecimal totalAllowances, BigDecimal insuranceBasedAllowances,
+			BigDecimal nonTaxableAllowances, int dependentCount, BigDecimal personalDeductionAmount,
+			BigDecimal dependentDeductionAmount, BigDecimal calendarStandardWorkDays, PayrollSetting setting,
+			InsuranceRate insuranceRate, List<PersonalTaxBracket> taxBrackets) {
+
+		BigDecimal standardWorkDays = positiveOrDefault(calendarStandardWorkDays, DEFAULT_WORK_DAYS);
 		BigDecimal standardWorkHoursPerDay = positiveOrDefault(
 				setting != null ? setting.getStandardWorkHoursPerDay() : null, DEFAULT_HOURS_PER_DAY);
 		BigDecimal normalOvertimeRate = positiveOrDefault(setting != null ? setting.getNormalOvertimeRate() : null,
@@ -304,6 +319,7 @@ public class PayrollDAO {
 		row.setUserId(userId);
 		row.setUserFullName(fullName);
 		row.setEmployeeCode(empCode);
+		row.setDepartmentId(departmentId);
 		row.setDepartmentName(deptName);
 		row.setBaseSalary(baseSalary);
 		row.setStandardWorkDays(scaleDays(standardWorkDays));

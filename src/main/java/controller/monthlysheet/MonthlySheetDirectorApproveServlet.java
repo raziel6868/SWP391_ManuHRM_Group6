@@ -55,8 +55,9 @@ public class MonthlySheetDirectorApproveServlet extends HttpServlet {
 						sheet.getMonth());
 				if (!closeConflicts.isEmpty()) {
 					conn.rollback();
-					session.setAttribute("errorMsg", "Không thể đóng sổ vì dữ liệu Leave/OT/Attendance còn conflict: "
-							+ String.join(" | ", closeConflicts));
+					session.setAttribute("monthlySheetConflictTitle",
+							"Không thể đóng sổ vì dữ liệu Leave/OT/Attendance còn conflict.");
+					session.setAttribute("monthlySheetConflicts", closeConflicts);
 					response.sendRedirect(request.getContextPath() + "/monthly-sheet-list");
 					return;
 				}

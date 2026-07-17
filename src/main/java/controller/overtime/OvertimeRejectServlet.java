@@ -69,9 +69,8 @@ public class OvertimeRejectServlet extends HttpServlet {
 			return;
 		}
 
-		if (!monthlySheetDAO.isEditablePeriod(recYear, recMonth)) {
-			session.setAttribute("errorMsg",
-					"Tháng " + recMonth + "/" + recYear + " không còn ở trạng thái OPEN, không thể hủy OT.");
+		if (!monthlySheetDAO.isEditablePeriodForSupervisor(recYear, recMonth, authUser.getId())) {
+			session.setAttribute("errorMsg", "Tháng " + recMonth + "/" + recYear + " không còn mở cho bạn hủy OT.");
 			response.sendRedirect(redirectList);
 			return;
 		}

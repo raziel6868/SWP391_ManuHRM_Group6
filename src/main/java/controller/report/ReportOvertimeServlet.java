@@ -17,6 +17,7 @@ import jakarta.servlet.http.HttpSession;
 import model.Department;
 import model.Permission;
 import model.User;
+import util.YearOptionUtil;
 
 @WebServlet(name = "ReportOvertimeServlet", urlPatterns = {"/report-overtime"})
 public class ReportOvertimeServlet extends HttpServlet {
@@ -57,6 +58,7 @@ public class ReportOvertimeServlet extends HttpServlet {
 		request.setAttribute("rows", rows);
 		request.setAttribute("topEmployees", topEmployees);
 		request.setAttribute("departments", departments);
+		request.setAttribute("yearOptions", YearOptionUtil.dataYearsWithCurrent(reportDAO.getOvertimeYears()));
 		request.setAttribute("selectedYear", year);
 		request.setAttribute("selectedMonth", month);
 		request.setAttribute("selectedDepartmentId", departmentId);

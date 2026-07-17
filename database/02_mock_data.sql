@@ -254,7 +254,7 @@ INSERT INTO role_permissions (role_id, permission_id) VALUES
 -- Leave
 (2, 39), (2, 40), (2, 41), (2, 45), (2, 46), (2, 47),
 -- Attendance
-(2, 51), (2, 53), (2, 55), (2, 56), (2, 57),
+(2, 51), (2, 52), (2, 53), (2, 54), (2, 55), (2, 56), (2, 57), (2, 111),
 -- Overtime
 (2, 58),
 -- Salary / Payroll
@@ -275,7 +275,7 @@ INSERT INTO role_permissions (role_id, permission_id) VALUES
 -- PRODUCTION_SUPERVISOR: exact operational scope
 INSERT INTO role_permissions (role_id, permission_id) VALUES
 (3, 41), (3, 45), (3, 47),
-(3, 51), (3, 57),
+(3, 51), (3, 52), (3, 54), (3, 57),
 (3, 58), (3, 59), (3, 61), (3, 115),
 (3, 107), (3, 108), (3, 111);
 

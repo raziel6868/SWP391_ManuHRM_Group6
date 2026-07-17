@@ -1,6 +1,5 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 <%@ taglib prefix="c" uri="jakarta.tags.core" %>
-<%@ taglib prefix="fn" uri="jakarta.tags.functions" %>
 <!DOCTYPE html>
 <html lang="vi">
 <head>
@@ -183,24 +182,14 @@
             <%-- ── Tab navigation ── --%>
             <ul class="nav nav-tabs mb-3">
                 <li class="nav-item">
-                    <a class="nav-link ${empty param.tab || param.tab == 'attendance' ? 'active' : ''}"
+                    <a class="nav-link active"
                        href="?tab=attendance&year=${selectedYear}&month=${selectedMonth}">
                         Bảng công
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link ${param.tab == 'correction' ? 'active' : ''}"
-                       href="?tab=correction&year=${selectedYear}&month=${selectedMonth}">
-                        Yêu cầu điều chỉnh
-                        <c:if test="${not empty pendingCorrections}">
-                            <span class="badge bg-danger ms-1">${fn:length(pendingCorrections)}</span>
-                        </c:if>
                     </a>
                 </li>
             </ul>
 
             <%-- ── TAB: Bảng công ── --%>
-            <c:if test="${empty param.tab || param.tab == 'attendance'}">
 
                 <%-- Filter tháng + nhân viên luôn hiển thị để quản đốc đổi kỳ --%>
                 <div class="card-premium overflow-hidden mb-3">
@@ -311,11 +300,11 @@
                                         </form>
                                     </c:when>
                                     <c:when test="${hasPendingCorrections}">
-                                        <button class="btn btn-primary" disabled
-                                                title="Vẫn còn yêu cầu điều chỉnh chưa được duyệt">
+                                        <a class="btn btn-primary d-flex align-items-center gap-2"
+                                           href="${pageContext.request.contextPath}/attendance-correction-list?tab=supervisor">
                                             <span class="material-symbols-outlined" style="font-size:1rem;">lock</span>
-                                            Còn yêu cầu điều chỉnh chưa xử lý
-                                        </button>
+                                            Còn yêu cầu điều chỉnh chưa xử lý — xử lý tại đây
+                                        </a>
                                     </c:when>
                                     <c:otherwise>
                                         <button class="btn btn-success" disabled>
@@ -328,112 +317,12 @@
                         </c:if>
                     </div>
                 </c:if>
-            </c:if>
-
-            <%-- ── TAB: Yêu cầu điều chỉnh ── --%>
-            <c:if test="${param.tab == 'correction'}">
-                <div class="card-premium overflow-hidden mb-4">
-                    <div class="p-3 bg-surface border-bottom border-outline-variant d-flex align-items-center justify-content-between">
-                        <h3 class="h5 fw-bold mb-0">Yêu cầu điều chỉnh chờ xác nhận</h3>
-                    </div>
-                    <c:choose>
-                        <c:when test="${empty pendingCorrections}">
-                            <div class="p-4 text-center text-on-surface-variant">
-                                Không có yêu cầu nào đang chờ xác nhận.
-                            </div>
-                        </c:when>
-                        <c:otherwise>
-                            <div class="table-responsive">
-                                <table class="table table-premium mb-0">
-                                    <thead>
-                                        <tr>
-                                            <th>Nhân viên</th>
-                                            <th>Ngày</th>
-                                            <th>Giờ vào/ra hiện tại</th>
-                                            <th>Đề xuất sửa</th>
-                                            <th>Lý do</th>
-                                            <th>Thao tác</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <c:forEach var="c" items="${pendingCorrections}">
-                                            <tr>
-                                                <td>
-                                                    <div class="fw-medium"><c:out value="${c.employeeName}" /></div>
-                                                    <div class="body-sm text-on-surface-variant"><c:out value="${c.employeeCode}" /></div>
-                                                </td>
-                                                <td><c:out value="${c.attendanceDate}" /></td>
-                                                <td class="body-sm">
-                                                    <c:out value="${c.currentCheckIn}" default="—" /> →
-                                                    <c:out value="${c.currentCheckOut}" default="—" />
-                                                </td>
-                                                <td class="body-sm">
-                                                    <c:out value="${c.newCheckIn}" default="—" /> →
-                                                    <c:out value="${c.newCheckOut}" default="—" />
-                                                </td>
-                                                <td class="body-sm"><c:out value="${c.reason}" /></td>
-                                                <td>
-                                                    <c:if test="${canReviewCorrections}">
-                                                        <div class="d-flex gap-2">
-                                                        <form action="${pageContext.request.contextPath}/attendance-correction-supervisor-approve"
-                                                              method="POST" class="d-inline">
-                                                            <input type="hidden" name="id" value="${c.id}" />
-                                                            <input type="hidden" name="action" value="approve" />
-                                                            <input type="hidden" name="tab" value="correction" />
-                                                            <button type="submit" class="btn btn-sm btn-success">Duyệt</button>
-                                                        </form>
-                                                        <button type="button" class="btn btn-sm btn-danger"
-                                                                onclick="openRejectModal(${c.id}, '${c.employeeName}')">
-                                                            Từ chối
-                                                        </button>
-                                                        </div>
-                                                    </c:if>
-                                                    <c:if test="${not canReviewCorrections and false}">
-                                                        <span class="body-sm text-on-surface-variant">KhÃ´ng cÃ³ quyá»n xá»­ lÃ½</span>
-                                                    </c:if>
-                                                    <c:if test="${not canReviewCorrections}">
-                                                        <span class="body-sm text-on-surface-variant">Không có quyền xử lý</span>
-                                                    </c:if>
-                                                </td>
-                                            </tr>
-                                        </c:forEach>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </c:otherwise>
-                    </c:choose>
-                </div>
-            </c:if>
         </div>
 
         <jsp:include page="/components/footer.jsp" />
     </div>
 </div>
 
-<%-- Modal từ chối correction --%>
-<div id="rejectModalOverlay"
-     style="display:none; position:fixed; inset:0; background:rgba(11,28,48,0.45); z-index:1050; align-items:center; justify-content:center;">
-    <div class="card-premium" style="max-width:440px; width:92%; padding:1.5rem;">
-        <h5 class="fw-bold mb-3">Từ chối yêu cầu điều chỉnh</h5>
-        <form action="${pageContext.request.contextPath}/attendance-correction-supervisor-approve" method="POST">
-            <input type="hidden" name="action" value="reject" />
-            <input type="hidden" name="id" id="rejectCorrectionId" />
-            <input type="hidden" name="tab" value="correction" />
-            <div class="mb-3">
-                <label class="form-label fw-medium mb-1">
-                    Lý do từ chối yêu cầu của <strong id="rejectEmployeeName"></strong>
-                    <span class="text-danger">*</span>
-                </label>
-                <textarea name="rejectReason" rows="3" class="form-control input-premium"
-                          placeholder="Nhập lý do để nhân viên biết cách sửa lại..." required></textarea>
-            </div>
-            <div class="d-flex justify-content-end gap-2">
-                <button type="button" onclick="closeRejectModal()" class="btn btn-light border">Hủy</button>
-                <button type="submit" class="btn btn-danger">Từ chối</button>
-            </div>
-        </form>
-    </div>
-</div>
 
 <%-- Inject dữ liệu attendance vào JS --%>
 <script>
@@ -547,15 +436,6 @@ const employees = [
     statLate.textContent = totalLate;
 })();
 
-// Modal reject
-function openRejectModal(id, name) {
-    document.getElementById('rejectCorrectionId').value = id;
-    document.getElementById('rejectEmployeeName').textContent = name;
-    document.getElementById('rejectModalOverlay').style.display = 'flex';
-}
-function closeRejectModal() {
-    document.getElementById('rejectModalOverlay').style.display = 'none';
-}
 </script>
 
 <jsp:include page="/components/foot.jsp" />

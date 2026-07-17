@@ -17,7 +17,6 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import model.AttendanceCorrection;
 import model.AttendanceRecord;
 import model.MonthlySheet;
 import model.MonthlySheetApproval;
@@ -69,16 +68,12 @@ public class MonthlySheetSupervisorServlet extends HttpServlet {
 			}
 		}
 
-		List<AttendanceCorrection> pendingCorrections = correctionDAO
-				.searchBySupervisor(authUser.getId(), "PENDING", 0, Integer.MAX_VALUE).stream()
-				.filter(c -> c.getAttendanceDate() != null && c.getAttendanceDate().toLocalDate().getYear() == year
-						&& c.getAttendanceDate().toLocalDate().getMonthValue() == month)
-				.toList();
-
 		boolean canApprove = hasPermission(session, "MONTHLY_SHEET_SUPERVISOR_APPROVE") && sheet != null
 				&& "PENDING_SUPERVISOR".equals(sheet.getStatus()) && myApproval != null
 				&& "PENDING".equals(myApproval.getStatus());
-		boolean canReviewCorrections = hasPermission(session, "ATTENDANCE_CORRECTION_SUPERVISOR_APPROVE");
+		// Danh sách/duyệt correction không còn hiển thị ở trang này nữa (đã dồn hết
+		// về attendance-correction-list). Ở đây chỉ cần biết còn correction PENDING
+		// hay không để khoá nút "Xác nhận chốt bảng công".
 		boolean hasPendingCorrections = correctionDAO.hasPendingSupervisorCorrectionInMonth(authUser.getId(), year,
 				month);
 
@@ -87,9 +82,7 @@ public class MonthlySheetSupervisorServlet extends HttpServlet {
 		request.setAttribute("allApprovals", allApprovals);
 		request.setAttribute("records", records);
 		request.setAttribute("subordinates", subordinates);
-		request.setAttribute("pendingCorrections", pendingCorrections);
 		request.setAttribute("canApprove", canApprove);
-		request.setAttribute("canReviewCorrections", canReviewCorrections);
 		request.setAttribute("hasPendingCorrections", hasPendingCorrections);
 		request.setAttribute("yearOptions", YearOptionUtil.dataYearsWithCurrent(monthlySheetDAO.getAvailableYears()));
 		request.setAttribute("selectedYear", year);

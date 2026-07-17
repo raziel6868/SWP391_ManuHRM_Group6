@@ -84,6 +84,6 @@
     </div>
 </div>
 
-<script src="${pageContext.request.contextPath}/assets/js/bootstrap.bundle.min.js"></script>
+<jsp:include page="/components/foot.jsp" />
 </body>
 </html>

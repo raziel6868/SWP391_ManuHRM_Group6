@@ -103,9 +103,9 @@ public class OvertimeRequestServlet extends HttpServlet {
 			User authUser, int year, int month) throws IOException, ServletException {
 
 		String sheetStatus = monthlySheetDAO.getStatusByYearMonth(year, month);
-		if (sheetStatus != null && !"OPEN".equals(sheetStatus)) {
-			session.setAttribute("errorMsg",
-					"Tháng " + month + "/" + year + " đang ở trạng thái " + sheetStatus + ", không thể import OT.");
+		if (!monthlySheetDAO.isEditablePeriodForSupervisor(year, month, authUser.getId())) {
+			session.setAttribute("errorMsg", "Tháng " + month + "/" + year + " đang ở trạng thái " + sheetStatus
+					+ ", không mở cho bạn import OT.");
 			redirectBack(request, response, year, month);
 			return;
 		}

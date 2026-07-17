@@ -32,11 +32,18 @@ public class MonthlySheetRejectServlet extends HttpServlet {
 		}
 
 		Long sheetId = parseLong(request.getParameter("id"));
+		String rejectScope = request.getParameter("rejectScope");
 		String departmentIdStr = request.getParameter("departmentId");
 		Long departmentId = parseLong(departmentIdStr); // null = reset tất cả
 
 		if (sheetId == null) {
 			session.setAttribute("errorMsg", "Không tìm thấy bảng công.");
+			response.sendRedirect(request.getContextPath() + "/monthly-sheet-list");
+			return;
+		}
+
+		if ("department".equals(rejectScope) && departmentId == null) {
+			session.setAttribute("errorMsg", "Vui lòng chọn phòng ban cần reset.");
 			response.sendRedirect(request.getContextPath() + "/monthly-sheet-list");
 			return;
 		}
@@ -58,8 +65,15 @@ public class MonthlySheetRejectServlet extends HttpServlet {
 
 		boolean rejected = monthlySheetDAO.reject(sheetId, departmentId);
 		if (rejected) {
-			session.setAttribute("successMsg", "Đã từ chối và reset bảng công tháng " + sheet.getMonth() + "/"
-					+ sheet.getYear() + " về OPEN. Toàn bộ xác nhận quản đốc cũ đã được xóa để gửi duyệt lại từ đầu.");
+			if (departmentId == null) {
+				session.setAttribute("successMsg",
+						"Đã từ chối và reset bảng công tháng " + sheet.getMonth() + "/" + sheet.getYear()
+								+ " về OPEN. Toàn bộ xác nhận quản đốc cũ đã được xóa để gửi duyệt lại từ đầu.");
+			} else {
+				session.setAttribute("successMsg",
+						"Đã reset phòng ban được chọn của bảng công tháng " + sheet.getMonth() + "/" + sheet.getYear()
+								+ " về bước quản đốc xác nhận. Các phòng ban khác giữ nguyên xác nhận.");
+			}
 		} else {
 			session.setAttribute("errorMsg", "Không thể từ chối. Vui lòng thử lại.");
 		}

@@ -63,6 +63,38 @@ public class MonthlySheetDAO {
 		return status == null || "OPEN".equals(status);
 	}
 
+	public boolean isEditablePeriodForSupervisor(int year, int month, Long supervisorId) {
+		String status = getStatusByYearMonth(year, month);
+		if (status == null || "OPEN".equals(status)) {
+			return true;
+		}
+		if (supervisorId == null || !"PENDING_SUPERVISOR".equals(status)) {
+			return false;
+		}
+
+		String sql = """
+				SELECT COUNT(*)
+				FROM monthly_sheets ms
+				JOIN monthly_sheet_approvals msa ON msa.monthly_sheet_id = ms.id
+				WHERE ms.year = ?
+				  AND ms.month = ?
+				  AND ms.status = 'PENDING_SUPERVISOR'
+				  AND msa.supervisor_id = ?
+				  AND msa.status = 'PENDING'
+				""";
+		try (Connection conn = DBContext.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+			ps.setInt(1, year);
+			ps.setInt(2, month);
+			ps.setLong(3, supervisorId);
+			try (ResultSet rs = ps.executeQuery()) {
+				return rs.next() && rs.getInt(1) > 0;
+			}
+		} catch (SQLException e) {
+			System.err.println("MonthlySheetDAO.isEditablePeriodForSupervisor() ERROR: " + e.getMessage());
+		}
+		return false;
+	}
+
 	public boolean isSupervisorCorrectionWindow(int year, int month) {
 		return "PENDING_SUPERVISOR".equals(getStatusByYearMonth(year, month));
 	}
@@ -276,27 +308,15 @@ public class MonthlySheetDAO {
 	 * cũ.
 	 */
 	public boolean reject(Long sheetId, Long departmentId) {
-		String resetSql = """
-				UPDATE monthly_sheets
-				SET status = 'OPEN',
-				    submitted_by = NULL, submitted_at = NULL,
-				    hr_approved_by = NULL, hr_approved_at = NULL,
-				    closed_by = NULL, closed_at = NULL
-				WHERE id = ?
-				""";
-		String deleteAllApprovalsSql = """
-				DELETE FROM monthly_sheet_approvals WHERE monthly_sheet_id = ?
-				""";
 		try (Connection conn = DBContext.getConnection()) {
 			conn.setAutoCommit(false);
 			try {
-				try (PreparedStatement ps = conn.prepareStatement(resetSql)) {
-					ps.setLong(1, sheetId);
-					ps.executeUpdate();
-				}
-				try (PreparedStatement ps = conn.prepareStatement(deleteAllApprovalsSql)) {
-					ps.setLong(1, sheetId);
-					ps.executeUpdate();
+				boolean rejected = departmentId == null
+						? rejectAllDepartments(conn, sheetId)
+						: rejectOneDepartment(conn, sheetId, departmentId);
+				if (!rejected) {
+					conn.rollback();
+					return false;
 				}
 				conn.commit();
 				return true;
@@ -308,6 +328,85 @@ public class MonthlySheetDAO {
 			System.err.println("MonthlySheetDAO.reject() ERROR: " + e.getMessage());
 		}
 		return false;
+	}
+
+	private boolean rejectAllDepartments(Connection conn, Long sheetId) throws SQLException {
+		String resetSql = """
+				UPDATE monthly_sheets
+				SET status = 'OPEN',
+				    submitted_by = NULL, submitted_at = NULL,
+				    hr_approved_by = NULL, hr_approved_at = NULL,
+				    closed_by = NULL, closed_at = NULL
+				WHERE id = ?
+				""";
+		String deleteAllApprovalsSql = """
+				DELETE FROM monthly_sheet_approvals WHERE monthly_sheet_id = ?
+				""";
+		try (PreparedStatement ps = conn.prepareStatement(resetSql)) {
+			ps.setLong(1, sheetId);
+			if (ps.executeUpdate() <= 0) {
+				return false;
+			}
+		}
+		try (PreparedStatement ps = conn.prepareStatement(deleteAllApprovalsSql)) {
+			ps.setLong(1, sheetId);
+			ps.executeUpdate();
+		}
+		return true;
+	}
+
+	private boolean rejectOneDepartment(Connection conn, Long sheetId, Long departmentId) throws SQLException {
+		String countApprovalsSql = """
+				SELECT COUNT(DISTINCT msa.id)
+				FROM monthly_sheet_approvals msa
+				JOIN users emp ON emp.manager_id = msa.supervisor_id
+				WHERE msa.monthly_sheet_id = ?
+				  AND emp.department_id = ?
+				""";
+		String resetSheetSql = """
+				UPDATE monthly_sheets
+				SET status = 'PENDING_SUPERVISOR',
+				    hr_approved_by = NULL, hr_approved_at = NULL,
+				    closed_by = NULL, closed_at = NULL
+				WHERE id = ?
+				  AND status IN ('PENDING_SUPERVISOR', 'PENDING_HR', 'PENDING_DIRECTOR')
+				""";
+		String resetDepartmentApprovalsSql = """
+				UPDATE monthly_sheet_approvals msa
+				JOIN users emp ON emp.manager_id = msa.supervisor_id
+				SET msa.status = 'PENDING',
+				    msa.approved_at = NULL,
+				    msa.updated_at = NOW()
+				WHERE msa.monthly_sheet_id = ?
+				  AND emp.department_id = ?
+				""";
+
+		int matchingApprovals = 0;
+		try (PreparedStatement ps = conn.prepareStatement(countApprovalsSql)) {
+			ps.setLong(1, sheetId);
+			ps.setLong(2, departmentId);
+			try (ResultSet rs = ps.executeQuery()) {
+				if (rs.next()) {
+					matchingApprovals = rs.getInt(1);
+				}
+			}
+		}
+		if (matchingApprovals <= 0) {
+			return false;
+		}
+
+		try (PreparedStatement ps = conn.prepareStatement(resetSheetSql)) {
+			ps.setLong(1, sheetId);
+			if (ps.executeUpdate() <= 0) {
+				return false;
+			}
+		}
+		try (PreparedStatement ps = conn.prepareStatement(resetDepartmentApprovalsSql)) {
+			ps.setLong(1, sheetId);
+			ps.setLong(2, departmentId);
+			ps.executeUpdate();
+		}
+		return true;
 	}
 
 	/**

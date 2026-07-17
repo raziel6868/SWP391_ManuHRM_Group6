@@ -1,5 +1,6 @@
 package controller.monthlysheet;
 
+import dal.DepartmentDAO;
 import dal.MonthlySheetDAO;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
@@ -19,6 +20,7 @@ import util.YearOptionUtil;
 public class MonthlySheetListServlet extends HttpServlet {
 
 	private final MonthlySheetDAO monthlySheetDAO = new MonthlySheetDAO();
+	private final DepartmentDAO departmentDAO = new DepartmentDAO();
 
 	@Override
 	protected void doGet(HttpServletRequest request, HttpServletResponse response)
@@ -71,6 +73,7 @@ public class MonthlySheetListServlet extends HttpServlet {
 		request.setAttribute("canHrApprove", canHrApprove);
 		request.setAttribute("canReject", canReject);
 		request.setAttribute("canReopen", canReopen);
+		request.setAttribute("departments", departmentDAO.getActiveDepartments());
 		request.setAttribute("yearOptions", yearOptions);
 		request.setAttribute("selectedYear", selectedYear);
 		request.setAttribute("selectedMonth", selectedMonth);

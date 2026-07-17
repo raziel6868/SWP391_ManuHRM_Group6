@@ -22,8 +22,8 @@ import model.User;
  * Không tạo OT vào Thứ 7/Chủ nhật. Được phép tạo OT cho ngày quá khứ. Không
  * trùng OT đã có, không tạo OT ngày đã có đơn nghỉ phép đang/đã duyệt, không
  * tạo OT ngày nhân viên vắng mặt, và nếu ngày đó đã chấm công ra thì giờ ra
- * phải đủ hỗ trợ số giờ OT xin. Chỉ tạo/sửa được khi kỳ công đang ở trạng thái
- * OPEN.
+ * phải đủ hỗ trợ số giờ OT xin. Chỉ tạo/sửa được khi kỳ công đang OPEN hoặc
+ * đang chờ chính quản đốc đó xác nhận lại.
  */
 public class OvertimeValidator {
 
@@ -113,9 +113,9 @@ public class OvertimeValidator {
 					+ ", công ty làm việc T2-T6 nên không thể tạo OT ngày này.");
 		}
 
-		if (!monthlySheetDAO.isEditablePeriod(date.getYear(), date.getMonthValue())) {
-			return Outcome.error("Tháng " + date.getMonthValue() + "/" + date.getYear()
-					+ " không còn ở trạng thái OPEN, không thể tạo/sửa OT.");
+		if (!monthlySheetDAO.isEditablePeriodForSupervisor(date.getYear(), date.getMonthValue(), creatorId)) {
+			return Outcome.error(
+					"Tháng " + date.getMonthValue() + "/" + date.getYear() + " không còn mở cho quản đốc này sửa OT.");
 		}
 
 		Date sqlDate = Date.valueOf(date);

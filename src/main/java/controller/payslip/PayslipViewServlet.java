@@ -37,6 +37,7 @@ public class PayslipViewServlet extends HttpServlet {
 		}
 
 		boolean canViewAllPayslips = hasPermission(permissions, "PAYROLL_VIEW");
+		request.setAttribute("canViewAllPayslips", canViewAllPayslips);
 
 		moveFlash(session, request, "successMsg");
 		moveFlash(session, request, "errorMsg");

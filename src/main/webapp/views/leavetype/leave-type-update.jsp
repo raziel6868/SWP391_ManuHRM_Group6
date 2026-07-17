@@ -33,24 +33,9 @@
 
                         <div class="row g-4 mb-4">
                             <div class="col-md-6">
-                                <label class="form-label text-on-surface fw-medium mb-1">Mã loại nghỉ <span class="text-danger">*</span></label>
-                                <input type="text" name="code" class="form-control input-premium"
-                                       value="${leaveType.code}" required maxlength="30" pattern="^[A-Z][A-Z0-9_]*$" />
-                                <div class="form-text mt-1 text-on-surface-variant">
-                                    Dùng chữ in hoa, số và dấu gạch dưới.
-                                </div>
-                            </div>
-                            <div class="col-md-6">
                                 <label class="form-label text-on-surface fw-medium mb-1">Tên loại nghỉ <span class="text-danger">*</span></label>
                                 <input type="text" name="name" class="form-control input-premium"
                                        value="${leaveType.name}" required maxlength="100" />
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label text-on-surface fw-medium mb-1">Hưởng lương</label>
-                                <select name="isPaid" class="form-select input-premium">
-                                    <option value="true" ${leaveType.isPaid ? 'selected' : ''}>Có hưởng lương</option>
-                                    <option value="false" ${!leaveType.isPaid ? 'selected' : ''}>Không hưởng lương</option>
-                                </select>
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label text-on-surface fw-medium mb-1">Trạng thái hiện tại</label>

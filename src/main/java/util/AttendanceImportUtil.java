@@ -52,7 +52,6 @@ import org.apache.poi.ss.usermodel.WorkbookFactory;
  * dòng): so khớp với dữ liệu đã có trong DB, leave đã duyệt, OT đã duyệt... Chỉ
  * có CÁCH THỰC THI (all-or-nothing thay vì độc lập từng dòng) là thay đổi.
  *
- * Không còn phụ thuộc bảng shifts/shift_assignments (công ty đã bỏ phân ca).
  * Toàn công ty dùng chung 1 khung giờ chuẩn cố định (WorkScheduleConfig:
  * 08:00–17:00, break 60 phút) để tính trạng thái đi muộn và giờ công.
  */
@@ -192,10 +191,11 @@ public class AttendanceImportUtil {
 					continue;
 				}
 
-				// ── Conflict: có leave APPROVED nhưng vẫn có chấm công ──
-				if (checkIn != null && leaveRequestDAO.hasApprovedLeaveOnDate(userId, sqlDate)) {
+				// ── Conflict: có leave đã qua duyệt cấp 1/cuối nhưng vẫn có chấm công ──
+				if (checkIn != null && leaveRequestDAO.hasApprovedOrLevel1LeaveOnDate(userId, sqlDate)) {
 					errorMessages.add("Dòng " + displayRow + ": Nhân viên " + employeeCode
-							+ " đã có đơn nghỉ phép được duyệt ngày " + date + " nhưng file vẫn có dữ liệu chấm công.");
+							+ " đã có đơn nghỉ phép đã qua duyệt cấp 1 hoặc đã duyệt cuối ngày " + date
+							+ " nhưng file vẫn có dữ liệu chấm công.");
 					continue;
 				}
 
@@ -204,10 +204,10 @@ public class AttendanceImportUtil {
 					OvertimeRecord approvedOT = overtimeDAO.findApprovedOTForUserAndDate(userId, sqlDate);
 					if (approvedOT != null && approvedOT.getApprovedHours() != null) {
 						long otMinutes = approvedOT.getApprovedHours().multiply(BigDecimal.valueOf(60)).longValue();
-						LocalTime expectedCheckout = WorkScheduleConfig.STANDARD_END.plusMinutes(otMinutes);
+						LocalTime expectedCheckout = WorkScheduleConfig.OVERTIME_START.plusMinutes(otMinutes);
 						if (checkOut.isBefore(expectedCheckout)) {
 							errorMessages.add("Dòng " + displayRow + ": Nhân viên " + employeeCode + " có OT "
-									+ approvedOT.getApprovedHours() + "h được duyệt ngày " + date
+									+ formatHours(approvedOT.getApprovedHours()) + "h được duyệt ngày " + date
 									+ " nhưng giờ ra trong file là " + checkOut + " (cần đến " + expectedCheckout
 									+ " trở đi).");
 							continue;
@@ -381,6 +381,13 @@ public class AttendanceImportUtil {
 			minutes = 0;
 		}
 		return BigDecimal.valueOf(minutes).divide(BigDecimal.valueOf(60), 2, RoundingMode.HALF_UP);
+	}
+
+	private String formatHours(BigDecimal hours) {
+		if (hours == null) {
+			return "0";
+		}
+		return hours.stripTrailingZeros().toPlainString();
 	}
 
 	/**

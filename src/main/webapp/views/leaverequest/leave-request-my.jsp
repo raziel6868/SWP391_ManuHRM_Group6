@@ -57,10 +57,7 @@
                                     <tr>
                                         <td class="fw-medium text-on-surface">#${leaveRequest.id}</td>
                                         <td>
-                                            <span class="badge" style="background-color: var(--primary-fixed); color: var(--on-primary-fixed-variant);">
-                                                <c:out value="${leaveRequest.leaveTypeCode}" />
-                                            </span>
-                                            <span class="ms-2"><c:out value="${leaveRequest.leaveTypeName}" /></span>
+                                            <span class="fw-medium text-on-surface"><c:out value="${leaveRequest.leaveTypeName}" /></span>
                                         </td>
                                         <td>${leaveRequest.startDate}</td>
                                         <td>${leaveRequest.endDate}</td>

@@ -13,6 +13,8 @@ import model.EmployeeAllowance;
 
 public class EmployeeAllowanceDAO {
 
+	public static final String ATTENDANCE_BONUS_CODE = "ATTENDANCE_BONUS";
+
 	private static final String SELECT_BASE = """
 			SELECT ea.id, ea.user_id, ea.allowance_type_id, ea.amount,
 			       ea.effective_from, ea.effective_to, ea.is_active,
@@ -167,22 +169,34 @@ public class EmployeeAllowanceDAO {
 	}
 
 	public BigDecimal sumActiveAllowances(Long userId, int year, int month) {
-		return sumAllowances(userId, year, month, null);
+		return sumAllowances(userId, year, month, null, true);
+	}
+
+	public BigDecimal sumActiveAllowances(Long userId, int year, int month, boolean includeAttendanceBonus) {
+		return sumAllowances(userId, year, month, null, includeAttendanceBonus);
 	}
 
 	public BigDecimal sumInsuranceBasedAllowances(Long userId, int year, int month) {
-		return sumAllowances(userId, year, month, "INSURANCE");
+		return sumAllowances(userId, year, month, "INSURANCE", true);
+	}
+
+	public BigDecimal sumInsuranceBasedAllowances(Long userId, int year, int month, boolean includeAttendanceBonus) {
+		return sumAllowances(userId, year, month, "INSURANCE", includeAttendanceBonus);
 	}
 
 	public BigDecimal sumTaxableAllowances(Long userId, int year, int month) {
-		return sumAllowances(userId, year, month, "TAXABLE");
+		return sumAllowances(userId, year, month, "TAXABLE", true);
 	}
 
 	public BigDecimal sumNonTaxableAllowances(Long userId, int year, int month) {
-		return sumAllowances(userId, year, month, "NON_TAXABLE");
+		return sumAllowances(userId, year, month, "NON_TAXABLE", true);
 	}
 
-	private BigDecimal sumAllowances(Long userId, int year, int month, String mode) {
+	public BigDecimal sumNonTaxableAllowances(Long userId, int year, int month, boolean includeAttendanceBonus) {
+		return sumAllowances(userId, year, month, "NON_TAXABLE", includeAttendanceBonus);
+	}
+
+	private BigDecimal sumAllowances(Long userId, int year, int month, String mode, boolean includeAttendanceBonus) {
 		if (userId == null) {
 			return BigDecimal.ZERO;
 		}
@@ -205,6 +219,11 @@ public class EmployeeAllowanceDAO {
 		params.add(userId);
 		params.add(lastDay);
 		params.add(firstDay);
+
+		if (!includeAttendanceBonus) {
+			sql.append(" AND at.code <> ?");
+			params.add(ATTENDANCE_BONUS_CODE);
+		}
 
 		if ("INSURANCE".equals(mode)) {
 			sql.append(" AND at.is_insurance_based = TRUE");

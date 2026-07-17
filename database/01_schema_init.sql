@@ -26,7 +26,6 @@ DROP TABLE IF EXISTS salary_bases;
 DROP TABLE IF EXISTS overtime_records;
 DROP TABLE IF EXISTS attendance_corrections;
 DROP TABLE IF EXISTS attendance_records;
-DROP TABLE IF EXISTS shift_assignments;
 DROP TABLE IF EXISTS leave_requests;
 DROP TABLE IF EXISTS leave_balances;
 DROP TABLE IF EXISTS contracts;
@@ -35,7 +34,6 @@ DROP TABLE IF EXISTS users;
 DROP TABLE IF EXISTS role_permissions;
 DROP TABLE IF EXISTS permissions;
 DROP TABLE IF EXISTS contract_types;
-DROP TABLE IF EXISTS shifts;
 DROP TABLE IF EXISTS leave_types;
 DROP TABLE IF EXISTS job_titles;
 DROP TABLE IF EXISTS roles;
@@ -164,19 +162,15 @@ CREATE TABLE leave_types (
     name VARCHAR(100) NOT NULL,
     description TEXT NULL,
     is_paid BOOLEAN NOT NULL DEFAULT TRUE,
-    is_active BOOLEAN NOT NULL DEFAULT TRUE,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-);
-
-CREATE TABLE shifts (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    code VARCHAR(30) NOT NULL UNIQUE,
-    name VARCHAR(100) NOT NULL,
-    start_time TIME NOT NULL,
-    end_time TIME NOT NULL,
-    break_minutes INT NOT NULL DEFAULT 0,
-    is_night_shift BOOLEAN NOT NULL DEFAULT FALSE,
+    salary_paid_by ENUM('COMPANY', 'SOCIAL_INSURANCE', 'NONE') NOT NULL DEFAULT 'COMPANY',
+    is_annual_leave BOOLEAN NOT NULL DEFAULT FALSE,
+    requires_balance BOOLEAN NOT NULL DEFAULT FALSE,
+    base_days DECIMAL(5,2) NULL,
+    max_days DECIMAL(5,2) NULL,
+    has_seniority_bonus BOOLEAN NOT NULL DEFAULT FALSE,
+    seniority_interval_years INT NOT NULL DEFAULT 5,
+    seniority_bonus_days DECIMAL(5,2) NOT NULL DEFAULT 1.00,
+    day_count_method ENUM('WORKING_DAY', 'CALENDAR_DAY') NOT NULL DEFAULT 'WORKING_DAY',
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
@@ -260,6 +254,11 @@ CREATE TABLE leave_requests (
     end_date DATE NOT NULL,
     days DECIMAL(5,2) NOT NULL,
     reason TEXT NULL,
+    is_paid_snapshot BOOLEAN NOT NULL DEFAULT TRUE,
+    salary_paid_by_snapshot ENUM('COMPANY', 'SOCIAL_INSURANCE', 'NONE') NOT NULL DEFAULT 'COMPANY',
+    is_annual_leave_snapshot BOOLEAN NOT NULL DEFAULT FALSE,
+    requires_balance_snapshot BOOLEAN NOT NULL DEFAULT FALSE,
+    day_count_method_snapshot ENUM('WORKING_DAY', 'CALENDAR_DAY') NOT NULL DEFAULT 'WORKING_DAY',
     status ENUM('PENDING', 'APPROVED_LEVEL_1', 'APPROVED', 'REJECTED', 'CANCELLED') NOT NULL DEFAULT 'PENDING',
     level_1_approver_id BIGINT NULL,
     level_1_approved_at TIMESTAMP NULL,
@@ -275,21 +274,6 @@ CREATE TABLE leave_requests (
         FOREIGN KEY (level_1_approver_id) REFERENCES users(id) ON DELETE SET NULL,
     CONSTRAINT fk_leave_requests_approver
         FOREIGN KEY (approver_id) REFERENCES users(id) ON DELETE SET NULL
-);
-
-CREATE TABLE shift_assignments (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    user_id BIGINT NOT NULL,
-    shift_id BIGINT NOT NULL,
-    date DATE NOT NULL,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    CONSTRAINT fk_shift_assignments_user
-        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-    CONSTRAINT fk_shift_assignments_shift
-        FOREIGN KEY (shift_id) REFERENCES shifts(id) ON DELETE RESTRICT,
-    CONSTRAINT uq_shift_assignments_user_date
-        UNIQUE (user_id, date)
 );
 
 CREATE TABLE attendance_records (
@@ -355,7 +339,7 @@ CREATE TABLE overtime_records (
 
 CREATE TABLE payroll_settings (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    standard_work_days DECIMAL(5,2) NOT NULL DEFAULT 26.00,
+    standard_work_days DECIMAL(5,2) NOT NULL DEFAULT 22.00,
     standard_work_hours_per_day DECIMAL(5,2) NOT NULL DEFAULT 8.00,
     normal_overtime_rate DECIMAL(5,2) NOT NULL DEFAULT 1.50,
     effective_from DATE NOT NULL,
@@ -513,7 +497,7 @@ CREATE TABLE monthly_salaries (
     monthly_sheet_id BIGINT NOT NULL,
     user_id BIGINT NOT NULL,
     base_salary DECIMAL(15,2) NOT NULL DEFAULT 0,
-    standard_work_days DECIMAL(5,2) NOT NULL DEFAULT 26.00,
+    standard_work_days DECIMAL(5,2) NOT NULL DEFAULT 22.00,
     standard_work_hours_per_day DECIMAL(5,2) NOT NULL DEFAULT 8.00,
     actual_work_days DECIMAL(5,2) NOT NULL DEFAULT 0,
     paid_leave_days DECIMAL(5,2) NOT NULL DEFAULT 0,

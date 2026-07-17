@@ -82,6 +82,13 @@ public class PayrollGenerateServlet extends HttpServlet {
 			return;
 		}
 
+		List<String> configErrors = payrollDAO.validateRequiredConfiguration(year, month);
+		if (!configErrors.isEmpty()) {
+			session.setAttribute("errorMsg", String.join(" ", configErrors));
+			response.sendRedirect(request.getContextPath() + "/payroll-preview?year=" + year + "&month=" + month);
+			return;
+		}
+
 		List<PayrollPreviewRow> previewRows = payrollDAO.buildPayrollPreview(year, month);
 		if (previewRows == null || previewRows.isEmpty()) {
 			session.setAttribute("errorMsg", "Không có dữ liệu bảng lương để tạo cho kỳ đã chọn.");

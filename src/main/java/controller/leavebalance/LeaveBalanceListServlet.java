@@ -32,6 +32,9 @@ public class LeaveBalanceListServlet extends HttpServlet {
 
 		Integer selectedYear = parseInteger(normalizeText(request.getParameter("year")));
 		Long selectedDepartmentId = parseLong(normalizeText(request.getParameter("departmentId")));
+		if (selectedYear == null) {
+			selectedYear = Year.now().getValue();
+		}
 
 		int currentPage = parsePage(request.getParameter("page"));
 		int offset = (currentPage - 1) * PAGE_SIZE;

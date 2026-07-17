@@ -61,8 +61,11 @@ public class AttendanceCorrectionRejectServlet extends HttpServlet {
 
 		int year = correction.getAttendanceDate().toLocalDate().getYear();
 		int month = correction.getAttendanceDate().toLocalDate().getMonthValue();
-		if (!monthlySheetDAO.isHrCorrectionWindow(year, month)) {
-			session.setAttribute("errorMsg", "HR chỉ được xử lý điều chỉnh khi bảng công đang chờ HR duyệt.");
+		// Giống AttendanceCorrectionApproveServlet: chỉ chặn khi bảng công đã CLOSED,
+		// không còn phụ thuộc phải đúng trạng thái PENDING_HR.
+		if (monthlySheetDAO.isPeriodClosed(year, month)) {
+			session.setAttribute("errorMsg",
+					"Bảng công tháng " + month + "/" + year + " đã được chốt sổ, không thể xử lý điều chỉnh.");
 			response.sendRedirect(redirectUrl);
 			return;
 		}

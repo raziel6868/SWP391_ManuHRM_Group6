@@ -23,7 +23,6 @@ TRUNCATE TABLE salary_bases;
 TRUNCATE TABLE overtime_records;
 TRUNCATE TABLE attendance_corrections;
 TRUNCATE TABLE attendance_records;
-TRUNCATE TABLE shift_assignments;
 TRUNCATE TABLE leave_requests;
 TRUNCATE TABLE leave_balances;
 TRUNCATE TABLE contracts;
@@ -31,7 +30,6 @@ TRUNCATE TABLE users;
 TRUNCATE TABLE role_permissions;
 TRUNCATE TABLE permissions;
 TRUNCATE TABLE contract_types;
-TRUNCATE TABLE shifts;
 TRUNCATE TABLE leave_types;
 TRUNCATE TABLE job_titles;
 TRUNCATE TABLE roles;
@@ -69,8 +67,8 @@ INSERT INTO job_titles (id, name, description, is_active) VALUES
 INSERT INTO roles (id, name, display_name, description, is_system, is_active, hierarchy_level) VALUES
 (1, 'SYSADMIN', 'Quản trị hệ thống', 'Quản lý tài khoản, vai trò, quyền và cấu hình hệ thống', TRUE, TRUE, 4),
 (2, 'HR_MANAGER', 'Quản lý nhân sự', 'Quản lý hồ sơ nhân sự, master data, hợp đồng, payroll và báo cáo', TRUE, TRUE, 3),
-(3, 'PRODUCTION_SUPERVISOR', 'Quản đốc/Tổ trưởng sản xuất', 'Phân ca, lập danh sách OT, duyệt nghỉ và theo dõi công nhân dưới quyền', FALSE, TRUE, 2),
-(4, 'EMPLOYEE', 'Nhân viên/Công nhân', 'Người dùng thường: xem hồ sơ, lịch ca, phiếu lương và gửi đơn nghỉ', FALSE, TRUE, 1);
+(3, 'PRODUCTION_SUPERVISOR', 'Quản đốc/Tổ trưởng sản xuất', 'Lập danh sách OT, duyệt nghỉ và theo dõi công nhân dưới quyền', FALSE, TRUE, 2),
+(4, 'EMPLOYEE', 'Nhân viên/Công nhân', 'Người dùng thường: xem hồ sơ, phiếu lương và gửi đơn nghỉ', FALSE, TRUE, 1);
 
 -- =========================================================
 -- Iter 1 Permissions (IDs 1-31)
@@ -97,20 +95,15 @@ INSERT INTO permissions (id, code, name, url_pattern, module) VALUES
 (18, 'JOB_TITLE_UPDATE', 'Cập nhật Chức danh',           '/job-title-update', 'JOB_TITLE'),
 (19, 'JOB_TITLE_STATUS', 'Kích hoạt/Vô hiệu Chức danh',  '/job-title-status', 'JOB_TITLE'),
 (20, 'LEAVE_TYPE_VIEW',   'Xem danh sách Loại nghỉ',      '/leave-type-list',   'LEAVE_TYPE'),
-(21, 'LEAVE_TYPE_CREATE', 'Thêm Loại nghỉ',               '/leave-type-create', 'LEAVE_TYPE'),
 (22, 'LEAVE_TYPE_UPDATE', 'Cập nhật Loại nghỉ',           '/leave-type-update', 'LEAVE_TYPE'),
 (23, 'LEAVE_TYPE_STATUS', 'Kích hoạt/Vô hiệu Loại nghỉ',  '/leave-type-status', 'LEAVE_TYPE'),
-(24, 'SHIFT_VIEW',   'Xem danh sách Ca làm',      '/shift-list',   'SHIFT'),
-(25, 'SHIFT_CREATE', 'Thêm Ca làm',               '/shift-create', 'SHIFT'),
-(26, 'SHIFT_UPDATE', 'Cập nhật Ca làm',           '/shift-update', 'SHIFT'),
-(27, 'SHIFT_STATUS', 'Kích hoạt/Vô hiệu Ca làm',  '/shift-status', 'SHIFT'),
 (28, 'CONTRACT_TYPE_VIEW',   'Xem danh sách Loại hợp đồng',      '/contract-type-list',   'CONTRACT_TYPE'),
 (29, 'CONTRACT_TYPE_CREATE', 'Thêm Loại hợp đồng',               '/contract-type-create', 'CONTRACT_TYPE'),
 (30, 'CONTRACT_TYPE_UPDATE', 'Cập nhật Loại hợp đồng',           '/contract-type-update', 'CONTRACT_TYPE'),
 (31, 'CONTRACT_TYPE_STATUS', 'Kích hoạt/Vô hiệu Loại hợp đồng',  '/contract-type-status', 'CONTRACT_TYPE');
 
 -- =========================================================
--- Iter 2 + Iter 3 Permissions (IDs 32-114)
+-- Iter 2 + Iter 3 Permissions (IDs 32-117)
 -- =========================================================
 
 INSERT INTO permissions (id, code, name, url_pattern, module) VALUES
@@ -134,12 +127,6 @@ INSERT INTO permissions (id, code, name, url_pattern, module) VALUES
 (45, 'LEAVE_REQUEST_APPROVE_L1','Duyệt nghỉ phép cấp 1',    '/leave-request-approve',   'LEAVE'),
 (46, 'LEAVE_REQUEST_APPROVE_L2','Duyệt nghỉ phép cấp cuối',  '/leave-request-final-approve', 'LEAVE'),
 (47, 'LEAVE_REQUEST_REJECT',    'Từ chối đơn nghỉ phép',     '/leave-request-reject',    'LEAVE'),
--- Shift Assignment
-(48, 'SHIFT_ASSIGNMENT_VIEW',   'Xem phân ca',                '/shift-assignment-list',   'SHIFT'),
-(49, 'SHIFT_ASSIGNMENT_ASSIGN', 'Phân ca đơn',                '/shift-calendar',          'SHIFT'),
-(50, 'SHIFT_ASSIGNMENT_BULK',   'Phân ca hàng loạt',          '/shift-calendar-import',   'SHIFT'),
-(85, 'SHIFT_CALENDAR_VIEW',      'Xem lịch ca',                 '/shift-calendar',          'SHIFT'),
-(86, 'MY_SHIFT_VIEW',           'Xem ca làm của tôi',          '/my-shift',               'SHIFT'),
 -- Attendance
 (51, 'ATTENDANCE_VIEW',         'Xem chấm công tất cả',       '/attendance-list',         'ATTENDANCE'),
 (52, 'ATTENDANCE_MY_VIEW',      'Xem chấm công của tôi',       '/attendance-my',           'ATTENDANCE'),
@@ -154,8 +141,8 @@ INSERT INTO permissions (id, code, name, url_pattern, module) VALUES
 (60, 'OT_APPROVE',              'Duyệt tăng ca',              '/overtime-approve',        'OVERTIME'),
 (61, 'OT_CANCEL',               'Hủy tăng ca',                '/overtime-reject',         'OVERTIME'),
 -- Salary / Payroll
-(62, 'SALARY_BASE_VIEW',        'Xem lương cơ bản',           '/salary-base-list',        'SALARY'),
-(63, 'SALARY_BASE_SETUP',       'Cài đặt lương cơ bản',      '/salary-base-setup',       'SALARY'),
+(62, 'SALARY_BASE_VIEW',        '[Deprecated] Xem lương cơ bản',      '/salary-base-list',        'SALARY'),
+(63, 'SALARY_BASE_SETUP',       '[Deprecated] Cài đặt lương cơ bản', '/salary-base-setup',       'SALARY'),
 (64, 'PAYROLL_VIEW',            'Xem bảng lương',             '/payroll-preview',         'PAYROLL'),
 (65, 'PAYROLL_GENERATE',        'Tạo bảng lương tháng',      '/payroll-generate',        'PAYROLL'),
 (66, 'PAYSLIP_VIEW',            'Xem phiếu lương',            '/payslip-view',            'PAYSLIP'),
@@ -208,8 +195,9 @@ INSERT INTO permissions (id, code, name, url_pattern, module) VALUES
 (112,'MONTHLY_SHEET_REJECT',     'Từ chối bảng công tháng',           '/monthly-sheet-reject',                'PAYROLL'),
 (113,'PAYROLL_SETTING_VIEW',     'Xem cấu hình payroll',              '/payroll-setting-list',                'PAYROLL'),
 (114,'PAYROLL_SETTING_SETUP',    'Thiết lập cấu hình payroll',        '/payroll-setting-setup',               'PAYROLL'),
-(115, 'OT_UPDATE',               'Sửa tăng ca',                 '/overtime-edit',           'OVERTIME'),
-(116, 'OT_MY_VIEW',              'Xem tăng ca của tôi',         '/my-overtime',             'OVERTIME');
+(115,'OT_UPDATE',                'Sửa tăng ca',                       '/overtime-edit',                       'OVERTIME'),
+(116,'OT_MY_VIEW',               'Xem tăng ca của tôi',               '/my-overtime',                         'OVERTIME'),
+(117,'LEAVE_TYPE_DETAIL',        'Xem chi tiết Loại nghỉ',            '/leave-type-detail',                   'LEAVE_TYPE');
 
 -- =========================================================
 -- Iter 1 Role Permissions (Explicit)
@@ -222,8 +210,7 @@ INSERT INTO role_permissions (role_id, permission_id) VALUES
 (1, 11),
 (1, 12), (1, 13), (1, 14), (1, 15),
 (1, 16), (1, 17), (1, 18), (1, 19),
-(1, 20), (1, 21), (1, 22), (1, 23),
-(1, 24), (1, 25), (1, 26), (1, 27),
+(1, 20), (1, 22), (1, 23),
 (1, 28), (1, 29), (1, 30), (1, 31);
 
 -- HR_MANAGER: Iter 1 master data + user management
@@ -231,8 +218,7 @@ INSERT INTO role_permissions (role_id, permission_id) VALUES
 (2, 1), (2, 2), (2, 3), (2, 4), (2, 5),
 (2, 12), (2, 13), (2, 14), (2, 15),
 (2, 16), (2, 17), (2, 18), (2, 19),
-(2, 20), (2, 21), (2, 22), (2, 23),
-(2, 24), (2, 25), (2, 26), (2, 27),
+(2, 20), (2, 22), (2, 23),
 (2, 28), (2, 29), (2, 30), (2, 31);
 
 -- PRODUCTION_SUPERVISOR: Iter 1 user view only
@@ -249,16 +235,15 @@ INSERT INTO role_permissions (role_id, permission_id) VALUES
 INSERT INTO role_permissions (role_id, permission_id) VALUES
 (1, 32), (1, 33), (1, 34), (1, 35), (1, 36), (1, 37), (1, 38),
 (1, 39), (1, 40), (1, 41), (1, 42), (1, 43), (1, 44), (1, 45),
-(1, 46), (1, 47), (1, 48), (1, 49), (1, 50), (1, 51), (1, 52),
+(1, 46), (1, 47), (1, 51), (1, 52),
 (1, 53), (1, 54), (1, 55), (1, 56), (1, 57), (1, 58), (1, 59),
 (1, 60), (1, 61), (1, 62), (1, 63), (1, 64), (1, 65), (1, 66),
 (1, 67), (1, 68), (1, 69), (1, 70), (1, 71), (1, 72), (1, 73),
-(1, 74), (1, 75), (1, 76), (1, 77), (1, 83), (1, 84), (1, 85), (1, 86),
+(1, 74), (1, 75), (1, 76), (1, 77), (1, 83), (1, 84),
 (1, 87), (1, 88), (1, 89), (1, 90), (1, 91), (1, 92), (1, 93), (1, 94),
 (1, 95), (1, 96), (1, 97), (1, 98), (1, 99), (1, 100), (1, 101), (1, 102), (1, 103),
 (1, 104), (1, 105), (1, 106), (1, 107), (1, 108), (1, 109), (1, 110), (1, 111), (1, 112),
-(1, 113), (1, 114), (1, 115),
--- Holiday permissions for SYSADMIN
+(1, 113), (1, 114), (1, 115), (1, 117),-- Holiday permissions for SYSADMIN
 (1, 78), (1, 79), (1, 80), (1, 81);
 
 -- HR_MANAGER: explicit operational scope
@@ -268,10 +253,8 @@ INSERT INTO role_permissions (role_id, permission_id) VALUES
 (2, 83), (2, 84),
 -- Leave
 (2, 39), (2, 40), (2, 41), (2, 45), (2, 46), (2, 47),
--- Shift Assignment
-(2, 48), (2, 49), (2, 50), (2, 85), (2, 86),
 -- Attendance
-(2, 51), (2, 53), (2, 55), (2, 56), (2, 57),
+(2, 51), (2, 52), (2, 53), (2, 54), (2, 55), (2, 56), (2, 57), (2, 111),
 -- Overtime
 (2, 58),
 -- Salary / Payroll
@@ -280,8 +263,7 @@ INSERT INTO role_permissions (role_id, permission_id) VALUES
 (2, 94), (2, 95), (2, 96),
 (2, 97), (2, 98),
 (2, 99), (2, 100), (2, 101), (2, 102),
-(2, 103), (2, 104), (2, 105), (2, 113), (2, 114),
--- Monthly Sheet
+(2, 103), (2, 104), (2, 105), (2, 113), (2, 114), (2, 115), (2, 117),-- Monthly Sheet
 (2, 67), (2, 68), (2, 69), (2, 106), (2, 109), (2, 110), (2, 112),
 -- Reports
 (2, 70), (2, 71), (2, 72), (2, 73), (2, 74), (2, 75),
@@ -293,7 +275,7 @@ INSERT INTO role_permissions (role_id, permission_id) VALUES
 -- PRODUCTION_SUPERVISOR: exact operational scope
 INSERT INTO role_permissions (role_id, permission_id) VALUES
 (3, 41), (3, 45), (3, 47),
-(3, 48), (3, 51), (3, 57), (3, 85), (3, 86),
+(3, 51), (3, 52), (3, 54), (3, 57),
 (3, 58), (3, 59), (3, 61), (3, 115),
 (3, 107), (3, 108), (3, 111);
 
@@ -302,49 +284,7 @@ INSERT INTO role_permissions (role_id, permission_id) VALUES
 (4, 33), (4, 87), (4, 88),
 (4, 42), (4, 43), (4, 44),
 (4, 52), (4, 54), (4, 66),
-(4, 86);
-
--- =========================================================
--- Iter 2 + Iter 3 permissions
--- =========================================================
-
-INSERT INTO permissions (id, code, name, url_pattern, module)
-SELECT 85, 'SHIFT_CALENDAR_VIEW', 'View shift calendar', '/shift-calendar', 'SHIFT'
-WHERE NOT EXISTS (SELECT 1 FROM permissions WHERE code = 'SHIFT_CALENDAR_VIEW');
-
-INSERT INTO permissions (id, code, name, url_pattern, module)
-SELECT 86, 'MY_SHIFT_VIEW', 'View my shift', '/my-shift', 'SHIFT'
-WHERE NOT EXISTS (SELECT 1 FROM permissions WHERE code = 'MY_SHIFT_VIEW');
-
--- SHIFT_CALENDAR_VIEW (85) for SYSADMIN, HR_MANAGER, PRODUCTION_SUPERVISOR
-INSERT INTO role_permissions (role_id, permission_id)
-SELECT 1, 85
-WHERE NOT EXISTS (SELECT 1 FROM role_permissions WHERE role_id = 1 AND permission_id = 85);
-
-INSERT INTO role_permissions (role_id, permission_id)
-SELECT 2, 85
-WHERE NOT EXISTS (SELECT 1 FROM role_permissions WHERE role_id = 2 AND permission_id = 85);
-
-INSERT INTO role_permissions (role_id, permission_id)
-SELECT 3, 85
-WHERE NOT EXISTS (SELECT 1 FROM role_permissions WHERE role_id = 3 AND permission_id = 85);
-
--- MY_SHIFT_VIEW (86) for ALL roles
-INSERT INTO role_permissions (role_id, permission_id)
-SELECT 1, 86
-WHERE NOT EXISTS (SELECT 1 FROM role_permissions WHERE role_id = 1 AND permission_id = 86);
-
-INSERT INTO role_permissions (role_id, permission_id)
-SELECT 2, 86
-WHERE NOT EXISTS (SELECT 1 FROM role_permissions WHERE role_id = 2 AND permission_id = 86);
-
-INSERT INTO role_permissions (role_id, permission_id)
-SELECT 3, 86
-WHERE NOT EXISTS (SELECT 1 FROM role_permissions WHERE role_id = 3 AND permission_id = 86);
-
-INSERT INTO role_permissions (role_id, permission_id)
-SELECT 4, 86
-WHERE NOT EXISTS (SELECT 1 FROM role_permissions WHERE role_id = 4 AND permission_id = 86);
+(4, 116);
 
 INSERT INTO permissions (id, code, name, url_pattern, module)
 SELECT 87, 'CONTRACT_RENEW_REQUEST', 'Request contract renewal', '/contract-renew-request', 'CONTRACT'
@@ -387,17 +327,29 @@ WHERE NOT EXISTS (SELECT 1 FROM role_permissions WHERE role_id = 4 AND permissio
 -- Iter 1 master data
 -- =========================================================
 
-INSERT INTO leave_types (id, code, name, description, is_paid, is_active) VALUES
-(1, 'ANNUAL', 'Nghỉ phép năm', 'Nghỉ phép hưởng lương theo quota năm', TRUE, TRUE),
-(2, 'SICK', 'Nghỉ bệnh', 'Nghỉ do vấn đề sức khỏe', TRUE, TRUE),
-(3, 'UNPAID', 'Nghỉ không lương', 'Nghỉ không hưởng lương', FALSE, TRUE),
-(4, 'OTHER', 'Nghỉ khác', 'Các loại nghỉ khác', FALSE, TRUE);
-
-INSERT INTO shifts (id, code, name, start_time, end_time, break_minutes, is_night_shift, is_active) VALUES
-(1, 'OFFICE', 'Ca hành chính', '08:00:00', '17:00:00', 60, FALSE, TRUE),
-(2, 'MORNING', 'Ca sáng', '06:00:00', '14:00:00', 30, FALSE, TRUE),
-(3, 'AFTERNOON', 'Ca chiều', '14:00:00', '22:00:00', 30, FALSE, TRUE),
-(4, 'NIGHT', 'Ca đêm', '22:00:00', '06:00:00', 30, TRUE, TRUE);
+INSERT INTO leave_types
+    (id, code, name, description, is_paid, salary_paid_by, is_annual_leave,
+     requires_balance, base_days, max_days, has_seniority_bonus,
+     seniority_interval_years, seniority_bonus_days, day_count_method, is_active)
+VALUES
+(1, 'ANNUAL_NORMAL', 'Nghỉ phép năm',
+ 'Nghỉ phép năm hưởng lương, tính hạn mức theo hợp đồng đầu tiên và thâm niên.',
+ TRUE, 'COMPANY', TRUE, TRUE, 12.00, NULL, TRUE, 5, 1.00, 'WORKING_DAY', TRUE),
+(2, 'SICK_LEAVE', 'Nghỉ ốm hưởng chế độ BHXH',
+ 'Nghỉ ốm thuộc chế độ bảo hiểm xã hội; công ty không trả lương trực tiếp và không trừ phép năm.',
+ FALSE, 'SOCIAL_INSURANCE', FALSE, FALSE, NULL, NULL, FALSE, 5, 1.00, 'WORKING_DAY', TRUE),
+(3, 'MARRIAGE', 'Nghỉ kết hôn',
+ 'Nghỉ việc riêng hưởng lương khi người lao động kết hôn, tối đa 3 ngày mỗi đơn.',
+ TRUE, 'COMPANY', FALSE, FALSE, NULL, 3.00, FALSE, 5, 1.00, 'WORKING_DAY', TRUE),
+(4, 'MATERNITY', 'Nghỉ thai sản',
+ 'Nghỉ thai sản do BHXH chi trả, tối đa 180 ngày lịch mỗi đơn.',
+ FALSE, 'SOCIAL_INSURANCE', FALSE, FALSE, NULL, 180.00, FALSE, 5, 1.00, 'CALENDAR_DAY', TRUE),
+(5, 'UNPAID_AGREEMENT', 'Nghỉ không lương thỏa thuận',
+ 'Nghỉ không hưởng lương theo thỏa thuận với quản lý, không giới hạn ngày trong hệ thống.',
+ FALSE, 'NONE', FALSE, FALSE, NULL, NULL, FALSE, 5, 1.00, 'WORKING_DAY', TRUE),
+(6, 'BEREAVEMENT_CLOSE', 'Nghỉ tang chế người thân gần',
+ 'Nghỉ việc riêng hưởng lương khi người thân gần mất, tối đa 3 ngày mỗi đơn.',
+ TRUE, 'COMPANY', FALSE, FALSE, NULL, 3.00, FALSE, 5, 1.00, 'WORKING_DAY', TRUE);
 
 INSERT INTO contract_types (id, code, name, description, is_active) VALUES
 (1, 'PROBATION', 'Hợp đồng thử việc', 'Hợp đồng thử việc ban đầu', TRUE),
@@ -447,7 +399,7 @@ VALUES
 INSERT INTO payroll_settings
     (standard_work_days, standard_work_hours_per_day, normal_overtime_rate, effective_from, effective_to)
 VALUES
-    (26.00, 8.00, 1.50, '2024-01-01', NULL);
+    (22.00, 8.00, 1.50, '2024-01-01', NULL);
 
 INSERT INTO insurance_rates
     (social_insurance_employee_rate, health_insurance_employee_rate, unemployment_insurance_employee_rate,
@@ -459,25 +411,25 @@ VALUES
 INSERT INTO personal_tax_settings
     (personal_deduction, dependent_deduction, effective_from, effective_to)
 VALUES
-    (11000000.00, 4400000.00, '2024-01-01', NULL);
+    (15500000.00, 6200000.00, '2026-01-01', NULL);
 
 INSERT INTO personal_tax_brackets
     (bracket_order, income_from, income_to, tax_rate, effective_from, effective_to)
 VALUES
-    (1,        0.00,  5000000.00, 0.0500, '2024-01-01', NULL),
-    (2,  5000000.00, 10000000.00, 0.1000, '2024-01-01', NULL),
-    (3, 10000000.00, 18000000.00, 0.1500, '2024-01-01', NULL),
-    (4, 18000000.00, 32000000.00, 0.2000, '2024-01-01', NULL),
-    (5, 32000000.00, 52000000.00, 0.2500, '2024-01-01', NULL),
-    (6, 52000000.00, 80000000.00, 0.3000, '2024-01-01', NULL),
-    (7, 80000000.00,        NULL, 0.3500, '2024-01-01', NULL);
+    (1,         0.00,  10000000.00, 0.0500, '2026-01-01', NULL),
+    (2,  10000000.00,  30000000.00, 0.1000, '2026-01-01', NULL),
+    (3,  30000000.00,  60000000.00, 0.2000, '2026-01-01', NULL),
+    (4,  60000000.00, 100000000.00, 0.3000, '2026-01-01', NULL),
+    (5, 100000000.00,         NULL, 0.3500, '2026-01-01', NULL);
 
 INSERT INTO allowance_types
     (id, code, name, description, is_taxable, is_insurance_based, is_active)
 VALUES
     (1, 'MEAL', 'Phụ cấp ăn trưa', 'Phụ cấp ăn ca cố định hàng tháng', FALSE, FALSE, TRUE),
     (2, 'POSITION', 'Phụ cấp vị trí', 'Phụ cấp vị trí tính vào thu nhập và căn cứ bảo hiểm', TRUE, TRUE, TRUE),
-    (3, 'PHONE', 'Phụ cấp điện thoại', 'Phụ cấp điện thoại khoán cố định hàng tháng', FALSE, FALSE, TRUE);
+    (3, 'PHONE', 'Phụ cấp điện thoại', 'Phụ cấp điện thoại khoán cố định hàng tháng', FALSE, FALSE, TRUE),
+    (4, 'ATTENDANCE_BONUS', 'Phụ cấp chuyên cần',
+     'Chỉ được cộng khi nhân viên không đi muộn và không vắng không phép trong kỳ lương.', TRUE, FALSE, TRUE);
 
 INSERT INTO contracts (user_id, contract_type_id, start_date, end_date, salary, file_path, status) VALUES
 (1, 2, '2024-01-01', '2029-12-31', 35000000, '/contracts/director_minhanh_full_time.pdf', 'ACTIVE'),
@@ -494,37 +446,64 @@ INSERT INTO contracts (user_id, contract_type_id, start_date, end_date, salary, 
 (14, 2, '2024-01-01', '2029-12-31', 8050000, '/contracts/worker_c_hai_full_time.pdf', 'ACTIVE'),
 (15, 2, '2024-01-01', '2029-12-31', 8000000, '/contracts/worker_c_kiet_full_time.pdf', 'ACTIVE');
 
+INSERT INTO leave_balances (user_id, leave_type_id, year, total_days, used_days)
+SELECT c.user_id,
+       1 AS leave_type_id,
+       2026 AS year,
+       12.00 + FLOOR(TIMESTAMPDIFF(YEAR, MIN(c.start_date), '2026-12-31') / 5) AS total_days,
+       0.00 AS used_days
+FROM contracts c
+GROUP BY c.user_id;
+
 -- Attendance, correction, OT and payroll rows are intentionally not seeded
 -- here so the demo flow can start clean from Excel import.
 -- Keep one OPEN monthly sheet for 6/2026 so the HR monthly-sheet screen has
 -- a visible baseline right after DB reset.
 
-INSERT INTO monthly_sheets (year, month, status) VALUES
-(2026, 6, 'OPEN');
+-- INSERT INTO monthly_sheets (year, month, status) VALUES
+-- (2026, 6, 'OPEN');
 
-INSERT INTO salary_bases (user_id, base_salary, insurance_salary, effective_from) VALUES
-(1, 35000000.00, NULL, '2024-01-01'),
-(2, 22000000.00, NULL, '2024-01-01'),
-(3, 14000000.00, NULL, '2024-01-01'),
-(4, 28000000.00, NULL, '2024-01-01'),
-(5, 16000000.00, NULL, '2024-01-01'),
-(6, 15500000.00, NULL, '2024-01-01'),
-(7, 18000000.00, NULL, '2024-01-01'),
-(8, 8000000.00, NULL, '2024-01-01'),
-(9, 8200000.00, NULL, '2024-01-01'),
-(10, 18000000.00, NULL, '2024-01-01'),
-(11, 8100000.00, NULL, '2024-01-01'),
-(12, 8000000.00, NULL, '2024-01-01'),
-(13, 18000000.00, NULL, '2024-01-01'),
-(14, 8050000.00, NULL, '2024-01-01'),
-(15, 8000000.00, NULL, '2024-01-01');
+-- Company-wide allowance configuration.
+-- MEAL and ATTENDANCE_BONUS apply to every active employee.
+INSERT INTO employee_allowances
+    (user_id, allowance_type_id, amount, effective_from, effective_to, is_active)
+SELECT u.id, at.id, 500000.00, '2024-01-01', NULL, TRUE
+FROM users u
+JOIN allowance_types at ON at.code = 'MEAL'
+WHERE u.is_active = TRUE;
 
 INSERT INTO employee_allowances
     (user_id, allowance_type_id, amount, effective_from, effective_to, is_active)
-VALUES
-    (8, 1, 500000.00, '2024-01-01', NULL, TRUE),
-    (8, 2, 1000000.00, '2024-01-01', NULL, TRUE),
-    (8, 3, 300000.00, '2024-01-01', NULL, TRUE);
+SELECT u.id, at.id, 1000000.00, '2024-01-01', NULL, TRUE
+FROM users u
+JOIN allowance_types at ON at.code = 'ATTENDANCE_BONUS'
+WHERE u.is_active = TRUE;
+
+-- PHONE applies to office employees and production supervisors.
+INSERT INTO employee_allowances
+    (user_id, allowance_type_id, amount, effective_from, effective_to, is_active)
+SELECT u.id, at.id, 300000.00, '2024-01-01', NULL, TRUE
+FROM users u
+JOIN allowance_types at ON at.code = 'PHONE'
+WHERE u.is_active = TRUE
+  AND u.employee_type = 'OFFICE';
+
+-- POSITION applies only to management/supervisor job titles.
+INSERT INTO employee_allowances
+    (user_id, allowance_type_id, amount, effective_from, effective_to, is_active)
+SELECT u.id,
+       at.id,
+       CASE
+           WHEN u.job_title_id = 1 THEN 3000000.00
+           WHEN u.job_title_id IN (2, 4, 6) THEN 1000000.00
+       END AS amount,
+       '2024-01-01',
+       NULL,
+       TRUE
+FROM users u
+JOIN allowance_types at ON at.code = 'POSITION'
+WHERE u.is_active = TRUE
+  AND u.job_title_id IN (1, 2, 4, 6);
 
 INSERT INTO audit_logs (event_code, entity_type, entity_id, actor_id, actor_name, changed_fields, ip_address) VALUES
 ('SYSTEM_RESET', 'DATABASE', 1, 2, 'it_manager_khoa', 'Reset to Iter 3 baseline for manual attendance import and payroll demo', '127.0.0.1');

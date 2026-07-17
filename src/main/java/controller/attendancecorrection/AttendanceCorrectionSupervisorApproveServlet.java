@@ -59,9 +59,12 @@ public class AttendanceCorrectionSupervisorApproveServlet extends HttpServlet {
 		int year = correction.getAttendanceDate().toLocalDate().getYear();
 		int month = correction.getAttendanceDate().toLocalDate().getMonthValue();
 
-		if (!monthlySheetDAO.isSupervisorCorrectionWindow(year, month)) {
+		// Trước đây chỉ cho quản đốc xử lý khi bảng công đang ở đúng trạng thái
+		// PENDING_SUPERVISOR (tức phải chờ HR "mở duyệt bảng công" trước). Giờ quản
+		// đốc có thể duyệt/từ chối bất cứ lúc nào, chỉ chặn khi bảng công đã CLOSED.
+		if (monthlySheetDAO.isPeriodClosed(year, month)) {
 			session.setAttribute("errorMsg",
-					"Quản đốc chỉ được xử lý điều chỉnh khi bảng công đang chờ quản đốc duyệt.");
+					"Bảng công tháng " + month + "/" + year + " đã được chốt sổ, không thể xử lý điều chỉnh.");
 			response.sendRedirect(redirectUrl);
 			return;
 		}

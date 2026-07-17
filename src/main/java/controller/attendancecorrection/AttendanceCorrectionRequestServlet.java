@@ -13,9 +13,11 @@ import java.io.IOException;
 import java.sql.Time;
 import java.time.LocalTime;
 import java.time.format.DateTimeParseException;
+import java.util.List;
 import model.AttendanceCorrection;
 import model.AttendanceRecord;
 import model.MonthlySheet;
+import model.Permission;
 import model.User;
 import util.ValidationUtil;
 
@@ -38,7 +40,10 @@ public class AttendanceCorrectionRequestServlet extends HttpServlet {
 			return;
 		}
 
-		if (!"EMPLOYEE".equals(authUser.getRoleName())) {
+		// Trước đây chỉ EMPLOYEE được gửi yêu cầu điều chỉnh công. Giờ mở rộng theo
+		// permission ATTENDANCE_CORRECTION_REQUEST để quản đốc (PRODUCTION_SUPERVISOR)
+		// và HR (HR_MANAGER) cũng có thể tự gửi yêu cầu điều chỉnh cho chính mình.
+		if (!hasPermission(session, "ATTENDANCE_CORRECTION_REQUEST")) {
 			response.sendError(HttpServletResponse.SC_FORBIDDEN);
 			return;
 		}
@@ -58,9 +63,14 @@ public class AttendanceCorrectionRequestServlet extends HttpServlet {
 		int month = record.getDate().toLocalDate().getMonthValue();
 		String redirectUrl = request.getContextPath() + "/attendance-my?year=" + year + "&month=" + month;
 
+		// Trước đây bắt buộc tháng phải đang ở trạng thái OPEN mới được gửi yêu cầu,
+		// khiến việc gửi/duyệt điều chỉnh bị khoá cứng theo tiến độ workflow chốt
+		// bảng công tháng (HR phải mở duyệt trước). Giờ chỉ chặn khi bảng công đã
+		// CLOSED (đã chốt sổ hoàn toàn) — dữ liệu lịch sử không được đổi nữa.
 		MonthlySheet sheet = monthlySheetDAO.getOrCreate(year, month);
-		if (sheet == null || !"OPEN".equals(sheet.getStatus())) {
-			session.setAttribute("errorMsg", "Chỉ có thể gửi điều chỉnh công khi tháng đang ở trạng thái OPEN.");
+		if (sheet != null && "CLOSED".equals(sheet.getStatus())) {
+			session.setAttribute("errorMsg", "Bảng công tháng " + month + "/" + year
+					+ " đã được chốt sổ, không thể gửi yêu cầu điều chỉnh công.");
 			response.sendRedirect(redirectUrl);
 			return;
 		}
@@ -86,11 +96,20 @@ public class AttendanceCorrectionRequestServlet extends HttpServlet {
 			return;
 		}
 
-		Long supervisorId = authUser.getManagerId();
-		if (supervisorId == null) {
-			session.setAttribute("errorMsg", "Tài khoản của bạn chưa được gán quản đốc. Vui lòng liên hệ HR.");
-			response.sendRedirect(redirectUrl);
-			return;
+		// Quản đốc (PRODUCTION_SUPERVISOR) và HR (HR_MANAGER) gửi yêu cầu cho chính
+		// mình thì không có "quản đốc cấp trên" để duyệt bước 1 như worker thường —
+		// cho phép họ tự duyệt bước 1 bằng cách gán chính họ làm supervisor của
+		// request. Bước 2 vẫn luôn do HR xử lý như bình thường.
+		Long supervisorId;
+		if ("PRODUCTION_SUPERVISOR".equals(authUser.getRoleName()) || "HR_MANAGER".equals(authUser.getRoleName())) {
+			supervisorId = authUser.getId();
+		} else {
+			supervisorId = authUser.getManagerId();
+			if (supervisorId == null) {
+				session.setAttribute("errorMsg", "Tài khoản của bạn chưa được gán quản đốc. Vui lòng liên hệ HR.");
+				response.sendRedirect(redirectUrl);
+				return;
+			}
 		}
 
 		AttendanceCorrection correction = new AttendanceCorrection();
@@ -103,7 +122,13 @@ public class AttendanceCorrectionRequestServlet extends HttpServlet {
 
 		boolean success = correctionDAO.insert(correction);
 		if (success) {
-			session.setAttribute("successMsg", "Gửi yêu cầu điều chỉnh công thành công. Đang chờ quản đốc xác nhận.");
+			if (supervisorId.equals(authUser.getId())) {
+				session.setAttribute("successMsg",
+						"Gửi yêu cầu điều chỉnh công thành công. Bạn có thể tự duyệt bước 1 tại mục Điều chỉnh công, sau đó chờ HR duyệt bước 2.");
+			} else {
+				session.setAttribute("successMsg",
+						"Gửi yêu cầu điều chỉnh công thành công. Đang chờ quản đốc xác nhận.");
+			}
 		} else {
 			session.setAttribute("errorMsg", "Không thể gửi yêu cầu điều chỉnh công. Vui lòng thử lại.");
 		}
@@ -130,5 +155,19 @@ public class AttendanceCorrectionRequestServlet extends HttpServlet {
 		} catch (DateTimeParseException e) {
 			return null;
 		}
+	}
+
+	@SuppressWarnings("unchecked")
+	private boolean hasPermission(HttpSession session, String code) {
+		List<Permission> permissions = (List<Permission>) session.getAttribute("permissions");
+		if (permissions == null) {
+			return false;
+		}
+		for (Permission permission : permissions) {
+			if (code.equals(permission.getCode())) {
+				return true;
+			}
+		}
+		return false;
 	}
 }

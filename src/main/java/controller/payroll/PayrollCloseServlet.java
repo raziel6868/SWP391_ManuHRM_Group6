@@ -42,27 +42,26 @@ public class PayrollCloseServlet extends HttpServlet {
 			return;
 		}
 
+		String redirectUrl = payrollPreviewUrl(request, sheet.getYear(), sheet.getMonth());
+
 		if (!"CLOSED".equals(sheet.getStatus())) {
 			session.setAttribute("errorMsg", "Bảng công tháng " + sheet.getMonth() + "/" + sheet.getYear()
 					+ " chưa đóng hoặc đã được mở lại, không thể chốt bảng lương.");
-			response.sendRedirect(request.getContextPath() + "/payroll-preview?year=" + sheet.getYear() + "&month="
-					+ sheet.getMonth());
+			response.sendRedirect(redirectUrl);
 			return;
 		}
 
 		if (!monthlySalaryDAO.hasGeneratedRows(sheet.getId())) {
 			session.setAttribute("errorMsg",
 					"Chưa có dữ liệu bảng lương tháng " + sheet.getMonth() + "/" + sheet.getYear() + " để chốt.");
-			response.sendRedirect(request.getContextPath() + "/payroll-preview?year=" + sheet.getYear() + "&month="
-					+ sheet.getMonth());
+			response.sendRedirect(redirectUrl);
 			return;
 		}
 
 		if (!monthlySalaryDAO.hasAnyDraft(sheet.getId())) {
 			session.setAttribute("errorMsg",
 					"Bảng lương tháng " + sheet.getMonth() + "/" + sheet.getYear() + " đã được chốt trước đó.");
-			response.sendRedirect(request.getContextPath() + "/payroll-preview?year=" + sheet.getYear() + "&month="
-					+ sheet.getMonth());
+			response.sendRedirect(redirectUrl);
 			return;
 		}
 
@@ -74,8 +73,17 @@ public class PayrollCloseServlet extends HttpServlet {
 			session.setAttribute("errorMsg", "Không thể chốt bảng lương. Vui lòng thử lại.");
 		}
 
-		response.sendRedirect(
-				request.getContextPath() + "/payroll-preview?year=" + sheet.getYear() + "&month=" + sheet.getMonth());
+		response.sendRedirect(redirectUrl);
+	}
+
+	private String payrollPreviewUrl(HttpServletRequest request, int year, int month) {
+		StringBuilder url = new StringBuilder(request.getContextPath()).append("/payroll-preview?year=").append(year)
+				.append("&month=").append(month);
+		String departmentId = request.getParameter("departmentId");
+		if (departmentId != null && !departmentId.isBlank()) {
+			url.append("&departmentId=").append(departmentId.trim());
+		}
+		return url.toString();
 	}
 
 	private MonthlySheet resolveSheet(HttpServletRequest request) {

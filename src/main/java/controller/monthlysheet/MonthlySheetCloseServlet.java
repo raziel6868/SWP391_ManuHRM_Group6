@@ -29,7 +29,7 @@ public class MonthlySheetCloseServlet extends HttpServlet {
 		}
 
 		session.setAttribute("errorMsg",
-				"Đường dẫn legacy /monthly-sheet-close không còn được dùng. Vui lòng đóng sổ qua luồng phê duyệt của Giám đốc.");
+				"Đường dẫn legacy /monthly-sheet-close không còn được dùng. Vui lòng đóng sổ qua bước HR chốt.");
 		response.sendRedirect(request.getContextPath() + "/monthly-sheet-list");
 	}
 

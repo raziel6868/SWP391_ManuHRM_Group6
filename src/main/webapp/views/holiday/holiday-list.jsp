@@ -54,7 +54,7 @@
                             </div>
                             <div class="d-flex align-items-center gap-2">
                                 <select name="year" class="input-premium">
-                                    <c:forEach var="y" begin="2020" end="2030">
+                                    <c:forEach var="y" items="${yearOptions}">
                                         <option value="${y}" ${y == year ? 'selected' : ''}>${y}</option>
                                     </c:forEach>
                                 </select>

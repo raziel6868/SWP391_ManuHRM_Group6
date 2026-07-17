@@ -12,6 +12,7 @@ import model.Holiday;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.util.List;
+import util.YearOptionUtil;
 
 @WebServlet(name = "HolidayListServlet", urlPatterns = {"/holiday-list"})
 public class HolidayListServlet extends HttpServlet {
@@ -68,6 +69,7 @@ public class HolidayListServlet extends HttpServlet {
 		request.setAttribute("currentPage", page);
 		request.setAttribute("totalPages", totalPages);
 		request.setAttribute("year", year);
+		request.setAttribute("yearOptions", YearOptionUtil.configYears(holidayDAO.getAvailableYears()));
 		request.setAttribute("keyword", keyword);
 
 		request.getRequestDispatcher("/views/holiday/holiday-list.jsp").forward(request, response);

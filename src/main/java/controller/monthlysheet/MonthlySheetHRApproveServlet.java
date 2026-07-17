@@ -1,5 +1,6 @@
 package controller.monthlysheet;
 
+import dal.AttendanceCorrectionDAO;
 import dal.DBContext;
 import dal.MonthlySheetDAO;
 import jakarta.servlet.ServletException;
@@ -19,6 +20,7 @@ import model.User;
 public class MonthlySheetHRApproveServlet extends HttpServlet {
 
 	private final MonthlySheetDAO monthlySheetDAO = new MonthlySheetDAO();
+	private final AttendanceCorrectionDAO correctionDAO = new AttendanceCorrectionDAO();
 
 	@Override
 	protected void doPost(HttpServletRequest request, HttpServletResponse response)
@@ -54,8 +56,9 @@ public class MonthlySheetHRApproveServlet extends HttpServlet {
 						sheet.getMonth());
 				if (!closeConflicts.isEmpty()) {
 					conn.rollback();
-					session.setAttribute("errorMsg", "Không thể chốt HR vì dữ liệu Leave/OT/Attendance còn conflict: "
-							+ String.join(" | ", closeConflicts));
+					session.setAttribute("monthlySheetConflictTitle",
+							"Không thể chốt HR vì dữ liệu Leave/OT/Attendance còn conflict.");
+					session.setAttribute("monthlySheetConflicts", closeConflicts);
 					response.sendRedirect(request.getContextPath() + "/monthly-sheet-list");
 					return;
 				}
@@ -68,9 +71,16 @@ public class MonthlySheetHRApproveServlet extends HttpServlet {
 					return;
 				}
 
+				int rejected = correctionDAO.rejectAllPendingInMonth(conn, sheet.getYear(), sheet.getMonth(),
+						authUser.getId(),
+						"Bảng công tháng " + sheet.getMonth() + "/" + sheet.getYear() + " đã được HR chốt.");
+
 				conn.commit();
-				session.setAttribute("successMsg", "Đã chốt bảng công tháng " + sheet.getMonth() + "/" + sheet.getYear()
-						+ ". Đang chờ Giám đốc phê duyệt cuối.");
+				String msg = "Đã chốt và đóng sổ bảng công tháng " + sheet.getMonth() + "/" + sheet.getYear() + ".";
+				if (rejected > 0) {
+					msg += " Đã tự động từ chối " + rejected + " yêu cầu điều chỉnh còn tồn đọng.";
+				}
+				session.setAttribute("successMsg", msg);
 			} catch (Exception e) {
 				conn.rollback();
 				throw e;

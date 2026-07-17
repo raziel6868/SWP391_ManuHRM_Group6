@@ -20,7 +20,7 @@
                         ${empty payrollSetting.id ? 'Thêm cấu hình payroll' : 'Cập nhật cấu hình payroll'}
                     </h2>
                     <p class="body-md text-on-surface-variant mb-0">
-                        Cấu hình tham số chung để tính ngày công chuẩn và tiền OT cho từng kỳ lương.
+                        Cấu hình tham số chung cho giờ công, OT và giá trị ngày công chuẩn dự phòng.
                     </p>
                 </div>
 
@@ -37,7 +37,7 @@
 
                         <div class="row g-4 mb-4">
                             <div class="col-md-4">
-                                <label class="form-label text-on-surface fw-medium mb-1">Ngày công chuẩn <span class="text-danger">*</span></label>
+                                <label class="form-label text-on-surface fw-medium mb-1">Ngày công chuẩn dự phòng <span class="text-danger">*</span></label>
                                 <input type="number" name="standardWorkDays" class="form-control input-premium"
                                        min="0.01" step="0.01" required value="${payrollSetting.standardWorkDays}" />
                             </div>
@@ -66,7 +66,7 @@
                         <div class="alert alert-light border d-flex align-items-start gap-2 mb-4" role="status">
                             <span class="material-symbols-outlined text-primary">info</span>
                             <div class="small">
-                                Tham số này đang được dùng trong payroll preview và payroll generate.
+                                Payroll tự tính ngày công chuẩn theo lịch làm việc T2-T6 của từng tháng; tham số ngày công chuẩn ở đây chỉ dùng như giá trị dự phòng.
                                 Công thức OT hiện tại: giờ OT duyệt x lương giờ x hệ số OT.
                             </div>
                         </div>

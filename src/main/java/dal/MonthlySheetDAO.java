@@ -85,6 +85,21 @@ public class MonthlySheetDAO {
 		return list;
 	}
 
+	public List<Integer> getAvailableYears() {
+		List<Integer> years = new ArrayList<>();
+		String sql = "SELECT DISTINCT year FROM monthly_sheets ORDER BY year DESC";
+		try (Connection conn = DBContext.getConnection();
+				PreparedStatement ps = conn.prepareStatement(sql);
+				ResultSet rs = ps.executeQuery()) {
+			while (rs.next()) {
+				years.add(rs.getInt("year"));
+			}
+		} catch (SQLException e) {
+			System.err.println("MonthlySheetDAO.getAvailableYears() ERROR: " + e.getMessage());
+		}
+		return years;
+	}
+
 	public MonthlySheet getById(Long id) {
 		if (id == null)
 			return null;
@@ -202,7 +217,7 @@ public class MonthlySheetDAO {
 	}
 
 	/**
-	 * HR chốt — PENDING_HR → PENDING_DIRECTOR.
+	 * HR chốt — PENDING_HR → CLOSED.
 	 */
 	public boolean hrApprove(Long sheetId, Long hrUserId) {
 		try (Connection conn = DBContext.getConnection()) {
@@ -216,13 +231,15 @@ public class MonthlySheetDAO {
 	public boolean hrApprove(Connection conn, Long sheetId, Long hrUserId) throws SQLException {
 		String sql = """
 				UPDATE monthly_sheets
-				SET status = 'PENDING_DIRECTOR',
-				    hr_approved_by = ?, hr_approved_at = NOW()
+				SET status = 'CLOSED',
+				    hr_approved_by = ?, hr_approved_at = NOW(),
+				    closed_by = ?, closed_at = NOW()
 				WHERE id = ? AND status = 'PENDING_HR'
 				""";
 		try (PreparedStatement ps = conn.prepareStatement(sql)) {
 			ps.setLong(1, hrUserId);
-			ps.setLong(2, sheetId);
+			ps.setLong(2, hrUserId);
+			ps.setLong(3, sheetId);
 			return ps.executeUpdate() > 0;
 		}
 	}

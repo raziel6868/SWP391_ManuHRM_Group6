@@ -13,6 +13,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import model.Permission;
 import model.User;
+import util.YearOptionUtil;
 
 @WebServlet(name = "ReportPayrollServlet", urlPatterns = {"/report-payroll"})
 public class ReportPayrollServlet extends HttpServlet {
@@ -59,6 +60,7 @@ public class ReportPayrollServlet extends HttpServlet {
 		List<PayrollSummaryRow> rows = reportDAO.getPayrollSummary(year, month);
 
 		request.setAttribute("rows", rows);
+		request.setAttribute("yearOptions", YearOptionUtil.dataYearsWithCurrent(reportDAO.getPayrollYears()));
 		request.setAttribute("selectedYear", year);
 		request.setAttribute("selectedMonth", month);
 

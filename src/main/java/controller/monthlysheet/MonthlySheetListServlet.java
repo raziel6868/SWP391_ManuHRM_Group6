@@ -8,10 +8,12 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
+import java.time.LocalDate;
 import java.util.List;
 import model.MonthlySheet;
 import model.Permission;
 import model.User;
+import util.YearOptionUtil;
 
 @WebServlet(name = "MonthlySheetListServlet", urlPatterns = {"/monthly-sheet-list"})
 public class MonthlySheetListServlet extends HttpServlet {
@@ -32,17 +34,25 @@ public class MonthlySheetListServlet extends HttpServlet {
 
 		moveFlashMessage(session, request, "successMsg");
 		moveFlashMessage(session, request, "errorMsg");
+		moveFlashMessage(session, request, "monthlySheetConflictTitle");
+		moveFlashObject(session, request, "monthlySheetConflicts");
 
 		// Filter params
+		int currentYear = LocalDate.now().getYear();
 		Integer selectedYear = parseOptionalInt(request.getParameter("year"), 2000, 2100);
+		if (selectedYear == null) {
+			selectedYear = currentYear;
+		}
 		Integer selectedMonth = parseOptionalInt(request.getParameter("month"), 1, 12);
 		String selectedStatus = normalizeStatus(request.getParameter("status"));
 		int currentPage = parsePage(request.getParameter("page"));
 
+		List<Integer> yearOptions = YearOptionUtil.dataYearsWithCurrent(monthlySheetDAO.getAvailableYears());
 		List<MonthlySheet> sheets = monthlySheetDAO.getAll();
 
 		// Filter trong memory (getAll đã có, dataset nhỏ)
-		sheets = sheets.stream().filter(s -> selectedYear == null || selectedYear.equals(s.getYear()))
+		Integer filterYear = selectedYear;
+		sheets = sheets.stream().filter(s -> filterYear.equals(s.getYear()))
 				.filter(s -> selectedMonth == null || selectedMonth.equals(s.getMonth()))
 				.filter(s -> selectedStatus == null || selectedStatus.equals(s.getStatus())).toList();
 
@@ -51,7 +61,6 @@ public class MonthlySheetListServlet extends HttpServlet {
 		boolean isHR = hasPermission(session, "MONTHLY_SHEET_HR_APPROVE");
 		boolean canSubmit = hasPermission(session, "MONTHLY_SHEET_SUBMIT") && !isDirector;
 		boolean canHrApprove = hasPermission(session, "MONTHLY_SHEET_HR_APPROVE") && !isDirector;
-		boolean canDirectorApprove = hasPermission(session, "MONTHLY_SHEET_DIRECTOR_APPROVE") && isDirector;
 		boolean canReject = hasPermission(session, "MONTHLY_SHEET_REJECT");
 		boolean canReopen = hasPermission(session, "MONTHLY_SHEET_REOPEN");
 
@@ -60,9 +69,9 @@ public class MonthlySheetListServlet extends HttpServlet {
 		request.setAttribute("isDirector", isDirector);
 		request.setAttribute("canSubmit", canSubmit);
 		request.setAttribute("canHrApprove", canHrApprove);
-		request.setAttribute("canDirectorApprove", canDirectorApprove);
 		request.setAttribute("canReject", canReject);
 		request.setAttribute("canReopen", canReopen);
+		request.setAttribute("yearOptions", yearOptions);
 		request.setAttribute("selectedYear", selectedYear);
 		request.setAttribute("selectedMonth", selectedMonth);
 		request.setAttribute("selectedStatus", selectedStatus);
@@ -117,6 +126,14 @@ public class MonthlySheetListServlet extends HttpServlet {
 
 	private void moveFlashMessage(HttpSession session, HttpServletRequest request, String key) {
 		String value = (String) session.getAttribute(key);
+		if (value != null) {
+			request.setAttribute(key, value);
+			session.removeAttribute(key);
+		}
+	}
+
+	private void moveFlashObject(HttpSession session, HttpServletRequest request, String key) {
+		Object value = session.getAttribute(key);
 		if (value != null) {
 			request.setAttribute(key, value);
 			session.removeAttribute(key);

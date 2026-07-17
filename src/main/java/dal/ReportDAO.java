@@ -27,6 +27,32 @@ public class ReportDAO {
 	private static final int STANDARD_WORK_DAYS = 26;
 	private static final BigDecimal HOURS_PER_DAY = new BigDecimal("8");
 
+	public List<Integer> getAttendanceYears() {
+		return getDistinctYears(
+				"SELECT DISTINCT YEAR(date) AS year_value FROM attendance_records ORDER BY year_value DESC");
+	}
+
+	public List<Integer> getLeaveYears() {
+		return getDistinctYears("""
+				SELECT DISTINCT year_value
+				FROM (
+				    SELECT YEAR(start_date) AS year_value FROM leave_requests
+				    UNION
+				    SELECT YEAR(end_date) AS year_value FROM leave_requests
+				) years
+				ORDER BY year_value DESC
+				""");
+	}
+
+	public List<Integer> getOvertimeYears() {
+		return getDistinctYears(
+				"SELECT DISTINCT YEAR(date) AS year_value FROM overtime_records ORDER BY year_value DESC");
+	}
+
+	public List<Integer> getPayrollYears() {
+		return getDistinctYears("SELECT DISTINCT year AS year_value FROM monthly_sheets ORDER BY year_value DESC");
+	}
+
 	public List<AttendanceSummaryRow> getAttendanceSummary(int year, Integer month, Long departmentId) {
 		List<AttendanceSummaryRow> rows = new ArrayList<>();
 
@@ -413,5 +439,19 @@ public class ReportDAO {
 				ps.setObject(i + 1, param);
 			}
 		}
+	}
+
+	private List<Integer> getDistinctYears(String sql) {
+		List<Integer> years = new ArrayList<>();
+		try (Connection conn = DBContext.getConnection();
+				PreparedStatement ps = conn.prepareStatement(sql);
+				ResultSet rs = ps.executeQuery()) {
+			while (rs.next()) {
+				years.add(rs.getInt("year_value"));
+			}
+		} catch (SQLException e) {
+			System.err.println("ReportDAO.getDistinctYears() ERROR: " + e.getMessage());
+		}
+		return years;
 	}
 }

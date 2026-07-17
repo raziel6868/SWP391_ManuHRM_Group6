@@ -111,7 +111,7 @@ public class PayrollSettingSetupServlet extends HttpServlet {
 			return "Vui lòng nhập đầy đủ các tham số payroll.";
 		}
 		if (payrollSetting.getStandardWorkDays().compareTo(BigDecimal.ZERO) <= 0) {
-			return "Số ngày công chuẩn phải lớn hơn 0.";
+			return "Số ngày công chuẩn dự phòng phải lớn hơn 0.";
 		}
 		if (payrollSetting.getStandardWorkHoursPerDay().compareTo(BigDecimal.ZERO) <= 0) {
 			return "Số giờ công chuẩn mỗi ngày phải lớn hơn 0.";

@@ -25,7 +25,7 @@ public class MonthlySalaryDAO {
 			ms.non_taxable_allowances, ms.taxable_income, ms.pit_tax,
 			ms.deductions, ms.net_salary, ms.status,
 			ms.updated_at AS generated_at, ms.created_at,
-			u.full_name AS user_full_name, u.employee_code, d.name AS department_name,
+			u.full_name AS user_full_name, u.employee_code, u.department_id, d.name AS department_name,
 			msys.year, msys.month
 			""";
 
@@ -373,10 +373,16 @@ public class MonthlySalaryDAO {
 		ms.setCreatedAt(rs.getTimestamp("created_at"));
 		ms.setUserFullName(rs.getString("user_full_name"));
 		ms.setEmployeeCode(rs.getString("employee_code"));
+		ms.setDepartmentId(readNullableLong(rs, "department_id"));
 		ms.setDepartmentName(rs.getString("department_name"));
 		ms.setYear(rs.getInt("year"));
 		ms.setMonth(rs.getInt("month"));
 		return ms;
+	}
+
+	private Long readNullableLong(ResultSet rs, String columnName) throws SQLException {
+		long value = rs.getLong(columnName);
+		return rs.wasNull() ? null : value;
 	}
 
 	private BigDecimal zeroIfNull(BigDecimal value) {

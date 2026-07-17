@@ -1,5 +1,6 @@
 package controller.overtime;
 
+import dal.LeaveRequestDAO;
 import dal.AttendanceDAO;
 import dal.MonthlySheetDAO;
 import dal.OvertimeDAO;
@@ -12,32 +13,26 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
 import java.math.BigDecimal;
-import java.time.LocalTime;
 import java.util.List;
-import model.AttendanceRecord;
 import model.OvertimeRecord;
 import model.Permission;
 import model.User;
-import util.WorkScheduleConfig;
+import util.OvertimeValidator;
 
 /**
  * Trang sửa 1 bản ghi OT đã tạo (đổi giờ / lý do). Chỉ quản đốc quản lý trực
- * tiếp nhân viên đó mới sửa được, và chỉ khi tháng chưa chốt công. Validate lại
- * đầy đủ rule giống lúc tạo (trừ chính bản ghi đang sửa ra khỏi tổng giờ
- * tháng/năm). OT tối đa 2h/ngày theo quy định hiện hành.
+ * tiếp nhân viên đó mới sửa được, và chỉ khi tháng đang ở trạng thái OPEN. Toàn
+ * bộ rule nghiệp vụ dùng chung ở {@link OvertimeValidator} (trần
+ * giờ/ngày-tháng-năm, trùng, conflict nghỉ phép/chấm công...).
  */
 @WebServlet(name = "OvertimeEditServlet", urlPatterns = {"/overtime-edit"})
 public class OvertimeEditServlet extends HttpServlet {
 
-	// OT tối đa trong ngày theo quy định hiện hành: 2h/ngày.
-	private static final BigDecimal MAX_HOURS_PER_DAY = new BigDecimal("2");
-	private static final BigDecimal MAX_HOURS_PER_MONTH = new BigDecimal("40");
-	private static final BigDecimal MAX_HOURS_PER_YEAR = new BigDecimal("200");
-
 	private final OvertimeDAO overtimeDAO = new OvertimeDAO();
 	private final UserDAO userDAO = new UserDAO();
 	private final MonthlySheetDAO monthlySheetDAO = new MonthlySheetDAO();
-	private final AttendanceDAO attendanceDAO = new AttendanceDAO();
+	private final OvertimeValidator overtimeValidator = new OvertimeValidator(overtimeDAO, monthlySheetDAO,
+			new AttendanceDAO(), new LeaveRequestDAO());
 
 	@Override
 	protected void doGet(HttpServletRequest request, HttpServletResponse response)
@@ -71,8 +66,9 @@ public class OvertimeEditServlet extends HttpServlet {
 
 		int recYear = record.getDate().toLocalDate().getYear();
 		int recMonth = record.getDate().toLocalDate().getMonthValue();
-		if (monthlySheetDAO.isPeriodClosed(recYear, recMonth)) {
-			session.setAttribute("errorMsg", "Tháng " + recMonth + "/" + recYear + " đã chốt công, không thể sửa OT.");
+		if (!monthlySheetDAO.isEditablePeriod(recYear, recMonth)) {
+			session.setAttribute("errorMsg",
+					"Tháng " + recMonth + "/" + recYear + " không còn ở trạng thái OPEN, không thể sửa OT.");
 			response.sendRedirect(request.getContextPath() + "/overtime-list?year=" + recYear + "&month=" + recMonth);
 			return;
 		}
@@ -112,6 +108,7 @@ public class OvertimeEditServlet extends HttpServlet {
 		int recYear = record.getDate().toLocalDate().getYear();
 		int recMonth = record.getDate().toLocalDate().getMonthValue();
 		String redirectList = request.getContextPath() + "/overtime-list?year=" + recYear + "&month=" + recMonth;
+		String redirectEdit = request.getContextPath() + "/overtime-edit?id=" + id;
 
 		User targetUser = userDAO.getById(record.getUserId());
 		if (targetUser == null || targetUser.getManagerId() == null
@@ -121,65 +118,21 @@ public class OvertimeEditServlet extends HttpServlet {
 			return;
 		}
 
-		if (monthlySheetDAO.isPeriodClosed(recYear, recMonth)) {
-			session.setAttribute("errorMsg", "Tháng " + recMonth + "/" + recYear + " đã chốt công, không thể sửa OT.");
+		if (!monthlySheetDAO.isEditablePeriod(recYear, recMonth)) {
+			session.setAttribute("errorMsg",
+					"Tháng " + recMonth + "/" + recYear + " không còn ở trạng thái OPEN, không thể sửa OT.");
 			response.sendRedirect(redirectList);
 			return;
 		}
 
-		if (hours == null || hours.compareTo(BigDecimal.ZERO) <= 0) {
-			session.setAttribute("errorMsg", "Số giờ OT không hợp lệ (phải lớn hơn 0).");
-			response.sendRedirect(request.getContextPath() + "/overtime-edit?id=" + id);
-			return;
-		}
-		if (reason == null || reason.isBlank()) {
-			session.setAttribute("errorMsg", "Vui lòng nhập lý do tăng ca.");
-			response.sendRedirect(request.getContextPath() + "/overtime-edit?id=" + id);
-			return;
-		}
-
-		if (hours.compareTo(MAX_HOURS_PER_DAY) > 0) {
-			session.setAttribute("errorMsg",
-					"Số giờ OT (" + hours + "h) vượt quá tối đa " + MAX_HOURS_PER_DAY + "h/ngày.");
-			response.sendRedirect(request.getContextPath() + "/overtime-edit?id=" + id);
-			return;
-		}
-
-		// Nếu ngày đó đã có chấm công thật, re-check giống lúc tạo (validate 2
-		// chiều với AttendanceImportUtil để tránh trạng thái mâu thuẫn).
-		AttendanceRecord existingAttendance = attendanceDAO.findByUserAndDate(record.getUserId(), record.getDate());
-		if (existingAttendance != null && existingAttendance.getCheckIn() == null) {
-			session.setAttribute("errorMsg",
-					"Nhân viên được ghi nhận VẮNG MẶT ngày " + record.getDate() + ", không thể có OT ngày này.");
-			response.sendRedirect(request.getContextPath() + "/overtime-edit?id=" + id);
-			return;
-		}
-		if (existingAttendance != null && existingAttendance.getCheckOut() != null) {
-			long otMinutes = hours.multiply(BigDecimal.valueOf(60)).longValue();
-			LocalTime expectedCheckout = WorkScheduleConfig.STANDARD_END.plusMinutes(otMinutes);
-			if (existingAttendance.getCheckOut().toLocalTime().isBefore(expectedCheckout)) {
-				session.setAttribute("errorMsg",
-						"Nhân viên đã chấm công ra lúc " + existingAttendance.getCheckOut().toLocalTime() + " ngày "
-								+ record.getDate() + ", không đủ hỗ trợ " + hours + "h OT (cần ra từ "
-								+ expectedCheckout + " trở đi).");
-				response.sendRedirect(request.getContextPath() + "/overtime-edit?id=" + id);
-				return;
-			}
-		}
-
-		BigDecimal monthTotal = overtimeDAO.sumHoursInMonth(record.getUserId(), recYear, recMonth, id);
-		if (monthTotal.add(hours).compareTo(MAX_HOURS_PER_MONTH) > 0) {
-			session.setAttribute("errorMsg", "Nhân viên đã có " + monthTotal + "h OT khác trong tháng " + recMonth + "/"
-					+ recYear + ", cộng thêm " + hours + "h sẽ vượt trần 40h/tháng.");
-			response.sendRedirect(request.getContextPath() + "/overtime-edit?id=" + id);
-			return;
-		}
-
-		BigDecimal yearTotal = overtimeDAO.sumHoursInYear(record.getUserId(), recYear, id);
-		if (yearTotal.add(hours).compareTo(MAX_HOURS_PER_YEAR) > 0) {
-			session.setAttribute("errorMsg", "Nhân viên đã có " + yearTotal + "h OT khác trong năm " + recYear
-					+ ", cộng thêm " + hours + "h sẽ vượt trần 200h/năm.");
-			response.sendRedirect(request.getContextPath() + "/overtime-edit?id=" + id);
+		// ── Toàn bộ rule nghiệp vụ còn lại (giờ/ngày, trùng, nghỉ phép, chấm
+		// công, trần tháng/năm) — dùng chung với Import Excel & Tạo OT hàng loạt.
+		// excludeId = id: bỏ qua chính bản ghi đang sửa khi tính trùng/tổng giờ.
+		OvertimeValidator.Outcome outcome = overtimeValidator.validate(targetUser, authUser.getId(),
+				record.getDate().toLocalDate(), hours, reason, id);
+		if (outcome.type != OvertimeValidator.OutcomeType.OK) {
+			session.setAttribute("errorMsg", outcome.message);
+			response.sendRedirect(redirectEdit);
 			return;
 		}
 

@@ -67,8 +67,13 @@ public class AttendanceCorrectionApproveServlet extends HttpServlet {
 
 		int year = correction.getAttendanceDate().toLocalDate().getYear();
 		int month = correction.getAttendanceDate().toLocalDate().getMonthValue();
-		if (!monthlySheetDAO.isHrCorrectionWindow(year, month)) {
-			session.setAttribute("errorMsg", "HR chỉ được xử lý điều chỉnh khi bảng công đang chờ HR duyệt.");
+		// Trước đây bắt buộc bảng công phải đúng trạng thái PENDING_HR (tức phải chờ
+		// tất cả quản đốc chốt xong bước duyệt bảng công tháng) thì HR mới xử lý được
+		// điều chỉnh. Giờ HR có thể duyệt bất cứ lúc nào miễn quản đốc đã duyệt bước 1,
+		// chỉ chặn khi bảng công đã CLOSED.
+		if (monthlySheetDAO.isPeriodClosed(year, month)) {
+			session.setAttribute("errorMsg",
+					"Bảng công tháng " + month + "/" + year + " đã được chốt sổ, không thể xử lý điều chỉnh.");
 			response.sendRedirect(redirectUrl);
 			return;
 		}
@@ -90,8 +95,8 @@ public class AttendanceCorrectionApproveServlet extends HttpServlet {
 		// phép/OT đã duyệt cùng ngày (giống hệt check khi import chấm công).
 		Long targetUserId = correction.getAttendanceUserId();
 		java.sql.Date attendanceDate = correction.getAttendanceDate();
-		if (leaveRequestDAO.hasApprovedLeaveOnDate(targetUserId, attendanceDate)) {
-			session.setAttribute("errorMsg", "Nhân viên đã có đơn nghỉ phép được duyệt ngày " + attendanceDate
+		if (leaveRequestDAO.hasApprovedOrLevel1LeaveOnDate(targetUserId, attendanceDate)) {
+			session.setAttribute("errorMsg", "Nhân viên đã có đơn nghỉ phép đang/đã duyệt ngày " + attendanceDate
 					+ " — không thể duyệt điều chỉnh thành có chấm công. Vui lòng xử lý nghỉ phép trước.");
 			response.sendRedirect(redirectUrl);
 			return;
@@ -100,11 +105,11 @@ public class AttendanceCorrectionApproveServlet extends HttpServlet {
 			OvertimeRecord approvedOT = overtimeDAO.findApprovedOTForUserAndDate(targetUserId, attendanceDate);
 			if (approvedOT != null && approvedOT.getApprovedHours() != null) {
 				long otMinutes = approvedOT.getApprovedHours().multiply(BigDecimal.valueOf(60)).longValue();
-				LocalTime expectedCheckout = WorkScheduleConfig.STANDARD_END.plusMinutes(otMinutes);
+				LocalTime expectedCheckout = WorkScheduleConfig.OVERTIME_START.plusMinutes(otMinutes);
 				if (correction.getNewCheckOut().toLocalTime().isBefore(expectedCheckout)) {
 					session.setAttribute("errorMsg",
-							"Nhân viên có OT " + approvedOT.getApprovedHours() + "h được duyệt ngày " + attendanceDate
-									+ " nhưng giờ ra mới (" + correction.getNewCheckOut().toLocalTime()
+							"Nhân viên có OT " + formatHours(approvedOT.getApprovedHours()) + "h được duyệt ngày "
+									+ attendanceDate + " nhưng giờ ra mới (" + correction.getNewCheckOut().toLocalTime()
 									+ ") không đủ hỗ trợ (cần ra từ " + expectedCheckout + " trở đi).");
 					response.sendRedirect(redirectUrl);
 					return;
@@ -160,6 +165,13 @@ public class AttendanceCorrectionApproveServlet extends HttpServlet {
 		} catch (NumberFormatException e) {
 			return null;
 		}
+	}
+
+	private String formatHours(BigDecimal hours) {
+		if (hours == null) {
+			return "0";
+		}
+		return hours.stripTrailingZeros().toPlainString();
 	}
 
 	/**

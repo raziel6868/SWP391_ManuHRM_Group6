@@ -58,9 +58,8 @@ public class MonthlySheetRejectServlet extends HttpServlet {
 
 		boolean rejected = monthlySheetDAO.reject(sheetId, departmentId);
 		if (rejected) {
-			String scope = departmentId != null ? "phòng ban liên quan" : "tất cả quản đốc";
 			session.setAttribute("successMsg", "Đã từ chối và reset bảng công tháng " + sheet.getMonth() + "/"
-					+ sheet.getYear() + " về OPEN. Xác nhận của " + scope + " đã được xóa.");
+					+ sheet.getYear() + " về OPEN. Toàn bộ xác nhận quản đốc cũ đã được xóa để gửi duyệt lại từ đầu.");
 		} else {
 			session.setAttribute("errorMsg", "Không thể từ chối. Vui lòng thử lại.");
 		}

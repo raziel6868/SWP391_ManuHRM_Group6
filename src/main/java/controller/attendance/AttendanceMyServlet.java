@@ -87,7 +87,9 @@ public class AttendanceMyServlet extends HttpServlet {
 					? yearMonth.atEndOfMonth()
 					: lr.getEndDate().toLocalDate();
 			for (LocalDate d = rangeStart; !d.isAfter(rangeEnd); d = d.plusDays(1)) {
-				leaveDays.add(d.getDayOfMonth());
+				if (!isWeekend(d)) {
+					leaveDays.add(d.getDayOfMonth());
+				}
 			}
 		}
 
@@ -118,7 +120,12 @@ public class AttendanceMyServlet extends HttpServlet {
 			AttendanceRecord rec = attByDay.get(day);
 			String status;
 
-			if (rec != null && "ABSENT".equals(rec.getStatus())) {
+			if (isWeekend(d)) {
+				status = "W";
+			} else if (leaveDays.contains(day)) {
+				status = "L";
+				countLeave++;
+			} else if (rec != null && "ABSENT".equals(rec.getStatus())) {
 				status = "A";
 				countAbsent++;
 			} else if (rec != null && otDays.contains(day)) {
@@ -135,11 +142,6 @@ public class AttendanceMyServlet extends HttpServlet {
 			} else if (rec != null) {
 				status = "P";
 				countPresent++;
-			} else if (leaveDays.contains(day)) {
-				status = "L";
-				countLeave++;
-			} else if (d.getDayOfWeek().getValue() >= 6) {
-				status = "W";
 			} else {
 				status = null;
 			}
@@ -147,7 +149,7 @@ public class AttendanceMyServlet extends HttpServlet {
 			if (status != null) {
 				dayStatus.put(day, status);
 			}
-			if (rec != null) {
+			if (rec != null && !"L".equals(status) && !"W".equals(status)) {
 				dayRecord.put(day, rec);
 			}
 		}
@@ -196,5 +198,9 @@ public class AttendanceMyServlet extends HttpServlet {
 			request.setAttribute(key, value);
 			session.removeAttribute(key);
 		}
+	}
+
+	private boolean isWeekend(LocalDate date) {
+		return date.getDayOfWeek().getValue() >= 6;
 	}
 }

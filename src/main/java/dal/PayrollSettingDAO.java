@@ -23,11 +23,16 @@ public class PayrollSettingDAO {
 			created_at,
 			updated_at
 			""";
-	private static final BigDecimal DEFAULT_WORK_DAYS = new BigDecimal("26");
+	private static final BigDecimal DEFAULT_WORK_DAYS = new BigDecimal("22");
 	private static final BigDecimal DEFAULT_HOURS_PER_DAY = new BigDecimal("8");
 	private static final BigDecimal DEFAULT_OT_RATE = new BigDecimal("1.5");
 
 	public PayrollSetting getActiveForPeriod(int year, int month) {
+		PayrollSetting setting = getConfiguredForPeriod(year, month);
+		return setting != null ? setting : defaultSetting();
+	}
+
+	public PayrollSetting getConfiguredForPeriod(int year, int month) {
 		YearMonth yearMonth = YearMonth.of(year, month);
 		Date firstDay = Date.valueOf(yearMonth.atDay(1));
 		Date lastDay = Date.valueOf(yearMonth.atEndOfMonth());
@@ -53,7 +58,7 @@ public class PayrollSettingDAO {
 			System.err.println("PayrollSettingDAO.getActiveForPeriod() ERROR: " + e.getMessage());
 		}
 
-		return defaultSetting();
+		return null;
 	}
 
 	public List<PayrollSetting> getAll() {

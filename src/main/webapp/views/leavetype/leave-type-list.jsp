@@ -33,30 +33,23 @@
                         <h2 class="h3 text-on-surface fw-bold mb-1">Quản lý loại nghỉ</h2>
                         <p class="body-md text-on-surface-variant mb-0">Quản lý danh mục loại nghỉ phép dùng chung cho hệ thống.</p>
                     </div>
-                    <c:if test="${canCreate}">
-                        <a href="${pageContext.request.contextPath}/leave-type-create"
-                           class="btn-primary-gradient text-decoration-none px-3 py-2 d-flex align-items-center gap-2 shadow-sm">
-                            <span class="material-symbols-outlined" style="font-size: 1.125rem;">add</span>
-                            Thêm loại nghỉ
-                        </a>
-                    </c:if>
                 </div>
 
                 <div class="card-premium overflow-hidden d-flex flex-column mb-4 w-100">
                     <div class="p-3 bg-surface border-bottom border-outline-variant">
                         <form action="${pageContext.request.contextPath}/leave-type-list" method="GET"
                               class="row g-3 align-items-end">
-                            <div class="col-md-5">
+                            <div class="col-lg-6 col-md-5">
                                 <label class="form-label text-on-surface fw-medium mb-1">Từ khóa</label>
                                 <div class="position-relative">
                                     <span class="material-symbols-outlined position-absolute top-50 translate-middle-y text-on-surface-variant"
                                           style="left: 12px; font-size: 1.25rem;">search</span>
                                     <input type="text" name="keyword" value="${keyword}"
                                            class="form-control input-premium ps-5"
-                                           placeholder="Tìm theo mã, tên hoặc mô tả..." />
+                                           placeholder="Tìm theo tên hoặc mô tả..." />
                                 </div>
                             </div>
-                            <div class="col-md-2">
+                            <div class="col-lg-2 col-md-3">
                                 <label class="form-label text-on-surface fw-medium mb-1">Hưởng lương</label>
                                 <select name="isPaid" class="form-select input-premium">
                                     <option value="" ${empty selectedIsPaid ? 'selected' : ''}>Tất cả</option>
@@ -64,7 +57,7 @@
                                     <option value="false" ${selectedIsPaid == 'false' ? 'selected' : ''}>Không hưởng lương</option>
                                 </select>
                             </div>
-                            <div class="col-md-2">
+                            <div class="col-lg-2 col-md-3">
                                 <label class="form-label text-on-surface fw-medium mb-1">Trạng thái</label>
                                 <select name="status" class="form-select input-premium">
                                     <option value="" ${empty selectedStatus ? 'selected' : ''}>Tất cả</option>
@@ -72,41 +65,57 @@
                                     <option value="false" ${selectedStatus == 'false' ? 'selected' : ''}>Vô hiệu hóa</option>
                                 </select>
                             </div>
-                            <div class="col-md-1 d-flex gap-2">
+                            <div class="col-lg-2 col-md-1 d-flex gap-2">
                                 <button type="submit" class="btn btn-primary w-100">Lọc</button>
                             </div>
                         </form>
                     </div>
 
                     <div class="table-responsive">
-                        <table class="table table-premium mb-0 w-100">
+                        <table class="table table-premium mb-0 w-100" style="min-width: 680px;">
                             <thead>
                                 <tr>
-                                    <th>Mã</th>
-                                    <th>Tên loại nghỉ</th>
-                                    <th>Có hưởng lương</th>
-                                    <th>Mô tả</th>
-                                    <th>Trạng thái</th>
+                                    <th style="width: 44%;">Loại nghỉ</th>
+                                    <th style="width: 22%;">Chi trả</th>
+                                    <th style="width: 16%;">Trạng thái</th>
                                     <th class="text-end">Thao tác</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <c:forEach var="leaveType" items="${leaveTypes}">
                                     <tr <c:if test="${!leaveType.isActive}">style="background-color: rgba(255,255,255,0.5); opacity: 0.8;"</c:if>>
-                                        <td class="fw-medium text-on-surface">${leaveType.code}</td>
-                                        <td>${leaveType.name}</td>
                                         <td>
-                                            <c:choose>
-                                                <c:when test="${leaveType.isPaid}">
-                                                    <span class="badge" style="background-color: #d1fae5; color: #065f46;">Có</span>
-                                                </c:when>
-                                                <c:otherwise>
-                                                    <span class="badge" style="background-color: #fee2e2; color: #991b1b;">Không</span>
-                                                </c:otherwise>
-                                            </c:choose>
+                                            <div class="d-flex flex-column gap-1">
+                                                <div class="d-flex align-items-center gap-2 flex-wrap">
+                                                    <span class="fw-semibold text-on-surface">
+                                                        <c:out value="${leaveType.name}" />
+                                                    </span>
+                                                </div>
+                                                <div class="body-sm text-on-surface-variant text-truncate"
+                                                     style="max-width: 420px;"
+                                                     title="${empty leaveType.description ? '-' : leaveType.description}">
+                                                    <c:out value="${empty leaveType.description ? '-' : leaveType.description}" />
+                                                </div>
+                                            </div>
                                         </td>
-                                        <td class="text-on-surface-variant text-truncate" style="max-width: 280px;">
-                                            <c:out value="${empty leaveType.description ? '-' : leaveType.description}" />
+                                        <td>
+                                            <div class="d-flex flex-column gap-1 align-items-start">
+                                                <c:choose>
+                                                    <c:when test="${leaveType.isPaid}">
+                                                        <span class="badge" style="background-color: #d1fae5; color: #065f46;">Có</span>
+                                                    </c:when>
+                                                    <c:otherwise>
+                                                        <span class="badge" style="background-color: #fee2e2; color: #991b1b;">Không</span>
+                                                    </c:otherwise>
+                                                </c:choose>
+                                                <span class="body-sm text-on-surface-variant">
+                                                    <c:choose>
+                                                        <c:when test="${leaveType.salaryPaidBy == 'COMPANY'}">Công ty</c:when>
+                                                        <c:when test="${leaveType.salaryPaidBy == 'SOCIAL_INSURANCE'}">BHXH</c:when>
+                                                        <c:otherwise>Không chi trả</c:otherwise>
+                                                    </c:choose>
+                                                </span>
+                                            </div>
                                         </td>
                                         <td>
                                             <c:choose>
@@ -120,6 +129,13 @@
                                         </td>
                                         <td class="text-end">
                                             <div class="d-flex justify-content-end gap-1">
+                                                <c:if test="${canViewDetail}">
+                                                    <a href="${pageContext.request.contextPath}/leave-type-detail?id=${leaveType.id}"
+                                                       class="btn btn-sm btn-icon text-on-surface-variant hover-primary"
+                                                       title="Xem chi tiết">
+                                                        <span class="material-symbols-outlined" style="font-size: 1.25rem;">visibility</span>
+                                                    </a>
+                                                </c:if>
                                                 <c:if test="${canUpdate}">
                                                     <a href="${pageContext.request.contextPath}/leave-type-update?id=${leaveType.id}"
                                                        class="btn btn-sm btn-icon text-on-surface-variant hover-primary"
@@ -145,7 +161,7 @@
                                 </c:forEach>
                                 <c:if test="${empty leaveTypes}">
                                     <tr>
-                                        <td colspan="6" class="text-center py-4 text-on-surface-variant">
+                                        <td colspan="4" class="text-center py-4 text-on-surface-variant">
                                             Không tìm thấy loại nghỉ phù hợp.
                                         </td>
                                     </tr>

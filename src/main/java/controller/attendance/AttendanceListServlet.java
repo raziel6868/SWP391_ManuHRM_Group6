@@ -101,6 +101,14 @@ public class AttendanceListServlet extends HttpServlet {
 		YearMonth yearMonth = YearMonth.of(year, month);
 		int daysInMonth = yearMonth.lengthOfMonth();
 
+		int standardWorkingDays = 0;
+		for (int day = 1; day <= daysInMonth; day++) {
+			DayOfWeek dow = yearMonth.atDay(day).getDayOfWeek();
+			if (dow != DayOfWeek.SATURDAY && dow != DayOfWeek.SUNDAY) {
+				standardWorkingDays++;
+			}
+		}
+
 		List<Long> userIds = new ArrayList<>();
 		for (User e : employees) {
 			userIds.add(e.getId());
@@ -192,6 +200,7 @@ public class AttendanceListServlet extends HttpServlet {
 		request.setAttribute("gridData", gridData);
 		request.setAttribute("rowSummary", rowSummary);
 		request.setAttribute("daysInMonth", daysInMonth);
+		request.setAttribute("standardWorkingDays", standardWorkingDays);
 		request.setAttribute("selectedYear", year);
 		request.setAttribute("selectedMonth", month);
 		request.setAttribute("keyword", keyword);

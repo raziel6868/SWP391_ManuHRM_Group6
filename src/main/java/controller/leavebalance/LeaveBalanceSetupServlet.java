@@ -9,7 +9,6 @@ import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.math.BigDecimal;
 import java.time.Year;
 import java.util.List;
 import model.LeaveBalance;
@@ -20,7 +19,6 @@ import model.User;
 public class LeaveBalanceSetupServlet extends HttpServlet {
 
 	private static final int FORM_LIST_LIMIT = 1000;
-	private static final BigDecimal MAX_TOTAL_DAYS = new BigDecimal("999.99");
 
 	private final LeaveBalanceDAO leaveBalanceDAO = new LeaveBalanceDAO();
 	private final LeaveTypeDAO leaveTypeDAO = new LeaveTypeDAO();
@@ -30,22 +28,22 @@ public class LeaveBalanceSetupServlet extends HttpServlet {
 	protected void doGet(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
 		Long selectedUserId = parseLong(normalizeText(request.getParameter("userId")));
-		Long selectedLeaveTypeId = parseLong(normalizeText(request.getParameter("leaveTypeId")));
 		Integer selectedYear = parseInteger(normalizeText(request.getParameter("year")));
 		if (selectedYear == null) {
 			selectedYear = Year.now().getValue();
 		}
 
+		LeaveType annualLeaveType = leaveTypeDAO.getAnnualLeaveType();
 		LeaveBalance existingBalance = null;
-		if (selectedUserId != null && selectedLeaveTypeId != null) {
-			existingBalance = leaveBalanceDAO.getByUserAndTypeAndYear(selectedUserId, selectedLeaveTypeId,
+		if (selectedUserId != null && annualLeaveType != null) {
+			existingBalance = leaveBalanceDAO.getByUserAndTypeAndYear(selectedUserId, annualLeaveType.getId(),
 					selectedYear);
 		}
 
 		request.setAttribute("selectedUserId", selectedUserId);
-		request.setAttribute("selectedLeaveTypeId", selectedLeaveTypeId);
 		request.setAttribute("selectedYear", selectedYear);
 		request.setAttribute("existingBalance", existingBalance);
+		request.setAttribute("annualLeaveType", annualLeaveType);
 		populateFormData(request);
 		request.getRequestDispatcher("/views/leavebalance/leave-balance-setup.jsp").forward(request, response);
 	}
@@ -56,83 +54,55 @@ public class LeaveBalanceSetupServlet extends HttpServlet {
 		request.setCharacterEncoding("UTF-8");
 
 		Long userId = parseLong(normalizeText(request.getParameter("userId")));
-		Long leaveTypeId = parseLong(normalizeText(request.getParameter("leaveTypeId")));
 		Integer year = parseInteger(normalizeText(request.getParameter("year")));
-		String totalDaysText = normalizeText(request.getParameter("totalDays"));
-		BigDecimal totalDays = parseBigDecimal(totalDaysText);
 
-		request.setAttribute("selectedUserId", userId);
-		request.setAttribute("selectedLeaveTypeId", leaveTypeId);
-		request.setAttribute("selectedYear", year);
-		request.setAttribute("totalDays", totalDaysText);
-
-		String validationError = validate(userId, leaveTypeId, year, totalDays);
+		String validationError = validate(userId, year);
 		if (validationError != null) {
 			request.setAttribute("errorMsg", validationError);
+			request.setAttribute("selectedUserId", userId);
+			request.setAttribute("selectedYear", year);
+			request.setAttribute("annualLeaveType", leaveTypeDAO.getAnnualLeaveType());
 			populateFormData(request);
 			request.getRequestDispatcher("/views/leavebalance/leave-balance-setup.jsp").forward(request, response);
 			return;
 		}
 
-		boolean success = leaveBalanceDAO.upsert(userId, leaveTypeId, year, totalDays);
-		if (success) {
-			request.getSession().setAttribute("successMsg", "Thiết lập hạn mức nghỉ phép thành công.");
-			response.sendRedirect(request.getContextPath() + "/leave-balance-list?year=" + year);
-			return;
+		if (userId == null) {
+			int synced = leaveBalanceDAO.syncAnnualBalances(year);
+			request.getSession().setAttribute("successMsg",
+					"Đã đồng bộ hạn mức phép năm cho " + synced + " nhân viên.");
+		} else if (leaveBalanceDAO.syncAnnualBalance(userId, year)) {
+			request.getSession().setAttribute("successMsg", "Đồng bộ hạn mức phép năm thành công.");
+		} else {
+			request.getSession().setAttribute("errorMsg",
+					"Không thể đồng bộ hạn mức. Hãy kiểm tra nhân viên đã có hợp đồng và loại ANNUAL_NORMAL đang hoạt động.");
 		}
 
-		request.setAttribute("errorMsg", "Không thể thiết lập hạn mức nghỉ phép. Vui lòng thử lại.");
-		populateFormData(request);
-		request.getRequestDispatcher("/views/leavebalance/leave-balance-setup.jsp").forward(request, response);
+		response.sendRedirect(request.getContextPath() + "/leave-balance-list?year=" + year);
 	}
 
-	private String validate(Long userId, Long leaveTypeId, Integer year, BigDecimal totalDays) {
-		if (userId == null) {
-			return "Vui lòng chọn nhân viên.";
-		}
-		if (leaveTypeId == null) {
-			return "Vui lòng chọn loại nghỉ.";
-		}
+	private String validate(Long userId, Integer year) {
 		if (year == null) {
 			return "Năm áp dụng không được để trống.";
 		}
 		if (year < 2000 || year > 2100) {
 			return "Năm áp dụng không hợp lệ.";
 		}
-		if (totalDays == null) {
-			return "Tổng số ngày phép không hợp lệ.";
+		if (leaveTypeDAO.getAnnualLeaveType() == null) {
+			return "Chưa có loại nghỉ phép năm đang hoạt động.";
 		}
-		if (totalDays.compareTo(BigDecimal.ZERO) < 0) {
-			return "Tổng số ngày phép không được nhỏ hơn 0.";
+		if (userId != null) {
+			User user = userDAO.getById(userId);
+			if (user == null || user.getIsActive() == null || !user.getIsActive()) {
+				return "Nhân viên không tồn tại hoặc đã bị khóa.";
+			}
 		}
-		if (totalDays.compareTo(MAX_TOTAL_DAYS) > 0) {
-			return "Tổng số ngày phép không được vượt quá 999.99.";
-		}
-
-		User user = userDAO.getById(userId);
-		if (user == null || user.getIsActive() == null || !user.getIsActive()) {
-			return "Nhân viên không tồn tại hoặc đã bị khóa.";
-		}
-
-		LeaveType leaveType = leaveTypeDAO.getById(leaveTypeId);
-		if (leaveType == null || leaveType.getIsActive() == null || !leaveType.getIsActive()) {
-			return "Loại nghỉ không tồn tại hoặc đã bị vô hiệu hóa.";
-		}
-
-		LeaveBalance existingBalance = leaveBalanceDAO.getByUserAndTypeAndYear(userId, leaveTypeId, year);
-		if (existingBalance != null && existingBalance.getUsedDays() != null
-				&& totalDays.compareTo(existingBalance.getUsedDays()) < 0) {
-			return "Tổng số ngày phép không được nhỏ hơn số ngày đã sử dụng.";
-		}
-
 		return null;
 	}
 
 	private void populateFormData(HttpServletRequest request) {
 		List<User> users = userDAO.searchUsers(null, null, null, true, null, 0, FORM_LIST_LIMIT);
-		List<LeaveType> leaveTypes = leaveTypeDAO.searchLeaveTypes(null, null, true, 0, FORM_LIST_LIMIT);
 		request.setAttribute("users", users);
-		request.setAttribute("leaveTypes", leaveTypes);
 		request.setAttribute("currentYear", Year.now().getValue());
 	}
 
@@ -161,17 +131,6 @@ public class LeaveBalanceSetupServlet extends HttpServlet {
 		}
 		try {
 			return Long.valueOf(value);
-		} catch (NumberFormatException e) {
-			return null;
-		}
-	}
-
-	private BigDecimal parseBigDecimal(String value) {
-		if (value == null) {
-			return null;
-		}
-		try {
-			return new BigDecimal(value);
 		} catch (NumberFormatException e) {
 			return null;
 		}

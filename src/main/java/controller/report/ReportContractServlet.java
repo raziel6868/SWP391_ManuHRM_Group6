@@ -1,9 +1,11 @@
 package controller.report;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import dal.DepartmentDAO;
 import dal.ReportDAO;
+import dto.ContractExpiryReportRow;
 import dto.ContractStatusRow;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
@@ -18,6 +20,7 @@ import model.User;
 @WebServlet(name = "ReportContractServlet", urlPatterns = {"/report-contract"})
 public class ReportContractServlet extends HttpServlet {
 
+	private static final int EXPIRING_DAYS = 30;
 	private final ReportDAO reportDAO = new ReportDAO();
 	private final DepartmentDAO departmentDAO = new DepartmentDAO();
 
@@ -35,24 +38,62 @@ public class ReportContractServlet extends HttpServlet {
 			return;
 		}
 
-		String departmentIdParam = request.getParameter("departmentId");
-
-		Long departmentId = null;
-		if (departmentIdParam != null && !departmentIdParam.isEmpty()) {
-			try {
-				departmentId = Long.parseLong(departmentIdParam);
-			} catch (NumberFormatException e) {
-			}
-		}
+		List<String> validationErrors = new ArrayList<>();
+		Long departmentId = parsePositiveLong(request.getParameter("departmentId"), "Phòng ban", validationErrors);
 
 		List<ContractStatusRow> rows = reportDAO.getContractStatus(departmentId);
+		List<ContractExpiryReportRow> expiringContracts = reportDAO.getExpiringContracts(EXPIRING_DAYS, departmentId);
 		List<Department> departments = departmentDAO.getActiveDepartments();
+		ContractStatusRow totals = calculateTotals(rows);
 
 		request.setAttribute("rows", rows);
+		request.setAttribute("expiringContracts", expiringContracts);
 		request.setAttribute("departments", departments);
 		request.setAttribute("selectedDepartmentId", departmentId);
+		request.setAttribute("validationErrors", validationErrors);
+		request.setAttribute("totals", totals);
+		request.setAttribute("expiringDays", EXPIRING_DAYS);
+		request.setAttribute("maxContracts", findMaxContracts(rows));
 
 		request.getRequestDispatcher("/views/report/report-contract.jsp").forward(request, response);
+	}
+
+	private Long parsePositiveLong(String value, String label, List<String> errors) {
+		if (value == null || value.isBlank()) {
+			return null;
+		}
+		try {
+			long parsed = Long.parseLong(value);
+			if (parsed > 0) {
+				return parsed;
+			}
+		} catch (NumberFormatException e) {
+			// handled below
+		}
+		errors.add(label + " không hợp lệ.");
+		return null;
+	}
+
+	private ContractStatusRow calculateTotals(List<ContractStatusRow> rows) {
+		ContractStatusRow totals = new ContractStatusRow();
+		totals.setDepartmentName("Tổng cộng");
+		for (ContractStatusRow row : rows) {
+			totals.setActiveContracts(totals.getActiveContracts() + row.getActiveContracts());
+			totals.setExpiredContracts(totals.getExpiredContracts() + row.getExpiredContracts());
+			totals.setExpiringSoonContracts(totals.getExpiringSoonContracts() + row.getExpiringSoonContracts());
+			totals.setPendingRenewal(totals.getPendingRenewal() + row.getPendingRenewal());
+			totals.setTerminatedContracts(totals.getTerminatedContracts() + row.getTerminatedContracts());
+			totals.setTotalContracts(totals.getTotalContracts() + row.getTotalContracts());
+		}
+		return totals;
+	}
+
+	private int findMaxContracts(List<ContractStatusRow> rows) {
+		int max = 1;
+		for (ContractStatusRow row : rows) {
+			max = Math.max(max, row.getTotalContracts());
+		}
+		return max;
 	}
 
 	private boolean hasPermission(List<Permission> permissions, String code) {

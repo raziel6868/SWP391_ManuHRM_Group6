@@ -8,11 +8,12 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.LocalDate;
-import java.time.YearMonth;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import dto.AttendanceSummaryRow;
 import dto.ContractExpiryReportRow;
 import dto.ContractStatusRow;
@@ -261,55 +262,28 @@ public class ReportDAO {
 		return rows;
 	}
 
-	public List<PayrollSummaryRow> getPayrollSummary(int year, int month) {
-		List<PayrollSummaryRow> rows = new ArrayList<>();
-		YearMonth yearMonth = YearMonth.of(year, month);
-		Date firstDay = Date.valueOf(yearMonth.atDay(1));
-		Date lastDay = Date.valueOf(yearMonth.atEndOfMonth());
+	public List<ContractExpiryReportRow> getExpiringContracts(int days, Long departmentId) {
+		List<ContractExpiryReportRow> rows = new ArrayList<>();
+		StringBuilder sql = new StringBuilder("""
+				SELECT u.employee_code, u.full_name, d.name AS department_name, ct.name AS contract_type_name,
+				       c.start_date, c.end_date, DATEDIFF(c.end_date, CURRENT_DATE) AS days_remaining,
+				       c.status
+				FROM contracts c
+				JOIN users u ON c.user_id = u.id
+				LEFT JOIN departments d ON u.department_id = d.id
+				LEFT JOIN contract_types ct ON c.contract_type_id = ct.id
+				WHERE c.status IN ('ACTIVE', 'EXPIRING_SOON')
+				  AND c.end_date IS NOT NULL
+				  AND c.end_date BETWEEN CURRENT_DATE AND DATE_ADD(CURRENT_DATE, INTERVAL ? DAY)
+				""");
 
-		String sql = """
-				SELECT payroll.department_id,
-				       payroll.department_name,
-				       COUNT(*) AS employee_count,
-				       SUM(payroll.base_salary) AS total_salary,
-				       SUM(payroll.total_ot_hours) AS total_ot_hours
-				FROM (
-				    SELECT u.id AS user_id,
-				           d.id AS department_id,
-				           d.name AS department_name,
-				           c.salary AS base_salary,
-				           COALESCE((
-				               SELECT SUM(ot.approved_hours)
-				               FROM overtime_records ot
-				               WHERE ot.user_id = u.id
-				                 AND ot.status = 'APPROVED'
-				                 AND YEAR(ot.date) = ?
-				                 AND MONTH(ot.date) = ?
-				           ), 0) AS total_ot_hours
-				    FROM users u
-				    LEFT JOIN departments d ON u.department_id = d.id
-				    JOIN contracts c ON c.id = (
-				        SELECT c2.id
-				        FROM contracts c2
-				        WHERE c2.user_id = u.id
-				          AND c2.status = 'ACTIVE'
-				          AND c2.start_date <= ?
-				          AND (c2.end_date IS NULL OR c2.end_date >= ?)
-				          AND c2.salary IS NOT NULL
-				        ORDER BY c2.start_date DESC, c2.id DESC
-				        LIMIT 1
-				    )
-				    WHERE u.is_active = TRUE
-				) payroll
-				GROUP BY payroll.department_id, payroll.department_name
-				ORDER BY payroll.department_name
-				""";
+		List<Object> params = new ArrayList<>();
+		params.add(days);
 
-		try (Connection conn = DBContext.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
-			ps.setInt(1, year);
-			ps.setInt(2, month);
-			ps.setDate(3, lastDay);
-			ps.setDate(4, firstDay);
+		if (departmentId != null) {
+			sql.append(" AND u.department_id = ?");
+			params.add(departmentId);
+		}
 
 		sql.append(" ORDER BY c.end_date ASC, u.full_name ASC");
 

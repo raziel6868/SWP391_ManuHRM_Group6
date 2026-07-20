@@ -120,6 +120,12 @@ public class ContractRenewServlet extends HttpServlet {
 					endDateStr, salaryStr, null, null);
 			return;
 		}
+		if (previous.getEndDate() != null && startDate.before(previous.getEndDate())) {
+			returnWithError(request, response, previous,
+					"Ngày bắt đầu hợp đồng mới không được trước ngày kết thúc hợp đồng cũ.", contractTypeId,
+					startDateStr, endDateStr, salaryStr, null, null);
+			return;
+		}
 		if (endDate != null && endDate.before(startDate)) {
 			returnWithError(request, response, previous, "Ngày kết thúc phải sau ngày bắt đầu.", contractTypeId,
 					startDateStr, endDateStr, salaryStr, null, null);
@@ -157,17 +163,9 @@ public class ContractRenewServlet extends HttpServlet {
 		renewed.setStatus(Contract.Status.ACTIVE);
 		renewed.setRenewalOfId(previous.getId());
 
-		Long newId = contractDAO.insertReturningId(renewed);
+		Long newId = contractDAO.renewReturningId(previous.getId(), renewed);
 		if (newId == null) {
 			session.setAttribute("errorMsg", "Lỗi: Không thể tạo hợp đồng gia hạn. Vui lòng thử lại.");
-			response.sendRedirect(request.getContextPath() + "/contract-detail?id=" + previousId);
-			return;
-		}
-
-		// Mark the previous contract as expired
-		boolean markedExpired = contractDAO.updateStatus(previous.getId(), Contract.Status.EXPIRED);
-		if (!markedExpired) {
-			session.setAttribute("errorMsg", "Lỗi: Không thể cập nhật trạng thái hợp đồng cũ. Vui lòng thử lại.");
 			response.sendRedirect(request.getContextPath() + "/contract-detail?id=" + previousId);
 			return;
 		}
@@ -257,7 +255,8 @@ public class ContractRenewServlet extends HttpServlet {
 	}
 
 	private boolean isRenewable(String status) {
-		return Contract.Status.ACTIVE.name().equals(status) || Contract.Status.EXPIRED.name().equals(status)
+		return Contract.Status.ACTIVE.name().equals(status) || Contract.Status.EXPIRING_SOON.name().equals(status)
+				|| Contract.Status.EXPIRED.name().equals(status)
 				|| Contract.Status.PENDING_RENEWAL.name().equals(status);
 	}
 

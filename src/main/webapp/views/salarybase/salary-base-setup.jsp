@@ -15,7 +15,7 @@
         <div class="main-content">
             <jsp:include page="/components/header.jsp" />
 
-            <div class="page-container" style="max-width: 640px; margin: 40px auto; width: 100%;">
+            <div class="page-container" style="max-width: 720px; margin: 40px auto; width: 100%;">
                 <c:if test="${not empty errorMsg}">
                     <div class="alert alert-error d-flex align-items-center gap-2 mb-4" role="alert">
                         <span class="material-symbols-outlined">error</span>
@@ -32,8 +32,13 @@
                 <div class="d-flex align-items-center gap-3 mb-4">
                     <div>
                         <h2 class="h3 text-on-surface fw-bold mb-1">Thiết lập lương cơ sở</h2>
-                        <p class="body-md text-on-surface-variant mb-0">Nhập thông tin lương cơ sở cho nhân viên.</p>
+                        <p class="body-md text-on-surface-variant mb-0">Nhập lương cơ bản và mức lương đóng bảo hiểm cho nhân viên.</p>
                     </div>
+                </div>
+
+                <div class="alert alert-warning d-flex align-items-center gap-2 mb-4" role="alert">
+                    <span class="material-symbols-outlined">warning</span>
+                    Deprecated: thay doi tai day khong con anh huong toi payroll. Payroll lay luong co ban tu contracts.salary cua hop dong ACTIVE.
                 </div>
 
                 <div class="card-premium overflow-hidden">
@@ -44,7 +49,7 @@
                                 <select name="userId" class="form-select input-premium" required>
                                     <option value="">-- Chọn nhân viên --</option>
                                     <c:forEach var="u" items="${users}">
-                                        <option value="${u.id}">${u.fullName} (${u.employeeCode})</option>
+                                        <option value="${u.id}" ${u.id == selectedUserId ? 'selected' : ''}>${u.fullName} (${u.employeeCode})</option>
                                     </c:forEach>
                                 </select>
                             </div>
@@ -52,12 +57,24 @@
                             <div class="col-md-6">
                                 <label class="form-label text-on-surface fw-medium mb-1">Lương cơ sở (VND) <span class="text-danger">*</span></label>
                                 <input type="number" name="baseSalary" class="form-control input-premium"
-                                       min="0" step="1000" placeholder="VD: 15000000" required>
+                                       min="0" step="1000" placeholder="VD: 15000000"
+                                       value="${currentBase.baseSalary}" required>
                             </div>
 
                             <div class="col-md-6">
                                 <label class="form-label text-on-surface fw-medium mb-1">Ngày hiệu lực <span class="text-danger">*</span></label>
-                                <input type="date" name="effectiveFrom" class="form-control input-premium" required>
+                                <input type="date" name="effectiveFrom" class="form-control input-premium"
+                                       value="${currentBase.effectiveFrom}" required>
+                            </div>
+
+                            <div class="col-12">
+                                <label class="form-label text-on-surface fw-medium mb-1">Lương đóng bảo hiểm (VND)</label>
+                                <input type="number" name="insuranceSalary" class="form-control input-premium"
+                                       min="0" step="1000" placeholder="Bỏ trống để hệ thống tự tính"
+                                       value="${currentBase.insuranceSalary}">
+                                <div class="form-text text-on-surface-variant mt-2">
+                                    Nếu bỏ trống, hệ thống tự tính bằng lương cơ bản + phụ cấp tính bảo hiểm.
+                                </div>
                             </div>
 
                             <div class="col-12 pt-3 border-top border-outline-variant">

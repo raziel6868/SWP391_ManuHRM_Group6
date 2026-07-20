@@ -20,7 +20,7 @@
 
                 <div class="d-flex justify-content-between align-items-end mb-4 flex-wrap gap-3">
                     <div>
-                        <h2 class="h3 text-on-surface fw-bold mb-1">Quản lý hạn mức nghỉ</h2>
+                        <h2 class="h3 text-on-surface fw-bold mb-1">Hạn mức phép năm</h2>
                         <p class="body-md text-on-surface-variant mb-0">
                             Theo dõi và thiết lập số ngày nghỉ theo nhân viên, loại nghỉ và năm áp dụng.
                         </p>
@@ -29,7 +29,7 @@
                         <a href="${pageContext.request.contextPath}/leave-balance-setup"
                            class="btn-primary-gradient text-decoration-none px-3 py-2 d-flex align-items-center gap-2 shadow-sm">
                             <span class="material-symbols-outlined" style="font-size: 1.125rem;">tune</span>
-                            Thiết lập hạn mức
+                            Đồng bộ hạn mức
                         </a>
                     </c:if>
                 </div>
@@ -75,6 +75,7 @@
                                     <th>Nhân viên</th>
                                     <th>Phòng ban</th>
                                     <th>Loại nghỉ</th>
+                                    <th>Hợp đồng đầu tiên</th>
                                     <th>Năm</th>
                                     <th class="text-end">Tổng ngày</th>
                                     <th class="text-end">Đã dùng</th>
@@ -97,11 +98,9 @@
                                         </td>
                                         <td><c:out value="${empty balance.departmentName ? '-' : balance.departmentName}" /></td>
                                         <td>
-                                            <span class="badge" style="background-color: var(--primary-fixed); color: var(--on-primary-fixed-variant);">
-                                                <c:out value="${balance.leaveTypeCode}" />
-                                            </span>
-                                            <span class="ms-2"><c:out value="${balance.leaveTypeName}" /></span>
+                                            <span class="fw-medium text-on-surface"><c:out value="${balance.leaveTypeName}" /></span>
                                         </td>
+                                        <td><c:out value="${empty balance.firstContractStartDate ? '-' : balance.firstContractStartDate}" /></td>
                                         <td>${balance.year}</td>
                                         <td class="text-end fw-medium">
                                             <fmt:formatNumber value="${balance.totalDays}" minFractionDigits="0" maxFractionDigits="2" />
@@ -114,10 +113,10 @@
                                         </td>
                                         <c:if test="${canSetup}">
                                             <td class="text-end">
-                                                <a href="${pageContext.request.contextPath}/leave-balance-setup?userId=${balance.userId}&leaveTypeId=${balance.leaveTypeId}&year=${balance.year}"
+                                                <a href="${pageContext.request.contextPath}/leave-balance-setup?userId=${balance.userId}&year=${balance.year}"
                                                    class="btn btn-sm btn-icon text-on-surface-variant hover-primary"
-                                                   title="Cập nhật hạn mức">
-                                                    <span class="material-symbols-outlined" style="font-size: 1.25rem;">edit</span>
+                                                   title="Đồng bộ hạn mức">
+                                                    <span class="material-symbols-outlined" style="font-size: 1.25rem;">sync</span>
                                                 </a>
                                             </td>
                                         </c:if>
@@ -125,7 +124,7 @@
                                 </c:forEach>
                                 <c:if test="${empty balances}">
                                     <tr>
-                                        <td colspan="${canSetup ? 8 : 7}" class="text-center py-4 text-on-surface-variant">
+                                        <td colspan="${canSetup ? 9 : 8}" class="text-center py-4 text-on-surface-variant">
                                             Chưa có hạn mức nghỉ phù hợp với bộ lọc hiện tại.
                                         </td>
                                     </tr>

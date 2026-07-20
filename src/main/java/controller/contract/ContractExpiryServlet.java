@@ -32,6 +32,7 @@ public class ContractExpiryServlet extends HttpServlet {
 	@Override
 	protected void doGet(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
+		contractDAO.refreshLifecycleStatuses();
 		int days = parseDays(request.getParameter("days"));
 		List<ContractListItem> items = contractDAO.findExpiringSoon(days, MAX_ROWS);
 

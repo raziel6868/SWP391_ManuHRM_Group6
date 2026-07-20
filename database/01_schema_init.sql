@@ -12,13 +12,20 @@ USE manufacturing_hrm;
 SET FOREIGN_KEY_CHECKS = 0;
 DROP TABLE IF EXISTS password_resets;
 DROP TABLE IF EXISTS holidays;
+DROP TABLE IF EXISTS employee_allowances;
+DROP TABLE IF EXISTS employee_dependents;
+DROP TABLE IF EXISTS allowance_types;
+DROP TABLE IF EXISTS personal_tax_brackets;
+DROP TABLE IF EXISTS personal_tax_settings;
+DROP TABLE IF EXISTS insurance_rates;
+DROP TABLE IF EXISTS payroll_settings;
 DROP TABLE IF EXISTS monthly_salaries;
+DROP TABLE IF EXISTS monthly_sheet_approvals;
 DROP TABLE IF EXISTS monthly_sheets;
 DROP TABLE IF EXISTS salary_bases;
 DROP TABLE IF EXISTS overtime_records;
 DROP TABLE IF EXISTS attendance_corrections;
 DROP TABLE IF EXISTS attendance_records;
-DROP TABLE IF EXISTS shift_assignments;
 DROP TABLE IF EXISTS leave_requests;
 DROP TABLE IF EXISTS leave_balances;
 DROP TABLE IF EXISTS contracts;
@@ -27,7 +34,6 @@ DROP TABLE IF EXISTS users;
 DROP TABLE IF EXISTS role_permissions;
 DROP TABLE IF EXISTS permissions;
 DROP TABLE IF EXISTS contract_types;
-DROP TABLE IF EXISTS shifts;
 DROP TABLE IF EXISTS leave_types;
 DROP TABLE IF EXISTS job_titles;
 DROP TABLE IF EXISTS roles;
@@ -156,19 +162,15 @@ CREATE TABLE leave_types (
     name VARCHAR(100) NOT NULL,
     description TEXT NULL,
     is_paid BOOLEAN NOT NULL DEFAULT TRUE,
-    is_active BOOLEAN NOT NULL DEFAULT TRUE,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-);
-
-CREATE TABLE shifts (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    code VARCHAR(30) NOT NULL UNIQUE,
-    name VARCHAR(100) NOT NULL,
-    start_time TIME NOT NULL,
-    end_time TIME NOT NULL,
-    break_minutes INT NOT NULL DEFAULT 0,
-    is_night_shift BOOLEAN NOT NULL DEFAULT FALSE,
+    salary_paid_by ENUM('COMPANY', 'SOCIAL_INSURANCE', 'NONE') NOT NULL DEFAULT 'COMPANY',
+    is_annual_leave BOOLEAN NOT NULL DEFAULT FALSE,
+    requires_balance BOOLEAN NOT NULL DEFAULT FALSE,
+    base_days DECIMAL(5,2) NULL,
+    max_days DECIMAL(5,2) NULL,
+    has_seniority_bonus BOOLEAN NOT NULL DEFAULT FALSE,
+    seniority_interval_years INT NOT NULL DEFAULT 5,
+    seniority_bonus_days DECIMAL(5,2) NOT NULL DEFAULT 1.00,
+    day_count_method ENUM('WORKING_DAY', 'CALENDAR_DAY') NOT NULL DEFAULT 'WORKING_DAY',
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
@@ -214,7 +216,7 @@ CREATE TABLE contracts (
     terminated_at DATE NULL,
     terminated_by BIGINT NULL,
     terminate_reason TEXT NULL,
-    status ENUM('ACTIVE', 'EXPIRED', 'PENDING_RENEWAL', 'TERMINATED') NOT NULL DEFAULT 'ACTIVE',
+    status ENUM('ACTIVE', 'EXPIRING_SOON', 'EXPIRED', 'PENDING_RENEWAL', 'TERMINATED') NOT NULL DEFAULT 'ACTIVE',
     renewal_of_id BIGINT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -252,6 +254,11 @@ CREATE TABLE leave_requests (
     end_date DATE NOT NULL,
     days DECIMAL(5,2) NOT NULL,
     reason TEXT NULL,
+    is_paid_snapshot BOOLEAN NOT NULL DEFAULT TRUE,
+    salary_paid_by_snapshot ENUM('COMPANY', 'SOCIAL_INSURANCE', 'NONE') NOT NULL DEFAULT 'COMPANY',
+    is_annual_leave_snapshot BOOLEAN NOT NULL DEFAULT FALSE,
+    requires_balance_snapshot BOOLEAN NOT NULL DEFAULT FALSE,
+    day_count_method_snapshot ENUM('WORKING_DAY', 'CALENDAR_DAY') NOT NULL DEFAULT 'WORKING_DAY',
     status ENUM('PENDING', 'APPROVED_LEVEL_1', 'APPROVED', 'REJECTED', 'CANCELLED') NOT NULL DEFAULT 'PENDING',
     level_1_approver_id BIGINT NULL,
     level_1_approved_at TIMESTAMP NULL,
@@ -269,26 +276,10 @@ CREATE TABLE leave_requests (
         FOREIGN KEY (approver_id) REFERENCES users(id) ON DELETE SET NULL
 );
 
-CREATE TABLE shift_assignments (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    user_id BIGINT NOT NULL,
-    shift_id BIGINT NOT NULL,
-    date DATE NOT NULL,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    CONSTRAINT fk_shift_assignments_user
-        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-    CONSTRAINT fk_shift_assignments_shift
-        FOREIGN KEY (shift_id) REFERENCES shifts(id) ON DELETE RESTRICT,
-    CONSTRAINT uq_shift_assignments_user_date
-        UNIQUE (user_id, date)
-);
-
 CREATE TABLE attendance_records (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     user_id BIGINT NOT NULL,
     date DATE NOT NULL,
-    shift_id BIGINT NULL,
     check_in TIME NULL,
     check_out TIME NULL,
     working_hours DECIMAL(5,2) NULL,
@@ -298,8 +289,6 @@ CREATE TABLE attendance_records (
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     CONSTRAINT fk_attendance_records_user
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-    CONSTRAINT fk_attendance_records_shift
-        FOREIGN KEY (shift_id) REFERENCES shifts(id) ON DELETE SET NULL,
     CONSTRAINT uq_attendance_records_user_date
         UNIQUE (user_id, date)
 );
@@ -311,14 +300,21 @@ CREATE TABLE attendance_corrections (
     new_check_in TIME NULL,
     new_check_out TIME NULL,
     reason TEXT NULL,
+    supervisor_id BIGINT NULL,
+    supervisor_status ENUM('PENDING', 'APPROVED', 'REJECTED') NOT NULL DEFAULT 'PENDING',
+    supervisor_approved_at TIMESTAMP NULL,
+    supervisor_reject_reason TEXT NULL,
     status ENUM('PENDING', 'APPROVED', 'REJECTED') NOT NULL DEFAULT 'PENDING',
     approver_id BIGINT NULL,
+    hr_reject_reason TEXT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     CONSTRAINT fk_attendance_corrections_record
         FOREIGN KEY (attendance_record_id) REFERENCES attendance_records(id) ON DELETE CASCADE,
     CONSTRAINT fk_attendance_corrections_requested_by
         FOREIGN KEY (requested_by) REFERENCES users(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_attendance_corrections_supervisor
+        FOREIGN KEY (supervisor_id) REFERENCES users(id) ON DELETE SET NULL,
     CONSTRAINT fk_attendance_corrections_approver
         FOREIGN KEY (approver_id) REFERENCES users(id) ON DELETE SET NULL
 );
@@ -341,10 +337,80 @@ CREATE TABLE overtime_records (
         FOREIGN KEY (approver_id) REFERENCES users(id) ON DELETE SET NULL
 );
 
+CREATE TABLE payroll_settings (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    standard_work_days DECIMAL(5,2) NOT NULL DEFAULT 22.00,
+    standard_work_hours_per_day DECIMAL(5,2) NOT NULL DEFAULT 8.00,
+    normal_overtime_rate DECIMAL(5,2) NOT NULL DEFAULT 1.50,
+    effective_from DATE NOT NULL,
+    effective_to DATE NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT uq_payroll_settings_effective_from
+        UNIQUE (effective_from)
+);
+
+CREATE TABLE insurance_rates (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    social_insurance_employee_rate DECIMAL(6,4) NOT NULL DEFAULT 0.0000,
+    health_insurance_employee_rate DECIMAL(6,4) NOT NULL DEFAULT 0.0000,
+    unemployment_insurance_employee_rate DECIMAL(6,4) NOT NULL DEFAULT 0.0000,
+    social_insurance_employer_rate DECIMAL(6,4) NOT NULL DEFAULT 0.0000,
+    health_insurance_employer_rate DECIMAL(6,4) NOT NULL DEFAULT 0.0000,
+    unemployment_insurance_employer_rate DECIMAL(6,4) NOT NULL DEFAULT 0.0000,
+    social_health_insurance_cap DECIMAL(15,2) NULL,
+    unemployment_insurance_cap DECIMAL(15,2) NULL,
+    effective_from DATE NOT NULL,
+    effective_to DATE NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT uq_insurance_rates_effective_from
+        UNIQUE (effective_from)
+);
+
+CREATE TABLE personal_tax_settings (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    personal_deduction DECIMAL(15,2) NOT NULL DEFAULT 0,
+    dependent_deduction DECIMAL(15,2) NOT NULL DEFAULT 0,
+    effective_from DATE NOT NULL,
+    effective_to DATE NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT uq_personal_tax_settings_effective_from
+        UNIQUE (effective_from)
+);
+
+CREATE TABLE personal_tax_brackets (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    bracket_order INT NOT NULL,
+    income_from DECIMAL(15,2) NOT NULL DEFAULT 0,
+    income_to DECIMAL(15,2) NULL,
+    tax_rate DECIMAL(6,4) NOT NULL DEFAULT 0.0000,
+    effective_from DATE NOT NULL,
+    effective_to DATE NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT uq_personal_tax_brackets_order_effective_from
+        UNIQUE (bracket_order, effective_from)
+);
+
+CREATE TABLE allowance_types (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    code VARCHAR(30) NOT NULL UNIQUE,
+    name VARCHAR(100) NOT NULL,
+    description TEXT NULL,
+    is_taxable BOOLEAN NOT NULL DEFAULT TRUE,
+    is_insurance_based BOOLEAN NOT NULL DEFAULT FALSE,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
 CREATE TABLE salary_bases (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     user_id BIGINT NOT NULL,
     base_salary DECIMAL(15,2) NOT NULL,
+    insurance_salary DECIMAL(15,2) NULL,
     effective_from DATE NOT NULL,
     effective_to DATE NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -355,28 +421,109 @@ CREATE TABLE salary_bases (
         UNIQUE (user_id, effective_from)
 );
 
+CREATE TABLE employee_allowances (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT NOT NULL,
+    allowance_type_id BIGINT NOT NULL,
+    amount DECIMAL(15,2) NOT NULL,
+    effective_from DATE NOT NULL,
+    effective_to DATE NULL,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_employee_allowances_user
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    CONSTRAINT fk_employee_allowances_allowance_type
+        FOREIGN KEY (allowance_type_id) REFERENCES allowance_types(id) ON DELETE RESTRICT
+);
+
+CREATE TABLE employee_dependents (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT NOT NULL,
+    full_name VARCHAR(100) NOT NULL,
+    relationship VARCHAR(100) NULL,
+    tax_code VARCHAR(50) NULL,
+    date_of_birth DATE NULL,
+    effective_from DATE NOT NULL,
+    effective_to DATE NULL,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_employee_dependents_user
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
 CREATE TABLE monthly_sheets (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     year INT NOT NULL,
     month INT NOT NULL,
-    status ENUM('OPEN', 'CLOSED') NOT NULL DEFAULT 'OPEN',
+    status ENUM('OPEN', 'PENDING_SUPERVISOR', 'PENDING_HR', 'PENDING_DIRECTOR', 'CLOSED') NOT NULL DEFAULT 'OPEN',
+    submitted_by BIGINT NULL,
+    submitted_at TIMESTAMP NULL,
+    hr_approved_by BIGINT NULL,
+    hr_approved_at TIMESTAMP NULL,
     closed_at TIMESTAMP NULL,
     closed_by BIGINT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_monthly_sheets_submitted_by
+        FOREIGN KEY (submitted_by) REFERENCES users(id) ON DELETE SET NULL,
+    CONSTRAINT fk_monthly_sheets_hr_approved_by
+        FOREIGN KEY (hr_approved_by) REFERENCES users(id) ON DELETE SET NULL,
     CONSTRAINT fk_monthly_sheets_closed_by
         FOREIGN KEY (closed_by) REFERENCES users(id) ON DELETE SET NULL,
     CONSTRAINT uq_monthly_sheets_year_month
         UNIQUE (year, month)
 );
 
+CREATE TABLE monthly_sheet_approvals (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    monthly_sheet_id BIGINT NOT NULL,
+    supervisor_id BIGINT NOT NULL,
+    status ENUM('PENDING', 'APPROVED') NOT NULL DEFAULT 'PENDING',
+    approved_at TIMESTAMP NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_monthly_sheet_approvals_sheet
+        FOREIGN KEY (monthly_sheet_id) REFERENCES monthly_sheets(id) ON DELETE CASCADE,
+    CONSTRAINT fk_monthly_sheet_approvals_supervisor
+        FOREIGN KEY (supervisor_id) REFERENCES users(id) ON DELETE RESTRICT,
+    CONSTRAINT uq_monthly_sheet_approvals_sheet_supervisor
+        UNIQUE (monthly_sheet_id, supervisor_id)
+);
+
 CREATE TABLE monthly_salaries (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     monthly_sheet_id BIGINT NOT NULL,
     user_id BIGINT NOT NULL,
+    base_salary DECIMAL(15,2) NOT NULL DEFAULT 0,
+    standard_work_days DECIMAL(5,2) NOT NULL DEFAULT 22.00,
+    standard_work_hours_per_day DECIMAL(5,2) NOT NULL DEFAULT 8.00,
     actual_work_days DECIMAL(5,2) NOT NULL DEFAULT 0,
+    paid_leave_days DECIMAL(5,2) NOT NULL DEFAULT 0,
+    prorated_base_salary DECIMAL(15,2) NOT NULL DEFAULT 0,
+    paid_leave_salary DECIMAL(15,2) NOT NULL DEFAULT 0,
+    approved_ot_hours DECIMAL(5,2) NOT NULL DEFAULT 0,
     ot_hours DECIMAL(5,2) NOT NULL DEFAULT 0,
+    overtime_pay DECIMAL(15,2) NOT NULL DEFAULT 0,
+    total_allowances DECIMAL(15,2) NOT NULL DEFAULT 0,
+    gross_income DECIMAL(15,2) NOT NULL DEFAULT 0,
     gross_salary DECIMAL(15,2) NOT NULL DEFAULT 0,
+    insurance_salary DECIMAL(15,2) NOT NULL DEFAULT 0,
+    insurance_based_allowances DECIMAL(15,2) NOT NULL DEFAULT 0,
+    social_insurance_base DECIMAL(15,2) NOT NULL DEFAULT 0,
+    health_insurance_base DECIMAL(15,2) NOT NULL DEFAULT 0,
+    unemployment_insurance_base DECIMAL(15,2) NOT NULL DEFAULT 0,
+    social_insurance DECIMAL(15,2) NOT NULL DEFAULT 0,
+    health_insurance DECIMAL(15,2) NOT NULL DEFAULT 0,
+    unemployment_insurance DECIMAL(15,2) NOT NULL DEFAULT 0,
+    employee_insurance DECIMAL(15,2) NOT NULL DEFAULT 0,
+    personal_deduction DECIMAL(15,2) NOT NULL DEFAULT 0,
+    dependent_count INT NOT NULL DEFAULT 0,
+    dependent_deduction DECIMAL(15,2) NOT NULL DEFAULT 0,
+    non_taxable_allowances DECIMAL(15,2) NOT NULL DEFAULT 0,
+    taxable_income DECIMAL(15,2) NOT NULL DEFAULT 0,
+    pit_tax DECIMAL(15,2) NOT NULL DEFAULT 0,
     deductions DECIMAL(15,2) NOT NULL DEFAULT 0,
     net_salary DECIMAL(15,2) NOT NULL DEFAULT 0,
     status ENUM('DRAFT', 'FINAL', 'PAID') NOT NULL DEFAULT 'DRAFT',
@@ -385,7 +532,9 @@ CREATE TABLE monthly_salaries (
     CONSTRAINT fk_monthly_salaries_sheet
         FOREIGN KEY (monthly_sheet_id) REFERENCES monthly_sheets(id) ON DELETE RESTRICT,
     CONSTRAINT fk_monthly_salaries_user
-        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE RESTRICT
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE RESTRICT,
+    CONSTRAINT uq_monthly_salaries_sheet_user
+        UNIQUE (monthly_sheet_id, user_id)
 );
 
 CREATE TABLE audit_logs (

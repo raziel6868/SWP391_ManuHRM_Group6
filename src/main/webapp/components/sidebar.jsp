@@ -13,26 +13,32 @@
 
 <c:set var="hasContractTypeView" value="${false}" />
 <c:set var="hasContractView" value="${false}" />
+<c:set var="hasContractMyView" value="${false}" />
 
 <c:set var="hasLeaveTypeView" value="${false}" />
 <c:set var="hasLeaveBalanceView" value="${false}" />
 <c:set var="hasLeaveMyView" value="${false}" />
 <c:set var="hasLeaveRequestView" value="${false}" />
-
-<c:set var="hasShiftView" value="${false}" />
-<c:set var="hasShiftAssignmentView" value="${false}" />
-<c:set var="hasShiftCalendarView" value="${false}" />
-<c:set var="hasMyShiftView" value="${false}" />
+<c:set var="hasLeaveRequestApproveL1" value="${false}" />
 
 <c:set var="hasAttendanceView" value="${false}" />
 <c:set var="hasAttendanceMyView" value="${false}" />
 <c:set var="hasAttendanceCorrectionView" value="${false}" />
 <c:set var="hasOtView" value="${false}" />
+<c:set var="hasOtMyView" value="${false}" />
 
 <c:set var="hasMonthlySheetView" value="${false}" />
+<c:set var="hasMonthlySheetSupervisorView" value="${false}" />
 <c:set var="hasSalaryBaseSetup" value="${false}" />
 <c:set var="hasPayrollView" value="${false}" />
 <c:set var="hasPayslipView" value="${false}" />
+<c:set var="hasAllowanceTypeView" value="${false}" />
+<c:set var="hasEmployeeAllowanceView" value="${false}" />
+<c:set var="hasInsuranceRateView" value="${false}" />
+<c:set var="hasPersonalTaxSettingView" value="${false}" />
+<c:set var="hasPersonalTaxBracketView" value="${false}" />
+<c:set var="hasEmployeeDependentView" value="${false}" />
+<c:set var="hasPayrollSettingView" value="${false}" />
 
 <c:set var="hasReportAttendance" value="${false}" />
 <c:set var="hasReportLeave" value="${false}" />
@@ -71,6 +77,10 @@
             <c:set var="hasContractView" value="${true}" />
             <c:set var="contractViewUrl" value="${permission.urlPattern}" />
         </c:when>
+        <c:when test="${permission.code == 'CONTRACT_MY_VIEW'}">
+            <c:set var="hasContractMyView" value="${true}" />
+            <c:set var="contractMyViewUrl" value="${permission.urlPattern}" />
+        </c:when>
         <c:when test="${permission.code == 'LEAVE_TYPE_VIEW'}">
             <c:set var="hasLeaveTypeView" value="${true}" />
             <c:set var="leaveTypeViewUrl" value="${permission.urlPattern}" />
@@ -87,21 +97,8 @@
             <c:set var="hasLeaveRequestView" value="${true}" />
             <c:set var="leaveRequestViewUrl" value="${permission.urlPattern}" />
         </c:when>
-        <c:when test="${permission.code == 'SHIFT_VIEW'}">
-            <c:set var="hasShiftView" value="${true}" />
-            <c:set var="shiftViewUrl" value="${permission.urlPattern}" />
-        </c:when>
-        <c:when test="${permission.code == 'SHIFT_ASSIGNMENT_VIEW'}">
-            <c:set var="hasShiftAssignmentView" value="${true}" />
-            <c:set var="shiftAssignmentViewUrl" value="${permission.urlPattern}" />
-        </c:when>
-        <c:when test="${permission.code == 'SHIFT_CALENDAR_VIEW'}">
-            <c:set var="hasShiftCalendarView" value="${true}" />
-            <c:set var="shiftCalendarViewUrl" value="${permission.urlPattern}" />
-        </c:when>
-        <c:when test="${permission.code == 'MY_SHIFT_VIEW'}">
-            <c:set var="hasMyShiftView" value="${true}" />
-            <c:set var="myShiftViewUrl" value="${permission.urlPattern}" />
+        <c:when test="${permission.code == 'LEAVE_REQUEST_APPROVE_L1'}">
+            <c:set var="hasLeaveRequestApproveL1" value="${true}" />
         </c:when>
         <c:when test="${permission.code == 'ATTENDANCE_VIEW'}">
             <c:set var="hasAttendanceView" value="${true}" />
@@ -119,9 +116,17 @@
             <c:set var="hasOtView" value="${true}" />
             <c:set var="otViewUrl" value="${permission.urlPattern}" />
         </c:when>
+        <c:when test="${permission.code == 'OT_MY_VIEW'}">
+            <c:set var="hasOtMyView" value="${true}" />
+            <c:set var="otMyViewUrl" value="${permission.urlPattern}" />
+        </c:when>
         <c:when test="${permission.code == 'MONTHLY_SHEET_VIEW'}">
             <c:set var="hasMonthlySheetView" value="${true}" />
             <c:set var="monthlySheetViewUrl" value="${permission.urlPattern}" />
+        </c:when>
+        <c:when test="${permission.code == 'MONTHLY_SHEET_SUPERVISOR_VIEW'}">
+            <c:set var="hasMonthlySheetSupervisorView" value="${true}" />
+            <c:set var="monthlySheetSupervisorViewUrl" value="${permission.urlPattern}" />
         </c:when>
         <c:when test="${permission.code == 'SALARY_BASE_SETUP'}">
             <c:set var="hasSalaryBaseSetup" value="${true}" />
@@ -134,6 +139,34 @@
         <c:when test="${permission.code == 'PAYSLIP_VIEW'}">
             <c:set var="hasPayslipView" value="${true}" />
             <c:set var="payslipViewUrl" value="${permission.urlPattern}" />
+        </c:when>
+        <c:when test="${permission.code == 'ALLOWANCE_TYPE_VIEW'}">
+            <c:set var="hasAllowanceTypeView" value="${true}" />
+            <c:set var="allowanceTypeViewUrl" value="${permission.urlPattern}" />
+        </c:when>
+        <c:when test="${permission.code == 'EMPLOYEE_ALLOWANCE_VIEW'}">
+            <c:set var="hasEmployeeAllowanceView" value="${true}" />
+            <c:set var="employeeAllowanceViewUrl" value="${permission.urlPattern}" />
+        </c:when>
+        <c:when test="${permission.code == 'INSURANCE_RATE_VIEW'}">
+            <c:set var="hasInsuranceRateView" value="${true}" />
+            <c:set var="insuranceRateViewUrl" value="${permission.urlPattern}" />
+        </c:when>
+        <c:when test="${permission.code == 'PERSONAL_TAX_SETTING_VIEW'}">
+            <c:set var="hasPersonalTaxSettingView" value="${true}" />
+            <c:set var="personalTaxSettingViewUrl" value="${permission.urlPattern}" />
+        </c:when>
+        <c:when test="${permission.code == 'PERSONAL_TAX_BRACKET_VIEW'}">
+            <c:set var="hasPersonalTaxBracketView" value="${true}" />
+            <c:set var="personalTaxBracketViewUrl" value="${permission.urlPattern}" />
+        </c:when>
+        <c:when test="${permission.code == 'EMPLOYEE_DEPENDENT_VIEW'}">
+            <c:set var="hasEmployeeDependentView" value="${true}" />
+            <c:set var="employeeDependentViewUrl" value="${permission.urlPattern}" />
+        </c:when>
+        <c:when test="${permission.code == 'PAYROLL_SETTING_VIEW'}">
+            <c:set var="hasPayrollSettingView" value="${true}" />
+            <c:set var="payrollSettingViewUrl" value="${permission.urlPattern}" />
         </c:when>
         <c:when test="${permission.code == 'REPORT_ATTENDANCE'}">
             <c:set var="hasReportAttendance" value="${true}" />
@@ -164,19 +197,16 @@
 
 <c:set var="hasSystemMenu" value="${hasUserView or hasRoleView or hasDepartmentView or hasJobTitleView or hasHolidayView}" />
 <c:set var="hasContractMenu" value="${hasContractTypeView or hasContractView}" />
-<c:set var="hasLeaveMenu" value="${hasLeaveTypeView or hasLeaveBalanceView or hasLeaveMyView or hasLeaveRequestView}" />
-<c:set var="hasShiftMenu" value="${hasShiftView or hasShiftAssignmentView or hasShiftCalendarView or hasMyShiftView}" />
-<c:set var="hasAttendanceMenu" value="${hasAttendanceView or hasAttendanceMyView or hasAttendanceCorrectionView or hasOtView}" />
-<c:set var="hasPayrollMenu" value="${hasMonthlySheetView or hasSalaryBaseSetup or hasPayrollView or hasPayslipView}" />
+<c:set var="hasLeaveMenu" value="${hasLeaveTypeView or hasLeaveBalanceView or hasLeaveMyView or hasLeaveRequestView or hasLeaveRequestApproveL1}" />
+<c:set var="hasAttendanceMenu" value="${hasAttendanceView or hasAttendanceMyView or hasAttendanceCorrectionView or hasOtView or hasOtMyView}" /><c:set var="hasPayrollMenu" value="${hasMonthlySheetView or hasMonthlySheetSupervisorView or hasPayrollView or hasPayslipView or hasAllowanceTypeView or hasEmployeeAllowanceView or hasInsuranceRateView or hasPersonalTaxSettingView or hasPersonalTaxBracketView or hasEmployeeDependentView or hasPayrollSettingView}" />
 <c:set var="hasReportMenu" value="${hasReportAttendance or hasReportLeave or hasReportHeadcount or hasReportContract or hasReportPayroll or hasReportOt}" />
-<c:set var="hasMenuPermission" value="${hasSystemMenu or hasContractMenu or hasLeaveMenu or hasShiftMenu or hasAttendanceMenu or hasPayrollMenu or hasReportMenu}" />
+<c:set var="hasMenuPermission" value="${hasSystemMenu or hasContractMenu or hasLeaveMenu or hasAttendanceMenu or hasPayrollMenu or hasReportMenu}" />
 
 <c:set var="systemMenuOpen" value="${currentPath == '/user-list' or currentPath == '/user-create' or currentPath == '/user-update' or currentPath == '/user-detail' or currentPath == '/role-list' or currentPath == '/role-create' or currentPath == '/role-update' or currentPath == '/role-permission' or currentPath == '/department-list' or currentPath == '/department-create' or currentPath == '/department-update' or currentPath == '/job-title-list' or currentPath == '/job-title-create' or currentPath == '/job-title-update' or currentPath == '/holiday-list' or currentPath == '/holiday-create' or currentPath == '/holiday-update'}" />
-<c:set var="contractMenuOpen" value="${currentPath == '/contract-type-list' or currentPath == '/contract-type-create' or currentPath == '/contract-type-update' or currentPath == '/contract-list' or currentPath == '/contract-create' or currentPath == '/contract-detail' or currentPath == '/contract-update' or currentPath == '/contract-upload' or currentPath == '/contract-renew' or currentPath == '/contract-terminate' or currentPath == '/contract-expiry'}" />
-<c:set var="leaveMenuOpen" value="${currentPath == '/leave-type-list' or currentPath == '/leave-type-create' or currentPath == '/leave-type-update' or currentPath == '/leave-balance-list' or currentPath == '/leave-balance-setup' or currentPath == '/leave-request-my' or currentPath == '/leave-request-create' or currentPath == '/leave-request-list'}" />
-<c:set var="shiftMenuOpen" value="${currentPath == '/shift-list' or currentPath == '/shift-create' or currentPath == '/shift-update' or currentPath == '/shift-assignment-list' or currentPath == '/shift-assignment-assign' or currentPath == '/shift-assignment-bulk' or currentPath == '/shift-calendar' or currentPath == '/my-shift'}" />
+<c:set var="contractMenuOpen" value="${currentPath == '/contract-type-list' or currentPath == '/contract-type-create' or currentPath == '/contract-type-update' or currentPath == '/contract-list' or currentPath == '/my-contract' or currentPath == '/contract-create' or currentPath == '/contract-detail' or currentPath == '/contract-update' or currentPath == '/contract-upload' or currentPath == '/contract-renew' or currentPath == '/contract-terminate' or currentPath == '/contract-expiry'}" />
+<c:set var="leaveMenuOpen" value="${currentPath == '/leave-type-list' or currentPath == '/leave-type-detail' or currentPath == '/leave-type-update' or currentPath == '/leave-balance-list' or currentPath == '/leave-balance-setup' or currentPath == '/leave-request-my' or currentPath == '/leave-request-create' or currentPath == '/leave-request-list'}" />
 <c:set var="attendanceMenuOpen" value="${currentPath == '/attendance-list' or currentPath == '/attendance-import' or currentPath == '/attendance-my' or currentPath == '/attendance-correction-list' or currentPath == '/overtime-list' or currentPath == '/overtime-request'}" />
-<c:set var="payrollMenuOpen" value="${currentPath == '/monthly-sheet-list' or currentPath == '/salary-base-list' or currentPath == '/salary-base-setup' or currentPath == '/payroll-preview' or currentPath == '/payslip-view'}" />
+<c:set var="payrollMenuOpen" value="${currentPath == '/monthly-sheet-list' or currentPath == '/monthly-sheet-supervisor' or currentPath == '/payroll-preview' or currentPath == '/payslip-view' or currentPath == '/allowance-type-list' or currentPath == '/allowance-type-create' or currentPath == '/allowance-type-update' or currentPath == '/employee-allowance-list' or currentPath == '/employee-allowance-setup' or currentPath == '/insurance-rate-list' or currentPath == '/insurance-rate-setup' or currentPath == '/personal-tax-setting-list' or currentPath == '/personal-tax-setting-setup' or currentPath == '/personal-tax-bracket-list' or currentPath == '/personal-tax-bracket-setup' or currentPath == '/employee-dependent-list' or currentPath == '/employee-dependent-setup' or currentPath == '/payroll-setting-list' or currentPath == '/payroll-setting-setup'}" />
 <c:set var="reportMenuOpen" value="${currentPath == '/report-attendance' or currentPath == '/report-leave' or currentPath == '/report-headcount' or currentPath == '/report-contract' or currentPath == '/report-payroll' or currentPath == '/report-overtime'}" />
 
 <aside class="sidebar">
@@ -249,6 +279,10 @@
                         <c:url var="menuUrl" value="${contractViewUrl}" />
                         <a class="${currentPath == contractViewUrl ? 'sidebar-subitem active' : 'sidebar-subitem'}" href="${menuUrl}">Hợp đồng</a>
                     </c:if>
+                    <c:if test="${hasContractMyView}">
+                        <c:url var="menuUrl" value="${contractMyViewUrl}" />
+                        <a class="${currentPath == contractMyViewUrl or currentPath == '/contract-detail' ? 'sidebar-subitem active' : 'sidebar-subitem'}" href="${menuUrl}">Hợp đồng cá nhân</a>
+                    </c:if>
                     <c:if test="${hasContractTypeView}">
                         <c:url var="menuUrl" value="${contractTypeViewUrl}" />
                         <a class="${currentPath == contractTypeViewUrl ? 'sidebar-subitem active' : 'sidebar-subitem'}" href="${menuUrl}">Loại hợp đồng</a>
@@ -275,43 +309,17 @@
                         <c:url var="menuUrl" value="${leaveRequestViewUrl}" />
                         <a class="${currentPath == leaveRequestViewUrl ? 'sidebar-subitem active' : 'sidebar-subitem'}" href="${menuUrl}">Duyệt nghỉ phép</a>
                     </c:if>
+                    <c:if test="${hasLeaveRequestApproveL1 and not hasLeaveRequestView}">
+                        <c:url var="menuUrl" value="/leave-request-list" />
+                        <a class="${currentPath == menuUrl ? 'sidebar-subitem active' : 'sidebar-subitem'}" href="${menuUrl}">Duyệt nghỉ phép</a>
+                    </c:if>
                     <c:if test="${hasLeaveBalanceView}">
                         <c:url var="menuUrl" value="${leaveBalanceViewUrl}" />
-                        <a class="${currentPath == leaveBalanceViewUrl ? 'sidebar-subitem active' : 'sidebar-subitem'}" href="${menuUrl}">Số dư nghỉ phép</a>
+                        <a class="${currentPath == leaveBalanceViewUrl ? 'sidebar-subitem active' : 'sidebar-subitem'}" href="${menuUrl}">Hạn mức phép năm</a>
                     </c:if>
                     <c:if test="${hasLeaveTypeView}">
                         <c:url var="menuUrl" value="${leaveTypeViewUrl}" />
                         <a class="${currentPath == leaveTypeViewUrl ? 'sidebar-subitem active' : 'sidebar-subitem'}" href="${menuUrl}">Loại nghỉ phép</a>
-                    </c:if>
-                </div>
-            </div>
-        </c:if>
-
-        <c:if test="${hasShiftMenu}">
-            <button class="${shiftMenuOpen ? 'sidebar-nav-item sidebar-parent active' : 'sidebar-nav-item sidebar-parent'}"
-                    type="button" data-bs-toggle="collapse" data-bs-target="#shiftMenu"
-                    aria-expanded="${shiftMenuOpen}" aria-controls="shiftMenu">
-                <span class="material-symbols-outlined">schedule</span>
-                <span>Quản lý ca</span>
-                <span class="material-symbols-outlined sidebar-chevron">expand_more</span>
-            </button>
-            <div id="shiftMenu" class="collapse ${shiftMenuOpen ? 'show' : ''}">
-                <div class="sidebar-submenu">
-                    <c:if test="${hasMyShiftView}">
-                        <c:url var="menuUrl" value="${myShiftViewUrl}" />
-                        <a class="${currentPath == myShiftViewUrl ? 'sidebar-subitem active' : 'sidebar-subitem'}" href="${menuUrl}">Ca của tôi</a>
-                    </c:if>
-                    <c:if test="${hasShiftView}">
-                        <c:url var="menuUrl" value="${shiftViewUrl}" />
-                        <a class="${currentPath == shiftViewUrl ? 'sidebar-subitem active' : 'sidebar-subitem'}" href="${menuUrl}">Ca làm việc</a>
-                    </c:if>
-                    <c:if test="${hasShiftAssignmentView}">
-                        <c:url var="menuUrl" value="${shiftAssignmentViewUrl}" />
-                        <a class="${currentPath == shiftAssignmentViewUrl ? 'sidebar-subitem active' : 'sidebar-subitem'}" href="${menuUrl}">Phân ca</a>
-                    </c:if>
-                    <c:if test="${hasShiftCalendarView}">
-                        <c:url var="menuUrl" value="${shiftCalendarViewUrl}" />
-                        <a class="${currentPath == shiftCalendarViewUrl ? 'sidebar-subitem active' : 'sidebar-subitem'}" href="${menuUrl}">Lịch phân ca</a>
                     </c:if>
                 </div>
             </div>
@@ -343,6 +351,10 @@
                         <c:url var="menuUrl" value="${otViewUrl}" />
                         <a class="${currentPath == otViewUrl ? 'sidebar-subitem active' : 'sidebar-subitem'}" href="${menuUrl}">Tăng ca</a>
                     </c:if>
+                    <c:if test="${hasOtMyView}">
+                        <c:url var="menuUrl" value="${otMyViewUrl}" />
+                        <a class="${currentPath == otMyViewUrl ? 'sidebar-subitem active' : 'sidebar-subitem'}" href="${menuUrl}">Tăng ca của tôi</a>
+                    </c:if>
                 </div>
             </div>
         </c:if>
@@ -361,9 +373,41 @@
                         <c:url var="menuUrl" value="${monthlySheetViewUrl}" />
                         <a class="${currentPath == monthlySheetViewUrl ? 'sidebar-subitem active' : 'sidebar-subitem'}" href="${menuUrl}">Bảng công tháng</a>
                     </c:if>
-                    <c:if test="${hasSalaryBaseSetup}">
+                    <c:if test="${not hasMonthlySheetView and hasMonthlySheetSupervisorView}">
+                        <c:url var="menuUrl" value="${monthlySheetSupervisorViewUrl}" />
+                        <a class="${currentPath == monthlySheetSupervisorViewUrl ? 'sidebar-subitem active' : 'sidebar-subitem'}" href="${menuUrl}">Bảng công tháng</a>
+                    </c:if>
+                    <c:if test="${hasSalaryBaseSetup and false}">
                         <c:url var="menuUrl" value="${salaryBaseSetupUrl}" />
                         <a class="${currentPath == salaryBaseSetupUrl ? 'sidebar-subitem active' : 'sidebar-subitem'}" href="${menuUrl}">Thiết lập lương</a>
+                    </c:if>
+                    <c:if test="${hasAllowanceTypeView}">
+                        <c:url var="menuUrl" value="${allowanceTypeViewUrl}" />
+                        <a class="${currentPath == allowanceTypeViewUrl ? 'sidebar-subitem active' : 'sidebar-subitem'}" href="${menuUrl}">Loại phụ cấp</a>
+                    </c:if>
+                    <c:if test="${hasEmployeeAllowanceView}">
+                        <c:url var="menuUrl" value="${employeeAllowanceViewUrl}" />
+                        <a class="${currentPath == employeeAllowanceViewUrl ? 'sidebar-subitem active' : 'sidebar-subitem'}" href="${menuUrl}">Phụ cấp nhân viên</a>
+                    </c:if>
+                    <c:if test="${hasInsuranceRateView and false}">
+                        <c:url var="menuUrl" value="${insuranceRateViewUrl}" />
+                        <a class="${currentPath == insuranceRateViewUrl or currentPath == '/insurance-rate-setup' ? 'sidebar-subitem active' : 'sidebar-subitem'}" href="${menuUrl}">Má»©c Ä‘Ã³ng báº£o hiá»ƒm</a>
+                    </c:if>
+                    <c:if test="${hasInsuranceRateView}">
+                        <c:url var="menuUrl" value="${insuranceRateViewUrl}" />
+                        <a class="${currentPath == insuranceRateViewUrl or currentPath == '/insurance-rate-setup' ? 'sidebar-subitem active' : 'sidebar-subitem'}" href="${menuUrl}">Mức đóng bảo hiểm</a>
+                    </c:if>
+                    <c:if test="${hasPersonalTaxSettingView}">
+                        <c:url var="menuUrl" value="${personalTaxSettingViewUrl}" />
+                        <a class="${currentPath == personalTaxSettingViewUrl or currentPath == '/personal-tax-setting-setup' ? 'sidebar-subitem active' : 'sidebar-subitem'}" href="${menuUrl}">Thiết lập giảm trừ</a>
+                    </c:if>
+                    <c:if test="${hasPersonalTaxBracketView}">
+                        <c:url var="menuUrl" value="${personalTaxBracketViewUrl}" />
+                        <a class="${currentPath == personalTaxBracketViewUrl or currentPath == '/personal-tax-bracket-setup' ? 'sidebar-subitem active' : 'sidebar-subitem'}" href="${menuUrl}">Biểu thuế lũy tiến</a>
+                    </c:if>
+                    <c:if test="${hasEmployeeDependentView}">
+                        <c:url var="menuUrl" value="${employeeDependentViewUrl}" />
+                        <a class="${currentPath == employeeDependentViewUrl or currentPath == '/employee-dependent-setup' ? 'sidebar-subitem active' : 'sidebar-subitem'}" href="${menuUrl}">Người phụ thuộc</a>
                     </c:if>
                     <c:if test="${hasPayrollView}">
                         <c:url var="menuUrl" value="${payrollViewUrl}" />
@@ -372,6 +416,10 @@
                     <c:if test="${hasPayslipView}">
                         <c:url var="menuUrl" value="${payslipViewUrl}" />
                         <a class="${currentPath == payslipViewUrl ? 'sidebar-subitem active' : 'sidebar-subitem'}" href="${menuUrl}">Phiếu lương</a>
+                    </c:if>
+                    <c:if test="${hasPayrollSettingView}">
+                        <c:url var="menuUrl" value="${payrollSettingViewUrl}" />
+                        <a class="${currentPath == payrollSettingViewUrl or currentPath == '/payroll-setting-setup' ? 'sidebar-subitem active' : 'sidebar-subitem'}" href="${menuUrl}">Cấu hình payroll</a>
                     </c:if>
                 </div>
             </div>

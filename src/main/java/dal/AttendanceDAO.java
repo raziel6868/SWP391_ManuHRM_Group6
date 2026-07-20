@@ -9,139 +9,161 @@ import java.sql.Time;
 import java.util.ArrayList;
 import java.util.List;
 import model.AttendanceRecord;
-import model.Shift;
+import util.WorkScheduleConfig;
 
 public class AttendanceDAO {
 
-	public boolean batchUpsertByMonth(int year, int month, List<AttendanceRecord> records) {
-		if (records == null) {
-			return false;
+	/**
+	 * Tìm bản ghi chấm công đã có của 1 nhân viên vào 1 ngày cụ thể (nếu có). Dùng
+	 * để import theo dòng độc lập: phát hiện trùng (giống hệt dữ liệu cũ) hay
+	 * conflict (khác dữ liệu cũ) trước khi quyết định insert hay bỏ qua.
+	 */
+	public AttendanceRecord findByUserAndDate(Long userId, Date date) {
+		if (userId == null || date == null) {
+			return null;
 		}
-
-		String deleteSql = """
-				DELETE FROM attendance_records
-				WHERE YEAR(date) = ? AND MONTH(date) = ?
-				""";
-		String insertSql = """
-				INSERT INTO attendance_records
-				    (user_id, date, shift_id, check_in, check_out, working_hours, status, import_batch_id)
-				VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-				""";
-
-		Connection conn = null;
-		try {
-			conn = DBContext.getConnection();
-			if (conn == null) {
-				return false;
-			}
-			conn.setAutoCommit(false);
-
-			try (PreparedStatement deletePs = conn.prepareStatement(deleteSql)) {
-				deletePs.setInt(1, year);
-				deletePs.setInt(2, month);
-				deletePs.executeUpdate();
-			}
-
-			try (PreparedStatement insertPs = conn.prepareStatement(insertSql)) {
-				for (AttendanceRecord record : records) {
-					insertPs.setLong(1, record.getUserId());
-					insertPs.setDate(2, record.getDate());
-					if (record.getShiftId() != null) {
-						insertPs.setLong(3, record.getShiftId());
-					} else {
-						insertPs.setNull(3, java.sql.Types.BIGINT);
-					}
-					insertPs.setTime(4, record.getCheckIn());
-					insertPs.setTime(5, record.getCheckOut());
-					insertPs.setBigDecimal(6, record.getWorkingHours());
-					insertPs.setString(7, record.getStatus());
-					insertPs.setString(8, record.getImportBatchId());
-					insertPs.addBatch();
-				}
-				insertPs.executeBatch();
-			}
-
-			conn.commit();
-			return true;
-		} catch (SQLException e) {
-			rollback(conn);
-			System.err.println("AttendanceDAO.batchUpsertByMonth() ERROR: " + e.getMessage());
-		} finally {
-			close(conn);
-		}
-
-		return false;
-	}
-
-	public List<AttendanceRecord> searchByMonth(int year, int month, Long departmentId, int offset, int limit) {
-		List<AttendanceRecord> records = new ArrayList<>();
-		StringBuilder sql = new StringBuilder("""
+		String sql = """
 				SELECT ar.id, ar.user_id, u.employee_code, u.full_name AS employee_name,
-				       ar.date, ar.shift_id, s.name AS shift_name,
+				       ar.date,
 				       ar.check_in, ar.check_out, ar.working_hours, ar.status,
 				       ar.import_batch_id, ar.created_at, ar.updated_at
 				FROM attendance_records ar
 				JOIN users u ON ar.user_id = u.id
-				LEFT JOIN shifts s ON ar.shift_id = s.id
-				WHERE YEAR(ar.date) = ? AND MONTH(ar.date) = ?
-				""");
-		List<Object> params = new ArrayList<>();
-		params.add(year);
-		params.add(month);
+				WHERE ar.user_id = ? AND ar.date = ?
+				""";
+		try (Connection conn = DBContext.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+			ps.setLong(1, userId);
+			ps.setDate(2, date);
+			try (ResultSet rs = ps.executeQuery()) {
+				if (rs.next()) {
+					return mapRecord(rs);
+				}
+			}
+		} catch (SQLException e) {
+			System.err.println("AttendanceDAO.findByUserAndDate() ERROR: " + e.getMessage());
+		}
+		return null;
+	}
 
-		if (departmentId != null) {
-			sql.append(" AND u.department_id = ?");
-			params.add(departmentId);
+	/**
+	 * Kiểm tra nhân viên đã có BẤT KỲ bản ghi chấm công nào trong khoảng ngày
+	 * [startDate, endDate] chưa. Dùng để validate ngược khi duyệt đơn nghỉ phép:
+	 * chặn duyệt nếu nhân viên đã có chấm công thật trong những ngày xin nghỉ
+	 * (tránh trạng thái mâu thuẫn: vừa có chấm công vừa có nghỉ phép được duyệt
+	 * cùng ngày).
+	 */
+	public boolean hasAnyAttendanceInRange(Long userId, Date startDate, Date endDate) {
+		if (userId == null || startDate == null || endDate == null) {
+			return false;
+		}
+		String sql = """
+				SELECT COUNT(*) FROM attendance_records
+				WHERE user_id = ? AND date BETWEEN ? AND ?
+				""";
+		try (Connection conn = DBContext.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+			ps.setLong(1, userId);
+			ps.setDate(2, startDate);
+			ps.setDate(3, endDate);
+			try (ResultSet rs = ps.executeQuery()) {
+				if (rs.next()) {
+					return rs.getInt(1) > 0;
+				}
+			}
+		} catch (SQLException e) {
+			System.err.println("AttendanceDAO.hasAnyAttendanceInRange() ERROR: " + e.getMessage());
+		}
+		return false;
+	}
+
+	/**
+	 * Insert 1 bản ghi chấm công đơn lẻ. Dùng cho import theo dòng độc lập (mỗi
+	 * dòng hợp lệ insert ngay, không xóa/ghi đè dữ liệu cũ của cả tháng như
+	 * batchUpsertByMonth trước đây).
+	 */
+	public boolean insert(AttendanceRecord record) {
+		if (record == null || record.getUserId() == null || record.getDate() == null) {
+			return false;
+		}
+		String sql = """
+				INSERT INTO attendance_records
+				    (user_id, date, check_in, check_out, working_hours, status, import_batch_id)
+				VALUES (?, ?, ?, ?, ?, ?, ?)
+				""";
+		try (Connection conn = DBContext.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+			return insert(ps, record);
+		} catch (SQLException e) {
+			System.err.println("AttendanceDAO.insert() ERROR: " + e.getMessage());
+		}
+		return false;
+	}
+
+	/**
+	 * Insert dùng chung 1 Connection do caller quản lý transaction (commit/rollback
+	 * ở caller). Dùng cho import Excel kiểu all-or-nothing: toàn bộ dòng hợp lệ của
+	 * 1 file được insert trong cùng 1 transaction, lỗi bất kỳ dòng nào thì rollback
+	 * hết, không để lại dữ liệu insert dở dang.
+	 */
+	public boolean insert(Connection conn, AttendanceRecord record) throws SQLException {
+		if (record == null || record.getUserId() == null || record.getDate() == null) {
+			return false;
+		}
+		String sql = """
+				INSERT INTO attendance_records
+				    (user_id, date, check_in, check_out, working_hours, status, import_batch_id)
+				VALUES (?, ?, ?, ?, ?, ?, ?)
+				""";
+		try (PreparedStatement ps = conn.prepareStatement(sql)) {
+			return insert(ps, record);
+		}
+	}
+
+	private boolean insert(PreparedStatement ps, AttendanceRecord record) throws SQLException {
+		ps.setLong(1, record.getUserId());
+		ps.setDate(2, record.getDate());
+		ps.setTime(3, record.getCheckIn());
+		ps.setTime(4, record.getCheckOut());
+		ps.setBigDecimal(5, record.getWorkingHours());
+		ps.setString(6, record.getStatus());
+		ps.setString(7, record.getImportBatchId());
+		return ps.executeUpdate() > 0;
+	}
+
+	public List<AttendanceRecord> searchByUserIdsAndMonth(List<Long> userIds, int year, int month) {
+		List<AttendanceRecord> records = new ArrayList<>();
+		if (userIds == null || userIds.isEmpty()) {
+			return records;
 		}
 
-		sql.append(" ORDER BY ar.date DESC, u.employee_code ASC LIMIT ? OFFSET ?");
-		params.add(limit);
-		params.add(offset);
+		StringBuilder sql = new StringBuilder("""
+				SELECT ar.id, ar.user_id, u.employee_code, u.full_name AS employee_name,
+				       ar.date,
+				       ar.check_in, ar.check_out, ar.working_hours, ar.status,
+				       ar.import_batch_id, ar.created_at, ar.updated_at
+				FROM attendance_records ar
+				JOIN users u ON ar.user_id = u.id
+				WHERE YEAR(ar.date) = ? AND MONTH(ar.date) = ?
+				  AND ar.user_id IN (
+				""");
+		appendPlaceholders(sql, userIds.size());
+		sql.append(") ORDER BY u.employee_code ASC, ar.date DESC");
 
 		try (Connection conn = DBContext.getConnection();
 				PreparedStatement ps = conn.prepareStatement(sql.toString())) {
-			setParams(ps, params);
+			ps.setInt(1, year);
+			ps.setInt(2, month);
+			for (int i = 0; i < userIds.size(); i++) {
+				ps.setLong(i + 3, userIds.get(i));
+			}
 			try (ResultSet rs = ps.executeQuery()) {
 				while (rs.next()) {
 					records.add(mapRecord(rs));
 				}
 			}
 		} catch (SQLException e) {
-			System.err.println("AttendanceDAO.searchByMonth() ERROR: " + e.getMessage());
+			System.err.println("AttendanceDAO.searchByUserIdsAndMonth() ERROR: " + e.getMessage());
 		}
 
 		return records;
-	}
-
-	public int countByMonth(int year, int month, Long departmentId) {
-		StringBuilder sql = new StringBuilder("""
-				SELECT COUNT(*)
-				FROM attendance_records ar
-				JOIN users u ON ar.user_id = u.id
-				WHERE YEAR(ar.date) = ? AND MONTH(ar.date) = ?
-				""");
-		List<Object> params = new ArrayList<>();
-		params.add(year);
-		params.add(month);
-
-		if (departmentId != null) {
-			sql.append(" AND u.department_id = ?");
-			params.add(departmentId);
-		}
-
-		try (Connection conn = DBContext.getConnection();
-				PreparedStatement ps = conn.prepareStatement(sql.toString())) {
-			setParams(ps, params);
-			try (ResultSet rs = ps.executeQuery()) {
-				if (rs.next()) {
-					return rs.getInt(1);
-				}
-			}
-		} catch (SQLException e) {
-			System.err.println("AttendanceDAO.countByMonth() ERROR: " + e.getMessage());
-		}
-
-		return 0;
 	}
 
 	public List<AttendanceRecord> searchByUserAndMonth(Long userId, int year, int month) {
@@ -152,12 +174,11 @@ public class AttendanceDAO {
 
 		String sql = """
 				SELECT ar.id, ar.user_id, u.employee_code, u.full_name AS employee_name,
-				       ar.date, ar.shift_id, s.name AS shift_name,
+				       ar.date,
 				       ar.check_in, ar.check_out, ar.working_hours, ar.status,
 				       ar.import_batch_id, ar.created_at, ar.updated_at
 				FROM attendance_records ar
 				JOIN users u ON ar.user_id = u.id
-				LEFT JOIN shifts s ON ar.shift_id = s.id
 				WHERE ar.user_id = ? AND YEAR(ar.date) = ? AND MONTH(ar.date) = ?
 				ORDER BY ar.date DESC
 				""";
@@ -185,12 +206,11 @@ public class AttendanceDAO {
 
 		String sql = """
 				SELECT ar.id, ar.user_id, u.employee_code, u.full_name AS employee_name,
-				       ar.date, ar.shift_id, s.name AS shift_name,
+				       ar.date,
 				       ar.check_in, ar.check_out, ar.working_hours, ar.status,
 				       ar.import_batch_id, ar.created_at, ar.updated_at
 				FROM attendance_records ar
 				JOIN users u ON ar.user_id = u.id
-				LEFT JOIN shifts s ON ar.shift_id = s.id
 				WHERE ar.id = ?
 				""";
 
@@ -216,31 +236,32 @@ public class AttendanceDAO {
 
 		String sql = """
 				UPDATE attendance_records ar
-				LEFT JOIN shifts s ON ar.shift_id = s.id
 				SET ar.check_in = ?,
 				    ar.check_out = ?,
 				    ar.working_hours = ROUND(
 				        GREATEST(
 				            0,
-				            (TIME_TO_SEC(TIMEDIFF(?, ?)) / 60) - COALESCE(s.break_minutes, 0)
+				            (TIME_TO_SEC(TIMEDIFF(?, ?)) / 60) - ?
 				        ) / 60,
 				        2
 				    ),
 				    ar.status = CASE
-				        WHEN ? > ADDTIME(COALESCE(s.start_time, ?), '00:15:00') THEN 'LATE'
+				        WHEN ? > ADDTIME(?, '00:15:00') THEN 'LATE'
 				        ELSE 'NORMAL'
 				    END
 				WHERE ar.id = ?
 				""";
 
 		try (PreparedStatement ps = conn.prepareStatement(sql)) {
+			Time standardStart = Time.valueOf(WorkScheduleConfig.STANDARD_START);
 			ps.setTime(1, newCheckIn);
 			ps.setTime(2, newCheckOut);
 			ps.setTime(3, newCheckOut);
 			ps.setTime(4, newCheckIn);
-			ps.setTime(5, newCheckIn);
+			ps.setInt(5, WorkScheduleConfig.BREAK_MINUTES);
 			ps.setTime(6, newCheckIn);
-			ps.setLong(7, recordId);
+			ps.setTime(7, standardStart);
+			ps.setLong(8, recordId);
 			return ps.executeUpdate() > 0;
 		}
 	}
@@ -265,59 +286,12 @@ public class AttendanceDAO {
 		return null;
 	}
 
-	public Shift findShiftForUserAndDate(Long userId, Date date) {
-		if (userId == null || date == null) {
-			return null;
-		}
-
-		String sql = """
-				SELECT s.id, s.code, s.name, s.start_time, s.end_time, s.break_minutes, s.is_night_shift,
-				       s.is_active, s.created_at, s.updated_at
-				FROM shift_assignments sa
-				JOIN shifts s ON sa.shift_id = s.id
-				WHERE sa.user_id = ? AND sa.date = ?
-				LIMIT 1
-				""";
-		try (Connection conn = DBContext.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
-			ps.setLong(1, userId);
-			ps.setDate(2, date);
-			try (ResultSet rs = ps.executeQuery()) {
-				if (rs.next()) {
-					return mapShift(rs);
-				}
+	private void appendPlaceholders(StringBuilder sql, int count) {
+		for (int i = 0; i < count; i++) {
+			if (i > 0) {
+				sql.append(", ");
 			}
-		} catch (SQLException e) {
-			System.err.println("AttendanceDAO.findShiftForUserAndDate() ERROR: " + e.getMessage());
-		}
-
-		return findDefaultShift();
-	}
-
-	public Shift findDefaultShift() {
-		String sql = """
-				SELECT id, code, name, start_time, end_time, break_minutes, is_night_shift,
-				       is_active, created_at, updated_at
-				FROM shifts
-				WHERE is_active = TRUE
-				ORDER BY is_night_shift ASC, id ASC
-				LIMIT 1
-				""";
-		try (Connection conn = DBContext.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
-			try (ResultSet rs = ps.executeQuery()) {
-				if (rs.next()) {
-					return mapShift(rs);
-				}
-			}
-		} catch (SQLException e) {
-			System.err.println("AttendanceDAO.findDefaultShift() ERROR: " + e.getMessage());
-		}
-
-		return null;
-	}
-
-	private void setParams(PreparedStatement ps, List<Object> params) throws SQLException {
-		for (int i = 0; i < params.size(); i++) {
-			ps.setObject(i + 1, params.get(i));
+			sql.append("?");
 		}
 	}
 
@@ -328,11 +302,6 @@ public class AttendanceDAO {
 		record.setEmployeeCode(rs.getString("employee_code"));
 		record.setEmployeeName(rs.getString("employee_name"));
 		record.setDate(rs.getDate("date"));
-		long shiftId = rs.getLong("shift_id");
-		if (!rs.wasNull()) {
-			record.setShiftId(shiftId);
-		}
-		record.setShiftName(rs.getString("shift_name"));
 		record.setCheckIn(rs.getTime("check_in"));
 		record.setCheckOut(rs.getTime("check_out"));
 		record.setWorkingHours(rs.getBigDecimal("working_hours"));
@@ -343,39 +312,4 @@ public class AttendanceDAO {
 		return record;
 	}
 
-	private Shift mapShift(ResultSet rs) throws SQLException {
-		Shift shift = new Shift();
-		shift.setId(rs.getLong("id"));
-		shift.setCode(rs.getString("code"));
-		shift.setName(rs.getString("name"));
-		shift.setStartTime(rs.getTime("start_time"));
-		shift.setEndTime(rs.getTime("end_time"));
-		shift.setBreakMinutes(rs.getInt("break_minutes"));
-		shift.setIsNightShift(rs.getBoolean("is_night_shift"));
-		shift.setIsActive(rs.getBoolean("is_active"));
-		shift.setCreatedAt(rs.getTimestamp("created_at"));
-		shift.setUpdatedAt(rs.getTimestamp("updated_at"));
-		return shift;
-	}
-
-	private void rollback(Connection conn) {
-		if (conn != null) {
-			try {
-				conn.rollback();
-			} catch (SQLException e) {
-				System.err.println("AttendanceDAO.rollback() ERROR: " + e.getMessage());
-			}
-		}
-	}
-
-	private void close(Connection conn) {
-		if (conn != null) {
-			try {
-				conn.setAutoCommit(true);
-				conn.close();
-			} catch (SQLException e) {
-				System.err.println("AttendanceDAO.close() ERROR: " + e.getMessage());
-			}
-		}
-	}
 }

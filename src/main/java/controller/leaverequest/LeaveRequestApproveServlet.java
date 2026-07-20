@@ -1,6 +1,11 @@
 package controller.leaverequest;
 
+import dal.AttendanceDAO;
+import dal.DBContext;
+import dal.LeaveBalanceDAO;
 import dal.LeaveRequestDAO;
+import dal.MonthlySheetDAO;
+import dal.OvertimeDAO;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
@@ -8,15 +13,24 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
-import java.util.List;
+import java.sql.Connection;
+import java.sql.SQLException;
 import model.LeaveRequest;
-import model.Permission;
+import model.MonthlySheet;
 import model.User;
 
 @WebServlet(name = "LeaveRequestApproveServlet", urlPatterns = {"/leave-request-approve"})
 public class LeaveRequestApproveServlet extends HttpServlet {
 
+	private static final String ROLE_EMPLOYEE = "EMPLOYEE";
+	private static final String ROLE_HR_MANAGER = "HR_MANAGER";
+	private static final String ROLE_SYSADMIN = "SYSADMIN";
+
+	private final LeaveBalanceDAO leaveBalanceDAO = new LeaveBalanceDAO();
 	private final LeaveRequestDAO leaveRequestDAO = new LeaveRequestDAO();
+	private final AttendanceDAO attendanceDAO = new AttendanceDAO();
+	private final OvertimeDAO overtimeDAO = new OvertimeDAO();
+	private final MonthlySheetDAO monthlySheetDAO = new MonthlySheetDAO();
 
 	@Override
 	protected void doPost(HttpServletRequest request, HttpServletResponse response)
@@ -29,57 +43,125 @@ public class LeaveRequestApproveServlet extends HttpServlet {
 			response.sendRedirect(request.getContextPath() + "/login");
 			return;
 		}
-		String redirectUrl = resolveRedirectUrl(request);
 
+		String redirectUrl = resolveRedirectUrl(request);
 		Long id = parseLong(request.getParameter("id"));
 		LeaveRequest leaveRequest = leaveRequestDAO.getById(id);
-		if (leaveRequest == null) {
-			session.setAttribute("errorMsg", "Không tìm thấy đơn nghỉ phép.");
-			response.sendRedirect(redirectUrl);
-			return;
-		}
-		if (authUser.getId() != null && authUser.getId().equals(leaveRequest.getUserId())) {
-			session.setAttribute("errorMsg", "Không thể tự duyệt đơn nghỉ phép của chính mình.");
-			response.sendRedirect(redirectUrl);
-			return;
-		}
-		if (!"PENDING".equals(leaveRequest.getStatus())) {
-			session.setAttribute("errorMsg", "Chỉ có thể duyệt cấp 1 cho đơn đang chờ duyệt.");
-			response.sendRedirect(redirectUrl);
-			return;
-		}
-		if (shouldLimitToManagedEmployees(session)
-				&& !leaveRequestDAO.isRequesterManagedBy(leaveRequest.getId(), authUser.getId())) {
-			session.setAttribute("errorMsg", "Chỉ có thể duyệt đơn của nhân viên dưới quyền.");
+		String validationError = validateFirstApproval(authUser, leaveRequest);
+		if (validationError != null) {
+			session.setAttribute("errorMsg", validationError);
 			response.sendRedirect(redirectUrl);
 			return;
 		}
 
-		boolean success = leaveRequestDAO.approveLevel1(id, authUser.getId());
+		boolean isEmployeeRequest = ROLE_EMPLOYEE.equals(leaveRequest.getRequesterRole());
+		boolean success = isEmployeeRequest
+				? leaveRequestDAO.approveLevel1(id, authUser.getId())
+				: processDirectApproval(id, authUser.getId(), leaveRequest);
+
 		if (success) {
-			session.setAttribute("successMsg", "Duyệt cấp 1 đơn nghỉ phép thành công.");
+			if (!isEmployeeRequest) {
+				// processDirectApproval KHÔNG có bước duyệt cuối ở HR nữa -> đây đã là
+				// quyết định CUỐI CÙNG, an toàn để hủy OT trùng ngày ngay tại đây.
+				// Ngược lại, đơn của nhân viên (isEmployeeRequest) mới chỉ là duyệt CẤP 1
+				// -> chưa hủy vội, đợi HR duyệt cuối (LeaveRequestFinalApproveServlet) mới
+				// hủy, tránh trường hợp HR từ chối ở bước 2 mà OT đã bị hủy không khôi
+				// phục lại được.
+				overtimeDAO.cancelApprovedInRange(leaveRequest.getUserId(), leaveRequest.getStartDate(),
+						leaveRequest.getEndDate(), authUser.getId());
+			}
+			session.setAttribute("successMsg",
+					isEmployeeRequest
+							? "Duyệt cấp 1 đơn nghỉ thành công. Đơn sẽ được chuyển đến HR để duyệt cuối."
+							: "Duyệt đơn nghỉ thành công.");
 		} else {
-			session.setAttribute("errorMsg", "Không thể duyệt đơn nghỉ phép. Vui lòng thử lại.");
+			session.setAttribute("errorMsg", "Không thể duyệt đơn nghỉ. Vui lòng thử lại.");
 		}
 		response.sendRedirect(redirectUrl);
 	}
 
-	private boolean shouldLimitToManagedEmployees(HttpSession session) {
-		return hasPermission(session, "LEAVE_REQUEST_APPROVE_L1") && !hasPermission(session, "LEAVE_REQUEST_VIEW");
+	private String validateFirstApproval(User authUser, LeaveRequest leaveRequest) {
+		if (leaveRequest == null) {
+			return "Không tìm thấy đơn nghỉ.";
+		}
+		if (authUser.getId() != null && authUser.getId().equals(leaveRequest.getUserId())) {
+			return "Không thể tự duyệt đơn nghỉ của chính mình.";
+		}
+		if (!"PENDING".equals(leaveRequest.getStatus())) {
+			return "Chỉ có thể duyệt đơn đang chờ duyệt.";
+		}
+		if (!canApprovePending(authUser, leaveRequest)) {
+			return "Chỉ quản lý trực tiếp hoặc HR/SYSADMIN mới có thể duyệt đơn nghỉ này.";
+		}
+		if (leaveRequest.getStartDate() == null || leaveRequest.getEndDate() == null
+				|| leaveRequest.getDays() == null) {
+			return "Dữ liệu đơn nghỉ không hợp lệ.";
+		}
+		MonthlySheet lockedPeriod = monthlySheetDAO.findLockedPeriodInRange(leaveRequest.getStartDate(),
+				leaveRequest.getEndDate());
+		if (lockedPeriod != null) {
+			return "Không thể duyệt đơn nghỉ vì bảng công tháng " + lockedPeriod.getMonth() + "/"
+					+ lockedPeriod.getYear() + " đang ở trạng thái " + lockedPeriod.getStatus() + ".";
+		}
+		if (leaveRequestDAO.hasOverlappingActiveRequest(leaveRequest.getUserId(), leaveRequest.getStartDate(),
+				leaveRequest.getEndDate(), leaveRequest.getId())) {
+			return "Nhân viên đã có đơn nghỉ khác trùng với khoảng thời gian này.";
+		}
+		if (attendanceDAO.hasAnyAttendanceInRange(leaveRequest.getUserId(), leaveRequest.getStartDate(),
+				leaveRequest.getEndDate())) {
+			return "Nhân viên đã có dữ liệu chấm công trong khoảng ngày xin nghỉ này — không thể duyệt."
+					+ " Vui lòng kiểm tra lại chấm công trước khi duyệt đơn.";
+		}
+		return null;
 	}
 
-	@SuppressWarnings("unchecked")
-	private boolean hasPermission(HttpSession session, String permissionCode) {
-		List<Permission> permissions = (List<Permission>) session.getAttribute("permissions");
-		if (permissions == null) {
-			return false;
-		}
-		for (Permission permission : permissions) {
-			if (permissionCode.equals(permission.getCode())) {
-				return true;
+	private boolean processDirectApproval(Long id, Long approverId, LeaveRequest leaveRequest) {
+		int year = leaveRequest.getStartDate().toLocalDate().getYear();
+		try (Connection conn = DBContext.getConnection()) {
+			conn.setAutoCommit(false);
+			try {
+				boolean requestUpdated = leaveRequestDAO.directApprove(conn, id, approverId);
+				boolean balanceUpdated = true;
+				if (requestUpdated && requiresBalance(leaveRequest)) {
+					balanceUpdated = leaveBalanceDAO.incrementUsedDays(conn, leaveRequest.getUserId(),
+							leaveRequest.getLeaveTypeId(), year, leaveRequest.getDays());
+				}
+
+				if (requestUpdated && balanceUpdated) {
+					conn.commit();
+					return true;
+				}
+				conn.rollback();
+			} catch (SQLException e) {
+				conn.rollback();
+				System.err.println("LeaveRequestApproveServlet.processDirectApproval() ERROR: " + e.getMessage());
+			} finally {
+				conn.setAutoCommit(true);
 			}
+		} catch (SQLException e) {
+			System.err.println("LeaveRequestApproveServlet.getConnection() ERROR: " + e.getMessage());
 		}
 		return false;
+	}
+
+	private boolean requiresBalance(LeaveRequest leaveRequest) {
+		return Boolean.TRUE.equals(leaveRequest.getLeaveTypeRequiresBalance())
+				|| Boolean.TRUE.equals(leaveRequest.getLeaveTypeAnnualLeave());
+	}
+
+	private boolean canApprovePending(User authUser, LeaveRequest leaveRequest) {
+		if (isDirectManager(authUser, leaveRequest)) {
+			return true;
+		}
+		return leaveRequest.getRequesterManagerId() == null && isHighScopeRole(authUser);
+	}
+
+	private boolean isDirectManager(User authUser, LeaveRequest leaveRequest) {
+		return authUser.getId() != null && authUser.getId().equals(leaveRequest.getRequesterManagerId());
+	}
+
+	private boolean isHighScopeRole(User authUser) {
+		return ROLE_HR_MANAGER.equals(authUser.getRoleName()) || ROLE_SYSADMIN.equals(authUser.getRoleName());
 	}
 
 	private String resolveRedirectUrl(HttpServletRequest request) {

@@ -37,25 +37,34 @@
                             <span class="material-symbols-outlined" style="font-size: 1.125rem;">arrow_back</span>
                             Quay lại
                         </a>
-                        <c:if test="${hasContractUpdatePerm and contract.status == 'ACTIVE'}">
+                        <c:if test="${hasContractUpdatePerm and (contract.status == 'ACTIVE' or contract.status == 'EXPIRING_SOON')}">
                             <a href="${ctx}/contract-update?id=${contract.id}" class="btn btn-light border d-flex align-items-center gap-2">
                                 <span class="material-symbols-outlined" style="font-size: 1.125rem;">edit</span>
                                 Chỉnh sửa
                             </a>
                         </c:if>
-                        <c:if test="${hasContractUploadPerm and contract.status == 'ACTIVE'}">
+                        <c:if test="${hasContractUploadPerm and (contract.status == 'ACTIVE' or contract.status == 'EXPIRING_SOON')}">
                             <a href="${ctx}/contract-upload?id=${contract.id}" class="btn btn-light border d-flex align-items-center gap-2">
                                 <span class="material-symbols-outlined" style="font-size: 1.125rem;">upload_file</span>
                                 Tải PDF
                             </a>
                         </c:if>
-                        <c:if test="${hasContractRenewPerm and (contract.status == 'ACTIVE' or contract.status == 'EXPIRED' or contract.status == 'PENDING_RENEWAL')}">
+                        <c:if test="${hasContractRenewPerm and (contract.status == 'ACTIVE' or contract.status == 'EXPIRING_SOON' or contract.status == 'EXPIRED' or contract.status == 'PENDING_RENEWAL')}">
                             <a href="${ctx}/contract-renew?id=${contract.id}" class="btn btn-light border d-flex align-items-center gap-2">
                                 <span class="material-symbols-outlined" style="font-size: 1.125rem;">autorenew</span>
                                 Gia hạn
                             </a>
                         </c:if>
-                        <c:if test="${hasContractTerminatePerm and contract.status != 'TERMINATED'}">
+                        <c:if test="${hasContractRenewRequestPerm and (contract.status == 'ACTIVE' or contract.status == 'EXPIRING_SOON')}">
+                            <form action="${ctx}/contract-renew-request" method="POST" class="m-0">
+                                <input type="hidden" name="id" value="${contract.id}" />
+                                <button type="submit" class="btn btn-light border d-flex align-items-center gap-2">
+                                    <span class="material-symbols-outlined" style="font-size: 1.125rem;">forward_to_inbox</span>
+                                    Yêu cầu gia hạn
+                                </button>
+                            </form>
+                        </c:if>
+                        <c:if test="${hasContractTerminatePerm and (contract.status == 'ACTIVE' or contract.status == 'EXPIRING_SOON' or contract.status == 'PENDING_RENEWAL')}">
                             <a href="${ctx}/contract-terminate?id=${contract.id}" class="btn btn-danger d-flex align-items-center gap-2 text-white">
                                 <span class="material-symbols-outlined" style="font-size: 1.125rem;">block</span>
                                 Chấm dứt
@@ -63,6 +72,13 @@
                         </c:if>
                     </div>
                 </div>
+
+                <c:if test="${contract.status == 'PENDING_RENEWAL'}">
+                    <div class="alert alert-warning border d-flex align-items-start gap-2 mb-4" role="alert">
+                        <span class="material-symbols-outlined">hourglass_top</span>
+                        <div>Hợp đồng này đang chờ HR duyệt gia hạn.</div>
+                    </div>
+                </c:if>
 
                 <div class="row g-3 mb-4">
                     <div class="col-12 col-md-6">
@@ -123,6 +139,9 @@
                                     <c:choose>
                                         <c:when test="${contract.status == 'ACTIVE'}">
                                             <span class="badge" style="background-color: #d1fae5; color: #065f46;">Đang hiệu lực</span>
+                                        </c:when>
+                                        <c:when test="${contract.status == 'EXPIRING_SOON'}">
+                                            <span class="badge" style="background-color: #fef3c7; color: #92400e;">Sắp hết hạn</span>
                                         </c:when>
                                         <c:when test="${contract.status == 'EXPIRED'}">
                                             <span class="badge" style="background-color: #e5e7eb; color: #374151;">Hết hạn</span>

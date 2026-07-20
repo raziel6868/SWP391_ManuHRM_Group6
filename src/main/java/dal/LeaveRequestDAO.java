@@ -15,8 +15,14 @@ public class LeaveRequestDAO {
 			lr.reason, lr.status, lr.level_1_approver_id, lr.level_1_approved_at,
 			lr.approver_id, lr.approved_at, lr.created_at, lr.updated_at,
 			u.employee_code, u.full_name AS employee_name,
+			r.name AS requester_role, u.manager_id AS requester_manager_id,
+			mgr.full_name AS requester_manager_name,
 			d.name AS department_name,
 			lt.code AS leave_type_code, lt.name AS leave_type_name,
+			lr.salary_paid_by_snapshot AS leave_type_salary_paid_by,
+			lr.is_annual_leave_snapshot AS leave_type_annual_leave,
+			lr.requires_balance_snapshot AS leave_type_requires_balance,
+			lr.day_count_method_snapshot AS leave_type_day_count_method,
 			l1.full_name AS level_1_approver_name,
 			final_approver.full_name AS approver_name
 			""";
@@ -24,6 +30,8 @@ public class LeaveRequestDAO {
 	private static final String BASE_FROM = """
 			FROM leave_requests lr
 			INNER JOIN users u ON u.id = lr.user_id
+			LEFT JOIN roles r ON r.id = u.role_id
+			LEFT JOIN users mgr ON mgr.id = u.manager_id
 			LEFT JOIN departments d ON d.id = u.department_id
 			INNER JOIN leave_types lt ON lt.id = lr.leave_type_id
 			LEFT JOIN users l1 ON l1.id = lr.level_1_approver_id
@@ -37,17 +45,25 @@ public class LeaveRequestDAO {
 		}
 
 		String sql = """
-				INSERT INTO leave_requests (user_id, leave_type_id, start_date, end_date, days, reason, status)
-				VALUES (?, ?, ?, ?, ?, ?, 'PENDING')
+				INSERT INTO leave_requests
+				    (user_id, leave_type_id, start_date, end_date, days, reason, status,
+				     is_paid_snapshot, salary_paid_by_snapshot, is_annual_leave_snapshot,
+				     requires_balance_snapshot, day_count_method_snapshot)
+				SELECT ?, lt.id, ?, ?, ?, ?, 'PENDING',
+				       lt.is_paid, lt.salary_paid_by, lt.is_annual_leave,
+				       lt.requires_balance, lt.day_count_method
+				FROM leave_types lt
+				WHERE lt.id = ?
+				  AND lt.is_active = TRUE
 				""";
 
 		try (Connection conn = DBContext.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
 			ps.setLong(1, request.getUserId());
-			ps.setLong(2, request.getLeaveTypeId());
-			ps.setDate(3, request.getStartDate());
-			ps.setDate(4, request.getEndDate());
-			ps.setBigDecimal(5, request.getDays());
-			ps.setString(6, request.getReason());
+			ps.setDate(2, request.getStartDate());
+			ps.setDate(3, request.getEndDate());
+			ps.setBigDecimal(4, request.getDays());
+			ps.setString(5, request.getReason());
+			ps.setLong(6, request.getLeaveTypeId());
 			return ps.executeUpdate() > 0;
 		} catch (SQLException e) {
 			System.err.println("LeaveRequestDAO.insert() ERROR: " + e.getMessage());
@@ -55,11 +71,55 @@ public class LeaveRequestDAO {
 		return false;
 	}
 
-	public List<LeaveRequest> searchRequests(String keyword, String status, Long departmentId, int offset, int limit) {
+	/**
+	 * Lấy toàn bộ đơn nghỉ đã APPROVED của 1 nhóm nhân viên có khoảng thời gian
+	 * giao với 1 tháng cụ thể. Dùng để tô ô "L" (nghỉ phép) trên lưới chấm công
+	 * (attendance-list dạng grid, giống ot-list).
+	 */
+	public List<LeaveRequest> getApprovedLeavesForUsersInMonth(List<Long> userIds, int year, int month) {
+		List<LeaveRequest> requests = new ArrayList<>();
+		if (userIds == null || userIds.isEmpty()) {
+			return requests;
+		}
+
+		java.time.YearMonth ym = java.time.YearMonth.of(year, month);
+		java.sql.Date monthStart = java.sql.Date.valueOf(ym.atDay(1));
+		java.sql.Date monthEnd = java.sql.Date.valueOf(ym.atEndOfMonth());
+
+		StringBuilder placeholders = new StringBuilder();
+		for (int i = 0; i < userIds.size(); i++) {
+			placeholders.append(i == 0 ? "?" : ",?");
+		}
+
+		String sql = "SELECT " + SELECT_COLUMNS + BASE_FROM + " WHERE lr.status = 'APPROVED' AND lr.user_id IN ("
+				+ placeholders + ") AND lr.start_date <= ? AND lr.end_date >= ?";
+
+		try (Connection conn = DBContext.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+			int idx = 1;
+			for (Long userId : userIds) {
+				ps.setLong(idx++, userId);
+			}
+			ps.setDate(idx++, monthEnd);
+			ps.setDate(idx, monthStart);
+			try (ResultSet rs = ps.executeQuery()) {
+				while (rs.next()) {
+					requests.add(mapRow(rs));
+				}
+			}
+		} catch (SQLException e) {
+			System.err.println("LeaveRequestDAO.getApprovedLeavesForUsersInMonth() ERROR: " + e.getMessage());
+		}
+
+		return requests;
+	}
+
+	public List<LeaveRequest> searchRequests(String keyword, String status, Long departmentId, Long managerId,
+			int offset, int limit) {
 		List<LeaveRequest> requests = new ArrayList<>();
 		StringBuilder sql = new StringBuilder("SELECT " + SELECT_COLUMNS + BASE_FROM + " WHERE 1 = 1");
 		List<Object> params = new ArrayList<>();
 		appendFilters(sql, params, keyword, status, departmentId);
+		appendScopeFilter(sql, params, managerId);
 		sql.append(" ORDER BY lr.created_at DESC, lr.id DESC LIMIT ? OFFSET ?");
 		params.add(limit);
 		params.add(offset);
@@ -78,10 +138,11 @@ public class LeaveRequestDAO {
 		return requests;
 	}
 
-	public int countRequests(String keyword, String status, Long departmentId) {
+	public int countRequests(String keyword, String status, Long departmentId, Long managerId) {
 		StringBuilder sql = new StringBuilder("SELECT COUNT(*) " + BASE_FROM + " WHERE 1 = 1");
 		List<Object> params = new ArrayList<>();
 		appendFilters(sql, params, keyword, status, departmentId);
+		appendScopeFilter(sql, params, managerId);
 
 		try (Connection conn = DBContext.getConnection();
 				PreparedStatement ps = conn.prepareStatement(sql.toString())) {
@@ -182,6 +243,28 @@ public class LeaveRequestDAO {
 			System.err.println("LeaveRequestDAO.approveLevel1() ERROR: " + e.getMessage());
 		}
 		return false;
+	}
+
+	public boolean directApprove(Connection conn, Long id, Long approverId) throws SQLException {
+		if (conn == null || id == null || approverId == null) {
+			return false;
+		}
+
+		String sql = """
+				UPDATE leave_requests
+				SET status = 'APPROVED',
+				    approver_id = ?,
+				    approved_at = CURRENT_TIMESTAMP,
+				    updated_at = CURRENT_TIMESTAMP
+				WHERE id = ?
+				  AND status = 'PENDING'
+				""";
+
+		try (PreparedStatement ps = conn.prepareStatement(sql)) {
+			ps.setLong(1, approverId);
+			ps.setLong(2, id);
+			return ps.executeUpdate() == 1;
+		}
 	}
 
 	public boolean finalApprove(Connection conn, Long id, Long approverId) throws SQLException {
@@ -287,6 +370,43 @@ public class LeaveRequestDAO {
 		return false;
 	}
 
+	public boolean hasOverlappingActiveRequest(Long userId, java.sql.Date startDate, java.sql.Date endDate,
+			Long excludedRequestId) {
+		if (userId == null || startDate == null || endDate == null) {
+			return false;
+		}
+
+		StringBuilder sql = new StringBuilder("""
+				SELECT COUNT(*)
+				FROM leave_requests
+				WHERE user_id = ?
+				  AND status IN ('PENDING', 'APPROVED_LEVEL_1', 'APPROVED')
+				  AND start_date <= ?
+				  AND end_date >= ?
+				""");
+		List<Object> params = new ArrayList<>();
+		params.add(userId);
+		params.add(endDate);
+		params.add(startDate);
+		if (excludedRequestId != null) {
+			sql.append(" AND id <> ?");
+			params.add(excludedRequestId);
+		}
+
+		try (Connection conn = DBContext.getConnection();
+				PreparedStatement ps = conn.prepareStatement(sql.toString())) {
+			setParams(ps, params);
+			try (ResultSet rs = ps.executeQuery()) {
+				if (rs.next()) {
+					return rs.getInt(1) > 0;
+				}
+			}
+		} catch (SQLException e) {
+			System.err.println("LeaveRequestDAO.hasOverlappingActiveRequest() ERROR: " + e.getMessage());
+		}
+		return false;
+	}
+
 	private void appendFilters(StringBuilder sql, List<Object> params, String keyword, String status,
 			Long departmentId) {
 		if (keyword != null && !keyword.trim().isEmpty()) {
@@ -310,6 +430,65 @@ public class LeaveRequestDAO {
 			sql.append(" AND u.department_id = ?");
 			params.add(departmentId);
 		}
+	}
+
+	private void appendScopeFilter(StringBuilder sql, List<Object> params, Long managerId) {
+		if (managerId != null) {
+			sql.append(" AND u.manager_id = ?");
+			params.add(managerId);
+		}
+	}
+
+	public boolean hasApprovedLeaveOnDate(Long userId, java.sql.Date date) {
+		if (userId == null || date == null) {
+			return false;
+		}
+		String sql = """
+				SELECT COUNT(*) FROM leave_requests
+				WHERE user_id = ?
+				  AND status = 'APPROVED'
+				  AND start_date <= ?
+				  AND end_date   >= ?
+				""";
+		try (Connection conn = DBContext.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+			ps.setLong(1, userId);
+			ps.setDate(2, date);
+			ps.setDate(3, date);
+			try (ResultSet rs = ps.executeQuery()) {
+				if (rs.next()) {
+					return rs.getInt(1) > 0;
+				}
+			}
+		} catch (SQLException e) {
+			System.err.println("LeaveRequestDAO.hasApprovedLeaveOnDate() ERROR: " + e.getMessage());
+		}
+		return false;
+	}
+
+	public boolean hasApprovedOrLevel1LeaveOnDate(Long userId, java.sql.Date date) {
+		if (userId == null || date == null) {
+			return false;
+		}
+		String sql = """
+				SELECT COUNT(*) FROM leave_requests
+				WHERE user_id = ?
+				  AND status IN ('APPROVED_LEVEL_1', 'APPROVED')
+				  AND start_date <= ?
+				  AND end_date   >= ?
+				""";
+		try (Connection conn = DBContext.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+			ps.setLong(1, userId);
+			ps.setDate(2, date);
+			ps.setDate(3, date);
+			try (ResultSet rs = ps.executeQuery()) {
+				if (rs.next()) {
+					return rs.getInt(1) > 0;
+				}
+			}
+		} catch (SQLException e) {
+			System.err.println("LeaveRequestDAO.hasApprovedOrLevel1LeaveOnDate() ERROR: " + e.getMessage());
+		}
+		return false;
 	}
 
 	private void setParams(PreparedStatement ps, List<Object> params) throws SQLException {
@@ -341,9 +520,17 @@ public class LeaveRequestDAO {
 		request.setUpdatedAt(rs.getTimestamp("updated_at"));
 		request.setEmployeeCode(rs.getString("employee_code"));
 		request.setEmployeeName(rs.getString("employee_name"));
+		request.setRequesterRole(rs.getString("requester_role"));
+		long managerId = rs.getLong("requester_manager_id");
+		request.setRequesterManagerId(rs.wasNull() ? null : managerId);
+		request.setRequesterManagerName(rs.getString("requester_manager_name"));
 		request.setDepartmentName(rs.getString("department_name"));
 		request.setLeaveTypeCode(rs.getString("leave_type_code"));
 		request.setLeaveTypeName(rs.getString("leave_type_name"));
+		request.setLeaveTypeSalaryPaidBy(rs.getString("leave_type_salary_paid_by"));
+		request.setLeaveTypeAnnualLeave(rs.getBoolean("leave_type_annual_leave"));
+		request.setLeaveTypeRequiresBalance(rs.getBoolean("leave_type_requires_balance"));
+		request.setLeaveTypeDayCountMethod(rs.getString("leave_type_day_count_method"));
 		request.setLevel1ApproverName(rs.getString("level_1_approver_name"));
 		request.setApproverName(rs.getString("approver_name"));
 		return request;

@@ -30,7 +30,7 @@
                         <div class="col-md-3">
                             <label for="year" class="form-label text-on-surface fw-medium">Nam</label>
                             <select id="year" name="year" class="form-select input-premium">
-                                <c:forEach var="y" begin="2020" end="2030">
+                                <c:forEach var="y" items="${yearOptions}">
                                     <option value="${y}" ${y == selectedYear ? 'selected' : ''}>${y}</option>
                                 </c:forEach>
                             </select>
@@ -102,6 +102,6 @@
     </div>
 </div>
 
-<script src="${pageContext.request.contextPath}/assets/js/bootstrap.bundle.min.js"></script>
+<jsp:include page="/components/foot.jsp" />
 </body>
 </html>

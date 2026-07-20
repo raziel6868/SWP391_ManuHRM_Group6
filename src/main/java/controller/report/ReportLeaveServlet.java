@@ -14,6 +14,7 @@ import jakarta.servlet.http.HttpSession;
 import model.Department;
 import model.Permission;
 import model.User;
+import util.YearOptionUtil;
 
 @WebServlet(name = "ReportLeaveServlet", urlPatterns = {"/report-leave"})
 public class ReportLeaveServlet extends HttpServlet {
@@ -62,6 +63,7 @@ public class ReportLeaveServlet extends HttpServlet {
 
 		request.setAttribute("rows", rows);
 		request.setAttribute("departments", departments);
+		request.setAttribute("yearOptions", YearOptionUtil.dataYearsWithCurrent(reportDAO.getLeaveYears()));
 		request.setAttribute("selectedYear", year);
 		request.setAttribute("selectedDepartmentId", departmentId);
 

@@ -58,7 +58,7 @@ public class ContractUpdateServlet extends HttpServlet {
 			response.sendRedirect(request.getContextPath() + "/contract-list");
 			return;
 		}
-		if (!Contract.Status.ACTIVE.name().equals(contract.getStatus())) {
+		if (!isEditableStatus(contract.getStatus())) {
 			session.setAttribute("errorMsg",
 					"Chỉ có thể chỉnh sửa hợp đồng đang hiệu lực. Hợp đồng hiện tại có trạng thái: "
 							+ contract.getStatus() + ".");
@@ -89,7 +89,7 @@ public class ContractUpdateServlet extends HttpServlet {
 			response.sendRedirect(request.getContextPath() + "/contract-list");
 			return;
 		}
-		if (!Contract.Status.ACTIVE.name().equals(contract.getStatus())) {
+		if (!isEditableStatus(contract.getStatus())) {
 			session.setAttribute("errorMsg",
 					"Chỉ có thể chỉnh sửa hợp đồng đang hiệu lực. Hợp đồng hiện tại có trạng thái: "
 							+ contract.getStatus() + ".");
@@ -190,6 +190,10 @@ public class ContractUpdateServlet extends HttpServlet {
 			return "Tên file phải có đuôi .pdf.";
 		}
 		return null;
+	}
+
+	private boolean isEditableStatus(String status) {
+		return Contract.Status.ACTIVE.name().equals(status) || Contract.Status.EXPIRING_SOON.name().equals(status);
 	}
 
 	private String saveFile(Long userId, Long contractId, Part filePart) {

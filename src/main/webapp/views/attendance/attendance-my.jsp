@@ -1,5 +1,7 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 <%@ taglib prefix="c" uri="jakarta.tags.core" %>
+<%@ taglib prefix="fmt" uri="jakarta.tags.fmt" %>
+<%@ taglib prefix="fn" uri="jakarta.tags.functions" %>
 <!DOCTYPE html>
 <html lang="vi">
 <head>
@@ -31,104 +33,222 @@
                 <div class="d-flex justify-content-between align-items-end mb-4 flex-wrap gap-3">
                     <div>
                         <h2 class="h3 text-on-surface fw-bold mb-1">Chấm công của tôi</h2>
-                        <p class="body-md text-on-surface-variant mb-0">Xem lịch sử chấm công và gửi yêu cầu điều chỉnh nếu có sai sót.</p>
+                        <p class="body-md text-on-surface-variant mb-0">
+                            Xem lịch chấm công cá nhân theo tháng. Bấm vào 1 ngày đã có dữ liệu để gửi yêu cầu điều chỉnh.
+                        </p>
                     </div>
                 </div>
 
-                <div class="card-premium overflow-hidden d-flex flex-column mb-4 w-100">
-                    <div class="p-3 bg-surface border-bottom border-outline-variant">
-                        <form action="${pageContext.request.contextPath}/attendance-my" method="GET"
-                              class="row g-3 align-items-end">
-                            <div class="col-md-3">
-                                <label class="form-label text-on-surface fw-medium mb-1">Năm</label>
-                                <input type="number" name="year" min="2000" max="2100"
-                                       value="${selectedYear}" class="form-control input-premium" />
-                            </div>
-                            <div class="col-md-3">
-                                <label class="form-label text-on-surface fw-medium mb-1">Tháng</label>
-                                <select name="month" class="form-select input-premium">
-                                    <c:forEach begin="1" end="12" var="m">
-                                        <option value="${m}" ${m == selectedMonth ? 'selected' : ''}>Tháng ${m}</option>
-                                    </c:forEach>
-                                </select>
-                            </div>
-                            <div class="col-md-2">
-                                <button type="submit" class="btn btn-primary w-100">Lọc</button>
-                            </div>
-                        </form>
+                <!-- Legend -->
+                <div class="card-premium overflow-hidden mb-4">
+                    <div class="p-3 d-flex flex-wrap align-items-center gap-4">
+                        <span class="fw-semibold text-on-surface-variant" style="font-size: 0.8rem; letter-spacing: 0.05em;">LEGEND:</span>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="att-dot" style="background:#dcfce7; color:#166534;">P</span>
+                            <span class="body-sm">Có mặt</span>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="att-dot" style="background:#ffedd5; color:#9a3412;">P</span>
+                            <span class="body-sm">Đi muộn</span>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="att-dot" style="background:#fee2e2; color:#991b1b;">A</span>
+                            <span class="body-sm">Vắng</span>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="att-dot" style="background:#fef9c3; color:#854d0e;">L</span>
+                            <span class="body-sm">Nghỉ phép</span>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="att-dot" style="background:#e5e7eb; color:#4b5563;">W</span>
+                            <span class="body-sm">Cuối tuần</span>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="att-dot" style="background:#ede9fe; color:#5b21b6;">O</span>
+                            <span class="body-sm">Có OT</span>
+                        </div>
                     </div>
+                </div>
 
-                    <div class="table-responsive">
-                        <table class="table table-premium mb-0 w-100">
-                            <thead>
-                                <tr>
-                                    <th>Ngày</th>
-                                    <th>Ca làm</th>
-                                    <th>Giờ vào</th>
-                                    <th>Giờ ra</th>
-                                    <th>Giờ công</th>
-                                    <th>Trạng thái</th>
-                                    <th class="text-end">Thao tác</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <c:forEach var="record" items="${records}">
-                                    <tr>
-                                        <td>${record.date}</td>
-                                        <td><c:out value="${record.shiftName}" default="—" /></td>
-                                        <td>${record.checkIn}</td>
-                                        <td>${record.checkOut}</td>
-                                        <td>${record.workingHours}</td>
-                                        <td>
-                                            <c:choose>
-                                                <c:when test="${record.status == 'NORMAL'}">
-                                                    <span class="badge" style="background-color: #d1fae5; color: #065f46;">Bình thường</span>
-                                                </c:when>
-                                                <c:when test="${record.status == 'LATE'}">
-                                                    <span class="badge" style="background-color: #fef3c7; color: #92400e;">Đi muộn</span>
-                                                </c:when>
-                                                <c:when test="${record.status == 'ABSENT'}">
-                                                    <span class="badge" style="background-color: #fee2e2; color: #991b1b;">Vắng</span>
-                                                </c:when>
-                                                <c:otherwise>
-                                                    <span class="badge" style="background-color: var(--surface-container-high); color: var(--on-surface-variant);">
-                                                        <c:out value="${record.status}" />
-                                                    </span>
-                                                </c:otherwise>
-                                            </c:choose>
-                                        </td>
-                                        <td class="text-end">
-                                            <button type="button" class="btn btn-sm btn-light border text-on-surface-variant"
-                                                    title="Yêu cầu điều chỉnh"
-                                                    data-record-id="${record.id}"
-                                                    data-date="<c:out value="${record.date}" />"
-                                                    data-checkin="<c:out value="${record.checkIn}" />"
-                                                    data-checkout="<c:out value="${record.checkOut}" />"
-                                                    onclick="openCorrectionModal(this)">
-                                                <span class="material-symbols-outlined" style="font-size: 1.125rem; vertical-align: middle;">edit_calendar</span>
-                                                Điều chỉnh
-                                            </button>
-                                        </td>
-                                    </tr>
-                                </c:forEach>
-                                <c:if test="${empty records}">
-                                    <tr>
-                                        <td colspan="7" class="text-center py-4 text-on-surface-variant">
-                                            Không có dữ liệu chấm công trong tháng đã chọn.
-                                        </td>
-                                    </tr>
+                <!-- Stat cards -->
+                <div class="row g-3 mb-4">
+                    <div class="col-6" style="flex: 0 0 20%; max-width: 20%;">
+                        <div class="card-premium overflow-hidden h-100">
+                            <div class="card-body p-3">
+                                <p class="text-on-surface-variant mb-1" style="font-size: 0.75rem;">Có mặt</p>
+                                <h3 class="mb-0 fw-bold" style="color:#166534;">${countPresent}</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6" style="flex: 0 0 20%; max-width: 20%;">
+                        <div class="card-premium overflow-hidden h-100">
+                            <div class="card-body p-3">
+                                <p class="text-on-surface-variant mb-1" style="font-size: 0.75rem;">Đi muộn</p>
+                                <h3 class="mb-0 fw-bold" style="color:#9a3412;">${countLate}</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6" style="flex: 0 0 20%; max-width: 20%;">
+                        <div class="card-premium overflow-hidden h-100">
+                            <div class="card-body p-3">
+                                <p class="text-on-surface-variant mb-1" style="font-size: 0.75rem;">Vắng</p>
+                                <h3 class="mb-0 fw-bold" style="color:#991b1b;">${countAbsent}</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6" style="flex: 0 0 20%; max-width: 20%;">
+                        <div class="card-premium overflow-hidden h-100">
+                            <div class="card-body p-3">
+                                <p class="text-on-surface-variant mb-1" style="font-size: 0.75rem;">Nghỉ phép</p>
+                                <h3 class="mb-0 fw-bold" style="color:#854d0e;">${countLeave}</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6" style="flex: 0 0 20%; max-width: 20%;">
+                        <div class="card-premium overflow-hidden h-100">
+                            <div class="card-body p-3">
+                                <p class="text-on-surface-variant mb-1" style="font-size: 0.75rem;">Giờ OT trong tháng</p>
+                                <h3 class="mb-0 fw-bold" style="color:#5b21b6;"><fmt:formatNumber value="${totalOtHours}" pattern="0.##" />h</h3>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card-premium overflow-hidden mb-4">
+                    <div class="card-header-custom p-3 bg-surface border-bottom border-outline-variant">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h4 class="mb-0 fw-semibold">Lịch chấm công tháng ${selectedMonth}/${selectedYear}</h4>
+                            <div class="d-flex gap-2">
+                                <a href="${pageContext.request.contextPath}/attendance-my?month=${prevMonth}&year=${prevYear}"
+                                   class="btn btn-sm btn-light border text-on-surface-variant">
+                                    <span class="material-symbols-outlined">chevron_left</span>
+                                </a>
+                                <a href="${pageContext.request.contextPath}/attendance-my?month=${nextMonth}&year=${nextYear}"
+                                   class="btn btn-sm btn-light border text-on-surface-variant">
+                                    <span class="material-symbols-outlined">chevron_right</span>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body p-3">
+                        <div class="calendar-grid">
+                            <c:forEach var="day" begin="1" end="${daysInMonth}">
+                                <c:set var="currentDate" value="${startDate.plusDays(day - 1)}" />
+                                <c:set var="status" value="${dayStatus[day]}" />
+                                <c:set var="rec" value="${dayRecord[day]}" />
+                                <c:set var="checkInStr" value="" />
+                                <c:set var="checkOutStr" value="" />
+                                <c:if test="${not empty rec and not empty rec.checkIn}">
+                                    <c:set var="checkInStr" value="${fn:substring(rec.checkIn, 0, 5)}" />
+                                    <c:set var="checkOutStr" value="${fn:substring(rec.checkOut, 0, 5)}" />
                                 </c:if>
-                            </tbody>
-                        </table>
+                                <div class="calendar-day ${status == 'W' ? 'weekend-day' : ''} ${not empty rec ? 'clickable' : ''}"
+                                     <c:if test="${not empty rec}">
+                                         onclick="openCorrectionModal('${rec.id}','${currentDate}','${checkInStr}','${checkOutStr}')"
+                                     </c:if>>
+                                    <div class="calendar-day-header">
+                                        <span class="day-number">${day}</span>
+                                        <span class="day-weekday">${currentDate.dayOfWeek.name().substring(0,3)}</span>
+                                    </div>
+                                    <div class="calendar-day-content">
+                                        <c:choose>
+                                            <c:when test="${status == 'P'}">
+                                                <span class="att-dot" style="background:#dcfce7; color:#166534;">P</span>
+                                            </c:when>
+                                            <c:when test="${status == 'P_LATE'}">
+                                                <span class="att-dot" style="background:#ffedd5; color:#9a3412;" title="Đi muộn">P</span>
+                                            </c:when>
+                                            <c:when test="${status == 'A'}">
+                                                <span class="att-dot" style="background:#fee2e2; color:#991b1b;">A</span>
+                                            </c:when>
+                                            <c:when test="${status == 'L'}">
+                                                <span class="att-dot" style="background:#fef9c3; color:#854d0e;">L</span>
+                                            </c:when>
+                                            <c:when test="${status == 'O'}">
+                                                <span class="att-dot" style="background:#ede9fe; color:#5b21b6;" title="Có OT được duyệt">O</span>
+                                            </c:when>
+                                            <c:when test="${status == 'W'}">
+                                                <span class="text-on-surface-variant" style="font-size: 0.75rem;">W</span>
+                                            </c:when>
+                                        </c:choose>
+                                        <c:if test="${not empty checkInStr}">
+                                            <div class="body-sm text-on-surface-variant mt-1" style="font-size: 0.68rem;">
+                                                ${checkInStr} - ${checkOutStr}
+                                            </div>
+                                        </c:if>
+                                    </div>
+                                </div>
+                            </c:forEach>
+                        </div>
                     </div>
                 </div>
             </div>
+
+            <%-- Yêu cầu điều chỉnh đang chờ --%>
+            <c:if test="${not empty myCorrections}">
+                <div class="page-container pt-0">
+                    <div class="card-premium overflow-hidden mb-4">
+                        <div class="p-3 bg-surface border-bottom border-outline-variant d-flex align-items-center gap-2">
+                            <span class="material-symbols-outlined text-on-surface-variant">pending_actions</span>
+                            <h3 class="h5 fw-bold mb-0">Yêu cầu điều chỉnh của tôi</h3>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-premium mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Ngày</th>
+                                        <th>Đề nghị sửa</th>
+                                        <th>Lý do</th>
+                                        <th>Quản đốc</th>
+                                        <th>HR</th>
+                                        <th>Ghi chú từ chối</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <c:forEach var="cr" items="${myCorrections}">
+                                        <tr>
+                                            <td class="fw-medium"><c:out value="${cr.attendanceDate}" /></td>
+                                            <td class="body-sm">
+                                                <c:out value="${cr.newCheckIn}" default="—" /> →
+                                                <c:out value="${cr.newCheckOut}" default="—" />
+                                            </td>
+                                            <td class="body-sm" style="max-width:180px;"><c:out value="${cr.reason}" /></td>
+                                            <td>
+                                                <c:choose>
+                                                    <c:when test="${cr.supervisorStatus == 'PENDING'}"><span class="badge" style="background:#fef3c7;color:#92400e;">Chờ duyệt</span></c:when>
+                                                    <c:when test="${cr.supervisorStatus == 'APPROVED'}"><span class="badge" style="background:#d1fae5;color:#065f46;">Đã duyệt</span></c:when>
+                                                    <c:when test="${cr.supervisorStatus == 'REJECTED'}"><span class="badge" style="background:#fee2e2;color:#991b1b;">Từ chối</span></c:when>
+                                                </c:choose>
+                                            </td>
+                                            <td>
+                                                <c:choose>
+                                                    <c:when test="${cr.supervisorStatus != 'APPROVED'}"><span class="text-on-surface-variant body-sm">—</span></c:when>
+                                                    <c:when test="${cr.status == 'PENDING'}"><span class="badge" style="background:#dbeafe;color:#1e40af;">Chờ HR</span></c:when>
+                                                    <c:when test="${cr.status == 'APPROVED'}"><span class="badge" style="background:#d1fae5;color:#065f46;">Đã duyệt</span></c:when>
+                                                    <c:when test="${cr.status == 'REJECTED'}"><span class="badge" style="background:#fee2e2;color:#991b1b;">Từ chối</span></c:when>
+                                                </c:choose>
+                                            </td>
+                                            <td class="body-sm text-on-surface-variant" style="max-width:200px;">
+                                                <c:choose>
+                                                    <c:when test="${not empty cr.supervisorRejectReason}"><span class="fw-medium">Quản đốc:</span> <c:out value="${cr.supervisorRejectReason}" /></c:when>
+                                                    <c:when test="${not empty cr.hrRejectReason}"><span class="fw-medium">HR:</span> <c:out value="${cr.hrRejectReason}" /></c:when>
+                                                    <c:otherwise>—</c:otherwise>
+                                                </c:choose>
+                                            </td>
+                                        </tr>
+                                    </c:forEach>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </c:if>
 
             <jsp:include page="/components/footer.jsp" />
         </div>
     </div>
 
-    <%-- Modal: Yêu cầu điều chỉnh công --%>
+    <%-- ── Modal điều chỉnh (không đổi so với bản cũ) ── --%>
     <div id="correctionModalOverlay"
          style="display:none; position:fixed; inset:0; background:rgba(11,28,48,0.45); z-index:1050; align-items:center; justify-content:center;">
         <div class="card-premium" style="max-width: 480px; width: 92%; padding: 1.5rem;">
@@ -184,11 +304,11 @@
     </div>
 
     <script>
-        function openCorrectionModal(btn) {
-            document.getElementById('modalRecordId').value = btn.getAttribute('data-record-id');
-            document.getElementById('modalDateDisplay').value = btn.getAttribute('data-date');
-            document.getElementById('modalCurrentCheckIn').value = btn.getAttribute('data-checkin') || '—';
-            document.getElementById('modalCurrentCheckOut').value = btn.getAttribute('data-checkout') || '—';
+        function openCorrectionModal(id, date, checkIn, checkOut) {
+            document.getElementById('modalRecordId').value        = id;
+            document.getElementById('modalDateDisplay').value     = date;
+            document.getElementById('modalCurrentCheckIn').value  = checkIn  || '—';
+            document.getElementById('modalCurrentCheckOut').value = checkOut || '—';
             document.getElementById('correctionModalOverlay').style.display = 'flex';
         }
         function closeCorrectionModal() {
@@ -197,5 +317,62 @@
     </script>
 
     <jsp:include page="/components/foot.jsp" />
+
+    <style>
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 8px;
+        }
+        .calendar-day {
+            border: 1px solid var(--outline-variant);
+            border-radius: 8px;
+            min-height: 90px;
+            background: var(--surface-container-lowest);
+            transition: all 0.2s;
+        }
+        .calendar-day.clickable {
+            cursor: pointer;
+        }
+        .calendar-day.clickable:hover {
+            border-color: var(--primary);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .calendar-day.weekend-day {
+            background: rgba(107, 114, 128, 0.05);
+        }
+        .calendar-day-header {
+            padding: 6px 8px;
+            border-bottom: 1px solid var(--outline-variant);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--surface-container-low);
+            border-radius: 7px 7px 0 0;
+        }
+        .day-number {
+            font-weight: 600;
+            font-size: 0.875rem;
+        }
+        .day-weekday {
+            font-size: 0.7rem;
+            color: var(--on-surface-variant);
+            text-transform: uppercase;
+        }
+        .calendar-day-content {
+            padding: 6px 8px;
+            min-height: 50px;
+        }
+        .att-dot {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            font-weight: 700;
+            font-size: 0.75rem;
+        }
+    </style>
 </body>
 </html>

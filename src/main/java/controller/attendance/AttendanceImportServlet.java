@@ -13,11 +13,16 @@ import jakarta.servlet.http.Part;
 import java.io.IOException;
 import java.io.InputStream;
 import java.time.LocalDate;
-import java.util.List;
-import model.AttendanceRecord;
 import util.AttendanceImportUtil;
 import util.AttendanceImportUtil.AttendanceImportException;
+import util.AttendanceImportUtil.AttendanceImportResult;
 
+/**
+ * Không còn trang import riêng — HR/quản đốc bấm "Import Excel" trên
+ * attendance-list -> mở modal ngay tại chỗ -> chọn file -> form submit thẳng
+ * POST vào đây, kèm year/month đang xem trên lưới. Kết quả luôn redirect về lại
+ * /attendance-list kèm flash session (giống hệt OvertimeRequestServlet).
+ */
 @MultipartConfig(maxFileSize = 10 * 1024 * 1024)
 @WebServlet(name = "AttendanceImportServlet", urlPatterns = {"/attendance-import"})
 public class AttendanceImportServlet extends HttpServlet {
@@ -27,80 +32,82 @@ public class AttendanceImportServlet extends HttpServlet {
 	private final AttendanceImportUtil importUtil = new AttendanceImportUtil(attendanceDAO);
 
 	@Override
-	protected void doGet(HttpServletRequest request, HttpServletResponse response)
-			throws ServletException, IOException {
-		HttpSession session = request.getSession();
-		moveFlashMessage(session, request, "successMsg");
-		moveFlashMessage(session, request, "errorMsg");
-		LocalDate today = LocalDate.now();
-		request.setAttribute("selectedYear", today.getYear());
-		request.setAttribute("selectedMonth", today.getMonthValue());
-		request.getRequestDispatcher("/views/attendance/attendance-import.jsp").forward(request, response);
+	protected void doGet(HttpServletRequest request, HttpServletResponse response) throws IOException {
+		// Không còn trang import riêng - quay lại lưới chấm công.
+		response.sendRedirect(request.getContextPath() + "/attendance-list");
 	}
 
 	@Override
 	protected void doPost(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
 		request.setCharacterEncoding("UTF-8");
-		int year = parseInt(request.getParameter("year"), LocalDate.now().getYear());
-		int month = parseInt(request.getParameter("month"), LocalDate.now().getMonthValue());
-		request.setAttribute("selectedYear", year);
-		request.setAttribute("selectedMonth", month);
+		HttpSession session = request.getSession();
+
+		LocalDate today = LocalDate.now();
+		int year = parseInt(request.getParameter("year"), today.getYear());
+		int month = parseInt(request.getParameter("month"), today.getMonthValue());
 
 		if (year < 2000 || year > 2100 || month < 1 || month > 12) {
-			forwardWithError(request, response, List.of("Tháng/năm import không hợp lệ."));
+			session.setAttribute("errorMsg", "Tháng/năm import không hợp lệ.");
+			redirectBack(request, response, year, month);
 			return;
 		}
-		if (monthlySheetDAO.isPeriodClosed(year, month)) {
-			forwardWithError(request, response, List.of("Không thể nhập công cho tháng đã đóng."));
+		LocalDate selected = LocalDate.of(year, month, 1);
+		if (selected.isAfter(today.withDayOfMonth(1))) {
+			session.setAttribute("errorMsg", "Không thể import chấm công cho tháng tương lai.");
+			redirectBack(request, response, year, month);
+			return;
+		}
+
+		String status = monthlySheetDAO.getStatusByYearMonth(year, month);
+		if (status != null && !"OPEN".equals(status)) {
+			session.setAttribute("errorMsg", "Không thể nhập công cho tháng đang ở trạng thái " + status + ".");
+			redirectBack(request, response, year, month);
 			return;
 		}
 
 		Part filePart = request.getPart("attendanceFile");
 		if (filePart == null || filePart.getSize() == 0) {
-			forwardWithError(request, response, List.of("Vui lòng chọn file Excel để import."));
+			session.setAttribute("errorMsg", "Vui lòng chọn file Excel để import.");
+			redirectBack(request, response, year, month);
 			return;
 		}
 		String submittedFileName = filePart.getSubmittedFileName();
 		if (submittedFileName == null || !submittedFileName.toLowerCase().endsWith(".xlsx")) {
-			forwardWithError(request, response, List.of("Chỉ hỗ trợ file Excel định dạng .xlsx."));
+			session.setAttribute("errorMsg", "Chỉ hỗ trợ file Excel định dạng .xlsx.");
+			redirectBack(request, response, year, month);
 			return;
 		}
 
 		try (InputStream inputStream = filePart.getInputStream()) {
-			List<AttendanceRecord> records = importUtil.parseExcel(inputStream);
-			if (!isSamePeriod(records, year, month)) {
-				forwardWithError(request, response,
-						List.of("File có dữ liệu không thuộc đúng tháng/năm đã chọn. Vui lòng kiểm tra lại."));
-				return;
+			AttendanceImportResult result = importUtil.importExcel(inputStream, year, month);
+			// Thành công (all-or-nothing): mọi dòng hợp lệ đã được insert hết.
+			if (result.getSuccessCount() > 0) {
+				monthlySheetDAO.getOrCreate(year, month);
 			}
-			boolean success = attendanceDAO.batchUpsertByMonth(year, month, records);
-			if (success) {
-				request.getSession().setAttribute("successMsg",
-						"Import chấm công thành công " + records.size() + " dòng.");
-				response.sendRedirect(request.getContextPath() + "/attendance-list?year=" + year + "&month=" + month);
-			} else {
-				forwardWithError(request, response, List.of("Không thể lưu dữ liệu chấm công. Vui lòng thử lại."));
-			}
+			session.setAttribute("importSuccessCount", result.getSuccessCount());
+			session.setAttribute("importDuplicateCount", result.getDuplicateCount());
+			session.setAttribute("importDuplicateMessages", result.getDuplicateMessages());
 		} catch (AttendanceImportException e) {
-			forwardWithError(request, response, e.getErrors());
-		}
-	}
-
-	private boolean isSamePeriod(List<AttendanceRecord> records, int year, int month) {
-		for (AttendanceRecord record : records) {
-			LocalDate date = record.getDate().toLocalDate();
-			if (date.getYear() != year || date.getMonthValue() != month) {
-				return false;
+			if (e.getTotalDataRows() > 0) {
+				// Có dòng lỗi validate -> hủy toàn bộ, không insert dòng nào.
+				session.setAttribute("importFailed", true);
+				session.setAttribute("importTotalDataRows", e.getTotalDataRows());
+				session.setAttribute("importErrorMessages", e.getErrors());
+				session.setAttribute("importDuplicateMessages", e.getDuplicateMessages());
+			} else {
+				// Lỗi cấp file (không đọc được / không có dữ liệu / lỗi DB khi insert).
+				session.setAttribute("errorMsg", e.getMessage());
 			}
 		}
-		return true;
+
+		redirectBack(request, response, year, month);
 	}
 
-	private void forwardWithError(HttpServletRequest request, HttpServletResponse response, List<String> errors)
-			throws ServletException, IOException {
-		request.setAttribute("errorLogs", errors);
-		request.getRequestDispatcher("/views/attendance/attendance-import.jsp").forward(request, response);
+	private void redirectBack(HttpServletRequest request, HttpServletResponse response, int year, int month)
+			throws IOException {
+		response.sendRedirect(
+				request.getContextPath() + "/attendance-list?year=" + year + "&month=" + month + "&imported=true");
 	}
 
 	private int parseInt(String value, int defaultValue) {
@@ -111,14 +118,6 @@ public class AttendanceImportServlet extends HttpServlet {
 			return Integer.parseInt(value.trim());
 		} catch (NumberFormatException e) {
 			return defaultValue;
-		}
-	}
-
-	private void moveFlashMessage(HttpSession session, HttpServletRequest request, String key) {
-		String value = (String) session.getAttribute(key);
-		if (value != null) {
-			request.setAttribute(key, value);
-			session.removeAttribute(key);
 		}
 	}
 }

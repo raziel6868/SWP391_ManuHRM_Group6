@@ -31,6 +31,21 @@ public class HolidayDAO {
 		return search(null, year);
 	}
 
+	public List<Integer> getAvailableYears() {
+		List<Integer> years = new ArrayList<>();
+		String sql = "SELECT DISTINCT YEAR(date) AS year_value FROM holidays ORDER BY year_value DESC";
+		try (Connection conn = getConnection();
+				PreparedStatement ps = conn.prepareStatement(sql);
+				ResultSet rs = ps.executeQuery()) {
+			while (rs.next()) {
+				years.add(rs.getInt("year_value"));
+			}
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+		return years;
+	}
+
 	public List<Holiday> search(String keyword, Integer year) {
 		return search(keyword, year, true);
 	}

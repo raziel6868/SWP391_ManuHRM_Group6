@@ -3,6 +3,9 @@ package controller.attendancecorrection;
 import dal.AttendanceCorrectionDAO;
 import dal.AttendanceDAO;
 import dal.DBContext;
+import dal.LeaveRequestDAO;
+import dal.MonthlySheetDAO;
+import dal.OvertimeDAO;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
@@ -10,16 +13,25 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.time.LocalTime;
+import java.util.List;
 import model.AttendanceCorrection;
+import model.OvertimeRecord;
+import model.Permission;
 import model.User;
+import util.WorkScheduleConfig;
 
 @WebServlet(name = "AttendanceCorrectionApproveServlet", urlPatterns = {"/attendance-correction-approve"})
 public class AttendanceCorrectionApproveServlet extends HttpServlet {
 
 	private final AttendanceCorrectionDAO correctionDAO = new AttendanceCorrectionDAO();
 	private final AttendanceDAO attendanceDAO = new AttendanceDAO();
+	private final MonthlySheetDAO monthlySheetDAO = new MonthlySheetDAO();
+	private final LeaveRequestDAO leaveRequestDAO = new LeaveRequestDAO();
+	private final OvertimeDAO overtimeDAO = new OvertimeDAO();
 
 	@Override
 	protected void doPost(HttpServletRequest request, HttpServletResponse response)
@@ -32,9 +44,13 @@ public class AttendanceCorrectionApproveServlet extends HttpServlet {
 			response.sendRedirect(request.getContextPath() + "/login");
 			return;
 		}
+		if (!hasPermission(session, "ATTENDANCE_CORRECTION_APPROVE")) {
+			response.sendError(HttpServletResponse.SC_FORBIDDEN);
+			return;
+		}
 
 		Long id = parseLong(request.getParameter("id"));
-		String redirectUrl = request.getContextPath() + "/attendance-correction-list";
+		String redirectUrl = buildRedirectUrl(request);
 
 		if (id == null) {
 			session.setAttribute("errorMsg", "Yêu cầu điều chỉnh không hợp lệ.");
@@ -48,10 +64,57 @@ public class AttendanceCorrectionApproveServlet extends HttpServlet {
 			response.sendRedirect(redirectUrl);
 			return;
 		}
+
+		int year = correction.getAttendanceDate().toLocalDate().getYear();
+		int month = correction.getAttendanceDate().toLocalDate().getMonthValue();
+		// Trước đây bắt buộc bảng công phải đúng trạng thái PENDING_HR (tức phải chờ
+		// tất cả quản đốc chốt xong bước duyệt bảng công tháng) thì HR mới xử lý được
+		// điều chỉnh. Giờ HR có thể duyệt bất cứ lúc nào miễn quản đốc đã duyệt bước 1,
+		// chỉ chặn khi bảng công đã CLOSED.
+		if (monthlySheetDAO.isPeriodClosed(year, month)) {
+			session.setAttribute("errorMsg",
+					"Bảng công tháng " + month + "/" + year + " đã được chốt sổ, không thể xử lý điều chỉnh.");
+			response.sendRedirect(redirectUrl);
+			return;
+		}
+
+		if (!"APPROVED".equals(correction.getSupervisorStatus())) {
+			session.setAttribute("errorMsg",
+					"Yêu cầu này chưa được quản đốc xác nhận. HR chỉ có thể duyệt sau khi quản đốc đã duyệt.");
+			response.sendRedirect(redirectUrl);
+			return;
+		}
+
 		if (!"PENDING".equals(correction.getStatus())) {
 			session.setAttribute("errorMsg", "Yêu cầu này đã được xử lý trước đó.");
 			response.sendRedirect(redirectUrl);
 			return;
+		}
+
+		// Validate 2 chiều: giờ chấm công mới không được mâu thuẫn với nghỉ
+		// phép/OT đã duyệt cùng ngày (giống hệt check khi import chấm công).
+		Long targetUserId = correction.getAttendanceUserId();
+		java.sql.Date attendanceDate = correction.getAttendanceDate();
+		if (leaveRequestDAO.hasApprovedOrLevel1LeaveOnDate(targetUserId, attendanceDate)) {
+			session.setAttribute("errorMsg", "Nhân viên đã có đơn nghỉ phép đang/đã duyệt ngày " + attendanceDate
+					+ " — không thể duyệt điều chỉnh thành có chấm công. Vui lòng xử lý nghỉ phép trước.");
+			response.sendRedirect(redirectUrl);
+			return;
+		}
+		if (correction.getNewCheckIn() != null && correction.getNewCheckOut() != null) {
+			OvertimeRecord approvedOT = overtimeDAO.findApprovedOTForUserAndDate(targetUserId, attendanceDate);
+			if (approvedOT != null && approvedOT.getApprovedHours() != null) {
+				long otMinutes = approvedOT.getApprovedHours().multiply(BigDecimal.valueOf(60)).longValue();
+				LocalTime expectedCheckout = WorkScheduleConfig.OVERTIME_START.plusMinutes(otMinutes);
+				if (correction.getNewCheckOut().toLocalTime().isBefore(expectedCheckout)) {
+					session.setAttribute("errorMsg",
+							"Nhân viên có OT " + formatHours(approvedOT.getApprovedHours()) + "h được duyệt ngày "
+									+ attendanceDate + " nhưng giờ ra mới (" + correction.getNewCheckOut().toLocalTime()
+									+ ") không đủ hỗ trợ (cần ra từ " + expectedCheckout + " trở đi).");
+					response.sendRedirect(redirectUrl);
+					return;
+				}
+			}
 		}
 
 		Connection conn = null;
@@ -82,7 +145,6 @@ public class AttendanceCorrectionApproveServlet extends HttpServlet {
 			conn.commit();
 			session.setAttribute("successMsg",
 					"Đã duyệt yêu cầu điều chỉnh công cho " + correction.getEmployeeName() + ".");
-
 		} catch (SQLException e) {
 			rollback(conn);
 			System.err.println("AttendanceCorrectionApproveServlet.doPost() ERROR: " + e.getMessage());
@@ -103,6 +165,44 @@ public class AttendanceCorrectionApproveServlet extends HttpServlet {
 		} catch (NumberFormatException e) {
 			return null;
 		}
+	}
+
+	private String formatHours(BigDecimal hours) {
+		if (hours == null) {
+			return "0";
+		}
+		return hours.stripTrailingZeros().toPlainString();
+	}
+
+	/**
+	 * Luôn quay lại đúng /attendance-correction-list?tab=hr, giữ nguyên status/page
+	 * hiện tại (nếu có) để không bị mất filter sau khi duyệt.
+	 */
+	private String buildRedirectUrl(HttpServletRequest request) {
+		StringBuilder url = new StringBuilder(request.getContextPath()).append("/attendance-correction-list?tab=hr");
+		String status = request.getParameter("status");
+		if (status != null && !status.isBlank()) {
+			url.append("&status=").append(status.trim().toUpperCase());
+		}
+		String page = request.getParameter("page");
+		if (page != null && !page.isBlank()) {
+			url.append("&page=").append(page.trim());
+		}
+		return url.toString();
+	}
+
+	@SuppressWarnings("unchecked")
+	private boolean hasPermission(HttpSession session, String code) {
+		List<Permission> permissions = (List<Permission>) session.getAttribute("permissions");
+		if (permissions == null) {
+			return false;
+		}
+		for (Permission permission : permissions) {
+			if (code.equals(permission.getCode())) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	private void rollback(Connection conn) {

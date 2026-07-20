@@ -9,6 +9,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import model.Permission;
+import model.User;
 
 import java.io.IOException;
 import java.util.List;
@@ -55,6 +56,7 @@ public class ContractDetailServlet extends HttpServlet {
 			return;
 		}
 
+		contractDAO.refreshLifecycleStatuses();
 		ContractDetail contract = contractDAO.getDetail(id);
 		if (contract == null) {
 			session.setAttribute("errorMsg", "Không tìm thấy hợp đồng.");
@@ -62,10 +64,21 @@ public class ContractDetailServlet extends HttpServlet {
 			return;
 		}
 
+		User authUser = (User) session.getAttribute("authUser");
+		boolean isOwner = authUser != null && authUser.getId() != null && authUser.getId().equals(contract.getUserId());
+		boolean canViewAllContracts = hasAnyPerm(session, "CONTRACT_CREATE", "CONTRACT_UPDATE", "CONTRACT_RENEW",
+				"CONTRACT_UPLOAD", "CONTRACT_TERMINATE");
+		if (!canViewAllContracts && !isOwner) {
+			response.sendError(HttpServletResponse.SC_FORBIDDEN);
+			return;
+		}
+
 		request.setAttribute("hasContractUploadPerm", hasPerm(session, "CONTRACT_UPLOAD"));
 		request.setAttribute("hasContractUpdatePerm", hasPerm(session, "CONTRACT_UPDATE"));
 		request.setAttribute("hasContractRenewPerm", hasPerm(session, "CONTRACT_RENEW"));
 		request.setAttribute("hasContractTerminatePerm", hasPerm(session, "CONTRACT_TERMINATE"));
+		request.setAttribute("hasContractRenewRequestPerm", hasPerm(session, "CONTRACT_RENEW_REQUEST") && isOwner);
+		request.setAttribute("personalContractView", !canViewAllContracts);
 
 		request.setAttribute("contract", contract);
 		request.getRequestDispatcher("/views/contract/contract-detail.jsp").forward(request, response);
@@ -79,6 +92,15 @@ public class ContractDetailServlet extends HttpServlet {
 		}
 		for (Permission p : perms) {
 			if (code.equals(p.getCode())) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	private boolean hasAnyPerm(HttpSession session, String... codes) {
+		for (String code : codes) {
+			if (hasPerm(session, code)) {
 				return true;
 			}
 		}

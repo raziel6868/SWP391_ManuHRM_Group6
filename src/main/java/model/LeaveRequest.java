@@ -23,9 +23,16 @@ public class LeaveRequest {
 
 	private String employeeCode;
 	private String employeeName;
+	private String requesterRole;
+	private Long requesterManagerId;
+	private String requesterManagerName;
 	private String departmentName;
 	private String leaveTypeCode;
 	private String leaveTypeName;
+	private String leaveTypeSalaryPaidBy;
+	private Boolean leaveTypeAnnualLeave;
+	private Boolean leaveTypeRequiresBalance;
+	private String leaveTypeDayCountMethod;
 	private String level1ApproverName;
 	private String approverName;
 
@@ -157,6 +164,30 @@ public class LeaveRequest {
 		this.employeeName = employeeName;
 	}
 
+	public String getRequesterRole() {
+		return requesterRole;
+	}
+
+	public void setRequesterRole(String requesterRole) {
+		this.requesterRole = requesterRole;
+	}
+
+	public Long getRequesterManagerId() {
+		return requesterManagerId;
+	}
+
+	public void setRequesterManagerId(Long requesterManagerId) {
+		this.requesterManagerId = requesterManagerId;
+	}
+
+	public String getRequesterManagerName() {
+		return requesterManagerName;
+	}
+
+	public void setRequesterManagerName(String requesterManagerName) {
+		this.requesterManagerName = requesterManagerName;
+	}
+
 	public String getDepartmentName() {
 		return departmentName;
 	}
@@ -179,6 +210,38 @@ public class LeaveRequest {
 
 	public void setLeaveTypeName(String leaveTypeName) {
 		this.leaveTypeName = leaveTypeName;
+	}
+
+	public String getLeaveTypeSalaryPaidBy() {
+		return leaveTypeSalaryPaidBy;
+	}
+
+	public void setLeaveTypeSalaryPaidBy(String leaveTypeSalaryPaidBy) {
+		this.leaveTypeSalaryPaidBy = leaveTypeSalaryPaidBy;
+	}
+
+	public Boolean getLeaveTypeAnnualLeave() {
+		return leaveTypeAnnualLeave;
+	}
+
+	public void setLeaveTypeAnnualLeave(Boolean leaveTypeAnnualLeave) {
+		this.leaveTypeAnnualLeave = leaveTypeAnnualLeave;
+	}
+
+	public Boolean getLeaveTypeRequiresBalance() {
+		return leaveTypeRequiresBalance;
+	}
+
+	public void setLeaveTypeRequiresBalance(Boolean leaveTypeRequiresBalance) {
+		this.leaveTypeRequiresBalance = leaveTypeRequiresBalance;
+	}
+
+	public String getLeaveTypeDayCountMethod() {
+		return leaveTypeDayCountMethod;
+	}
+
+	public void setLeaveTypeDayCountMethod(String leaveTypeDayCountMethod) {
+		this.leaveTypeDayCountMethod = leaveTypeDayCountMethod;
 	}
 
 	public String getLevel1ApproverName() {

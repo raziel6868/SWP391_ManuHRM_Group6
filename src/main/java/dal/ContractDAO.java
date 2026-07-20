@@ -43,6 +43,10 @@ public class ContractDAO {
 	// ============================ LIST ============================
 
 	public List<ContractListItem> searchContracts(String keyword, String status, int offset, int limit) {
+		return searchContracts(keyword, status, null, offset, limit);
+	}
+
+	public List<ContractListItem> searchContracts(String keyword, String status, Long userId, int offset, int limit) {
 		StringBuilder sql = new StringBuilder("""
 				SELECT c.id, c.user_id, u.employee_code, u.full_name,
 				       d.name AS department_name,
@@ -55,7 +59,7 @@ public class ContractDAO {
 				""");
 
 		List<Object> params = new ArrayList<>();
-		appendFilter(sql, params, keyword, status);
+		appendFilter(sql, params, keyword, status, userId);
 		sql.append(" ORDER BY c.end_date IS NULL DESC, c.end_date ASC, c.id ASC LIMIT ? OFFSET ?");
 		params.add(limit);
 		params.add(offset);
@@ -64,13 +68,17 @@ public class ContractDAO {
 	}
 
 	public int countContracts(String keyword, String status) {
+		return countContracts(keyword, status, null);
+	}
+
+	public int countContracts(String keyword, String status, Long userId) {
 		StringBuilder sql = new StringBuilder("""
 				SELECT COUNT(*) FROM contracts c
 				JOIN users u ON u.id = c.user_id
 				JOIN contract_types ct ON ct.id = c.contract_type_id
 				""");
 		List<Object> params = new ArrayList<>();
-		appendFilter(sql, params, keyword, status);
+		appendFilter(sql, params, keyword, status, userId);
 		return count(sql.toString(), params);
 	}
 
@@ -85,7 +93,7 @@ public class ContractDAO {
 				  JOIN users u           ON u.id = c.user_id
 				  LEFT JOIN departments d ON d.id = u.department_id
 				  JOIN contract_types ct ON ct.id = c.contract_type_id
-				 WHERE c.status = 'ACTIVE'
+				 WHERE c.status IN ('ACTIVE', 'EXPIRING_SOON')
 				   AND c.end_date IS NOT NULL
 				   AND c.end_date >= CURRENT_DATE
 				   AND c.end_date <= DATE_ADD(CURRENT_DATE, INTERVAL ? DAY)
@@ -103,13 +111,23 @@ public class ContractDAO {
 	}
 
 	public int countExpiringSoon(int daysAhead) {
+		return countExpiringSoon(daysAhead, null);
+	}
+
+	public int countExpiringSoon(int daysAhead, Long userId) {
 		String sql = """
 				SELECT COUNT(*) FROM contracts c
-				 WHERE c.status = 'ACTIVE'
+				 WHERE c.status IN ('ACTIVE', 'EXPIRING_SOON')
 				   AND c.end_date IS NOT NULL
 				   AND c.end_date >= CURRENT_DATE
 				   AND c.end_date <= DATE_ADD(CURRENT_DATE, INTERVAL ? DAY)""";
-		return count(sql, List.of(daysAhead));
+		List<Object> params = new ArrayList<>();
+		params.add(daysAhead);
+		if (userId != null) {
+			sql += " AND c.user_id = ?";
+			params.add(userId);
+		}
+		return count(sql, params);
 	}
 
 	// ============================ DETAIL ============================
@@ -120,6 +138,24 @@ public class ContractDAO {
 		}
 		String sql = SELECT_DETAIL_SQL + " WHERE c.id = ?";
 		return queryDetail(sql, List.of(id));
+	}
+
+	public ContractDetail getLatestDetailByUser(Long userId) {
+		if (userId == null) {
+			return null;
+		}
+		String sql = SELECT_DETAIL_SQL + """
+				WHERE c.user_id = ?
+				ORDER BY CASE c.status
+				             WHEN 'ACTIVE' THEN 1
+				             WHEN 'EXPIRING_SOON' THEN 2
+				             WHEN 'PENDING_RENEWAL' THEN 3
+				             WHEN 'EXPIRED' THEN 4
+				             ELSE 4
+				         END,
+				         c.start_date DESC, c.id DESC
+				LIMIT 1""";
+		return queryDetail(sql, List.of(userId));
 	}
 
 	public Contract getById(Long id) {
@@ -143,7 +179,7 @@ public class ContractDAO {
 				       file_path, status, terminated_at, terminated_by, terminate_reason,
 				       renewal_of_id, created_at, updated_at
 				  FROM contracts
-				 WHERE user_id = ? AND status = 'ACTIVE'
+				 WHERE user_id = ? AND status IN ('ACTIVE', 'EXPIRING_SOON', 'PENDING_RENEWAL')
 				 ORDER BY start_date DESC, id DESC
 				 LIMIT 1""";
 		return queryOne(sql, List.of(userId));
@@ -244,6 +280,90 @@ public class ContractDAO {
 		}
 	}
 
+	public Long renewReturningId(Long previousId, Contract renewed) {
+		if (previousId == null || renewed == null || renewed.getUserId() == null || renewed.getContractTypeId() == null
+				|| renewed.getStartDate() == null) {
+			return null;
+		}
+		String expireSql = """
+				UPDATE contracts
+				   SET status = 'EXPIRED',
+				       updated_at = CURRENT_TIMESTAMP
+				 WHERE id = ?
+				   AND status IN ('ACTIVE', 'EXPIRING_SOON', 'EXPIRED', 'PENDING_RENEWAL')""";
+		String insertSql = """
+				INSERT INTO contracts
+				  (user_id, contract_type_id, start_date, end_date, salary, file_path, status,
+				   terminated_at, terminated_by, terminate_reason, renewal_of_id)
+				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""";
+		Connection conn = null;
+		try {
+			conn = DBContext.getConnection();
+			conn.setAutoCommit(false);
+			try (PreparedStatement expirePs = conn.prepareStatement(expireSql)) {
+				expirePs.setLong(1, previousId);
+				if (expirePs.executeUpdate() == 0) {
+					conn.rollback();
+					return null;
+				}
+			}
+			try (PreparedStatement ps = conn.prepareStatement(insertSql, PreparedStatement.RETURN_GENERATED_KEYS)) {
+				ps.setLong(1, renewed.getUserId());
+				ps.setLong(2, renewed.getContractTypeId());
+				ps.setDate(3, renewed.getStartDate());
+				ps.setDate(4, renewed.getEndDate());
+				if (renewed.getSalary() != null) {
+					ps.setBigDecimal(5, renewed.getSalary());
+				} else {
+					ps.setNull(5, java.sql.Types.DECIMAL);
+				}
+				ps.setString(6, renewed.getFilePath());
+				ps.setString(7,
+						renewed.getStatus() == null ? Contract.Status.ACTIVE.name() : renewed.getStatus().name());
+				ps.setDate(8, renewed.getTerminatedAt());
+				if (renewed.getTerminatedBy() != null) {
+					ps.setLong(9, renewed.getTerminatedBy());
+				} else {
+					ps.setNull(9, java.sql.Types.BIGINT);
+				}
+				ps.setString(10, renewed.getTerminateReason());
+				ps.setLong(11, previousId);
+				int rows = ps.executeUpdate();
+				if (rows == 0) {
+					conn.rollback();
+					return null;
+				}
+				try (ResultSet rs = ps.getGeneratedKeys()) {
+					if (rs.next()) {
+						Long newId = rs.getLong(1);
+						conn.commit();
+						return newId;
+					}
+				}
+			}
+			conn.rollback();
+		} catch (SQLException e) {
+			if (conn != null) {
+				try {
+					conn.rollback();
+				} catch (SQLException rollbackError) {
+					System.err.println("ContractDAO.renewReturningId() rollback ERROR: " + rollbackError.getMessage());
+				}
+			}
+			System.err.println("ContractDAO.renewReturningId() ERROR: " + e.getMessage());
+		} finally {
+			if (conn != null) {
+				try {
+					conn.setAutoCommit(true);
+					conn.close();
+				} catch (SQLException closeError) {
+					System.err.println("ContractDAO.renewReturningId() close ERROR: " + closeError.getMessage());
+				}
+			}
+		}
+		return null;
+	}
+
 	public boolean update(Contract c) {
 		if (c == null || c.getId() == null) {
 			return false;
@@ -299,6 +419,26 @@ public class ContractDAO {
 		}
 	}
 
+	public boolean requestRenewal(Long id, Long userId) {
+		if (id == null || userId == null) {
+			return false;
+		}
+		String sql = """
+				UPDATE contracts
+				   SET status = 'PENDING_RENEWAL'
+				 WHERE id = ?
+				   AND user_id = ?
+				   AND status IN ('ACTIVE', 'EXPIRING_SOON')""";
+		try (Connection conn = DBContext.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+			ps.setLong(1, id);
+			ps.setLong(2, userId);
+			return ps.executeUpdate() > 0;
+		} catch (SQLException e) {
+			System.err.println("ContractDAO.requestRenewal() ERROR: " + e.getMessage());
+			return false;
+		}
+	}
+
 	public boolean terminate(Long id, Date terminatedAt, Long terminatedBy, String reason) {
 		if (id == null) {
 			return false;
@@ -328,7 +468,7 @@ public class ContractDAO {
 		String sql = """
 				UPDATE contracts
 				   SET status = 'EXPIRED'
-				 WHERE status = 'ACTIVE'
+				 WHERE status IN ('ACTIVE', 'EXPIRING_SOON')
 				   AND end_date IS NOT NULL
 				   AND end_date < CURRENT_DATE""";
 		try (Connection conn = DBContext.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -339,28 +479,77 @@ public class ContractDAO {
 		}
 	}
 
+	public int markExpiringSoon(int daysAhead) {
+		String sql = """
+				UPDATE contracts
+				   SET status = 'EXPIRING_SOON'
+				 WHERE status = 'ACTIVE'
+				   AND end_date IS NOT NULL
+				   AND end_date >= CURRENT_DATE
+				   AND end_date <= DATE_ADD(CURRENT_DATE, INTERVAL ? DAY)""";
+		try (Connection conn = DBContext.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+			ps.setInt(1, daysAhead);
+			return ps.executeUpdate();
+		} catch (SQLException e) {
+			System.err.println("ContractDAO.markExpiringSoon() ERROR: " + e.getMessage());
+			return 0;
+		}
+	}
+
+	public int restoreActiveFromExpiringSoon(int daysAhead) {
+		String sql = """
+				UPDATE contracts
+				   SET status = 'ACTIVE'
+				 WHERE status = 'EXPIRING_SOON'
+				   AND (end_date IS NULL OR end_date > DATE_ADD(CURRENT_DATE, INTERVAL ? DAY))""";
+		try (Connection conn = DBContext.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+			ps.setInt(1, daysAhead);
+			return ps.executeUpdate();
+		} catch (SQLException e) {
+			System.err.println("ContractDAO.restoreActiveFromExpiringSoon() ERROR: " + e.getMessage());
+			return 0;
+		}
+	}
+
+	public void refreshLifecycleStatuses() {
+		markExpired();
+		restoreActiveFromExpiringSoon(30);
+		markExpiringSoon(30);
+	}
+
 	// ============================ HELPERS ============================
 
-	private void appendFilter(StringBuilder sql, List<Object> params, String keyword, String status) {
+	private void appendFilter(StringBuilder sql, List<Object> params, String keyword, String status, Long userId) {
 		boolean hasKeyword = keyword != null && !keyword.trim().isEmpty();
 		boolean hasStatus = status != null && !status.trim().isEmpty() && !"ALL".equalsIgnoreCase(status);
-		if (!hasKeyword && !hasStatus) {
+		boolean hasUser = userId != null;
+		if (!hasKeyword && !hasStatus && !hasUser) {
 			return;
 		}
 		sql.append(" WHERE ");
+		boolean needsAnd = false;
 		if (hasKeyword) {
 			sql.append("(u.employee_code LIKE ? OR u.full_name LIKE ? OR ct.name LIKE ?)");
 			String like = "%" + keyword.trim() + "%";
 			params.add(like);
 			params.add(like);
 			params.add(like);
+			needsAnd = true;
 		}
 		if (hasStatus) {
-			if (hasKeyword) {
+			if (needsAnd) {
 				sql.append(" AND ");
 			}
 			sql.append("c.status = ?");
 			params.add(status.trim().toUpperCase());
+			needsAnd = true;
+		}
+		if (hasUser) {
+			if (needsAnd) {
+				sql.append(" AND ");
+			}
+			sql.append("c.user_id = ?");
+			params.add(userId);
 		}
 	}
 

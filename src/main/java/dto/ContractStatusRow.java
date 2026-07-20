@@ -6,6 +6,7 @@ public class ContractStatusRow {
 	private String departmentName;
 	private int activeContracts;
 	private int expiredContracts;
+	private int expiringSoonContracts;
 	private int pendingRenewal;
 	private int terminatedContracts;
 	private int totalContracts;
@@ -43,6 +44,14 @@ public class ContractStatusRow {
 
 	public void setExpiredContracts(int expiredContracts) {
 		this.expiredContracts = expiredContracts;
+	}
+
+	public int getExpiringSoonContracts() {
+		return expiringSoonContracts;
+	}
+
+	public void setExpiringSoonContracts(int expiringSoonContracts) {
+		this.expiringSoonContracts = expiringSoonContracts;
 	}
 
 	public int getPendingRenewal() {

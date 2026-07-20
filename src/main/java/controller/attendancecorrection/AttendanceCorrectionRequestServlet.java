@@ -2,6 +2,7 @@ package controller.attendancecorrection;
 
 import dal.AttendanceCorrectionDAO;
 import dal.AttendanceDAO;
+import dal.MonthlySheetDAO;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
@@ -12,8 +13,11 @@ import java.io.IOException;
 import java.sql.Time;
 import java.time.LocalTime;
 import java.time.format.DateTimeParseException;
+import java.util.List;
 import model.AttendanceCorrection;
 import model.AttendanceRecord;
+import model.MonthlySheet;
+import model.Permission;
 import model.User;
 import util.ValidationUtil;
 
@@ -22,6 +26,7 @@ public class AttendanceCorrectionRequestServlet extends HttpServlet {
 
 	private final AttendanceDAO attendanceDAO = new AttendanceDAO();
 	private final AttendanceCorrectionDAO correctionDAO = new AttendanceCorrectionDAO();
+	private final MonthlySheetDAO monthlySheetDAO = new MonthlySheetDAO();
 
 	@Override
 	protected void doPost(HttpServletRequest request, HttpServletResponse response)
@@ -35,8 +40,11 @@ public class AttendanceCorrectionRequestServlet extends HttpServlet {
 			return;
 		}
 
-		if (!"EMPLOYEE".equals(authUser.getRoleName())) {
-			response.sendRedirect(request.getContextPath() + "/views/error/403.jsp");
+		// Trước đây chỉ EMPLOYEE được gửi yêu cầu điều chỉnh công. Giờ mở rộng theo
+		// permission ATTENDANCE_CORRECTION_REQUEST để quản đốc (PRODUCTION_SUPERVISOR)
+		// và HR (HR_MANAGER) cũng có thể tự gửi yêu cầu điều chỉnh cho chính mình.
+		if (!hasPermission(session, "ATTENDANCE_CORRECTION_REQUEST")) {
+			response.sendError(HttpServletResponse.SC_FORBIDDEN);
 			return;
 		}
 
@@ -47,12 +55,25 @@ public class AttendanceCorrectionRequestServlet extends HttpServlet {
 
 		AttendanceRecord record = attendanceDAO.getById(attendanceRecordId);
 		if (record == null || !authUser.getId().equals(record.getUserId())) {
-			response.sendRedirect(request.getContextPath() + "/views/error/403.jsp");
+			response.sendError(HttpServletResponse.SC_FORBIDDEN);
 			return;
 		}
 
-		String redirectUrl = request.getContextPath() + "/attendance-my?year="
-				+ record.getDate().toLocalDate().getYear() + "&month=" + record.getDate().toLocalDate().getMonthValue();
+		int year = record.getDate().toLocalDate().getYear();
+		int month = record.getDate().toLocalDate().getMonthValue();
+		String redirectUrl = request.getContextPath() + "/attendance-my?year=" + year + "&month=" + month;
+
+		// Trước đây bắt buộc tháng phải đang ở trạng thái OPEN mới được gửi yêu cầu,
+		// khiến việc gửi/duyệt điều chỉnh bị khoá cứng theo tiến độ workflow chốt
+		// bảng công tháng (HR phải mở duyệt trước). Giờ chỉ chặn khi bảng công đã
+		// CLOSED (đã chốt sổ hoàn toàn) — dữ liệu lịch sử không được đổi nữa.
+		MonthlySheet sheet = monthlySheetDAO.getOrCreate(year, month);
+		if (sheet != null && "CLOSED".equals(sheet.getStatus())) {
+			session.setAttribute("errorMsg", "Bảng công tháng " + month + "/" + year
+					+ " đã được chốt sổ, không thể gửi yêu cầu điều chỉnh công.");
+			response.sendRedirect(redirectUrl);
+			return;
+		}
 
 		if (newCheckIn == null || newCheckOut == null) {
 			session.setAttribute("errorMsg", "Giờ điều chỉnh không hợp lệ.");
@@ -75,16 +96,39 @@ public class AttendanceCorrectionRequestServlet extends HttpServlet {
 			return;
 		}
 
+		// Quản đốc (PRODUCTION_SUPERVISOR) và HR (HR_MANAGER) gửi yêu cầu cho chính
+		// mình thì không có "quản đốc cấp trên" để duyệt bước 1 như worker thường —
+		// cho phép họ tự duyệt bước 1 bằng cách gán chính họ làm supervisor của
+		// request. Bước 2 vẫn luôn do HR xử lý như bình thường.
+		Long supervisorId;
+		if ("PRODUCTION_SUPERVISOR".equals(authUser.getRoleName()) || "HR_MANAGER".equals(authUser.getRoleName())) {
+			supervisorId = authUser.getId();
+		} else {
+			supervisorId = authUser.getManagerId();
+			if (supervisorId == null) {
+				session.setAttribute("errorMsg", "Tài khoản của bạn chưa được gán quản đốc. Vui lòng liên hệ HR.");
+				response.sendRedirect(redirectUrl);
+				return;
+			}
+		}
+
 		AttendanceCorrection correction = new AttendanceCorrection();
 		correction.setAttendanceRecordId(attendanceRecordId);
 		correction.setRequestedBy(authUser.getId());
 		correction.setNewCheckIn(newCheckIn);
 		correction.setNewCheckOut(newCheckOut);
 		correction.setReason(reason.trim());
+		correction.setSupervisorId(supervisorId);
 
 		boolean success = correctionDAO.insert(correction);
 		if (success) {
-			session.setAttribute("successMsg", "Gửi yêu cầu điều chỉnh công thành công.");
+			if (supervisorId.equals(authUser.getId())) {
+				session.setAttribute("successMsg",
+						"Gửi yêu cầu điều chỉnh công thành công. Bạn có thể tự duyệt bước 1 tại mục Điều chỉnh công, sau đó chờ HR duyệt bước 2.");
+			} else {
+				session.setAttribute("successMsg",
+						"Gửi yêu cầu điều chỉnh công thành công. Đang chờ quản đốc xác nhận.");
+			}
 		} else {
 			session.setAttribute("errorMsg", "Không thể gửi yêu cầu điều chỉnh công. Vui lòng thử lại.");
 		}
@@ -111,5 +155,19 @@ public class AttendanceCorrectionRequestServlet extends HttpServlet {
 		} catch (DateTimeParseException e) {
 			return null;
 		}
+	}
+
+	@SuppressWarnings("unchecked")
+	private boolean hasPermission(HttpSession session, String code) {
+		List<Permission> permissions = (List<Permission>) session.getAttribute("permissions");
+		if (permissions == null) {
+			return false;
+		}
+		for (Permission permission : permissions) {
+			if (code.equals(permission.getCode())) {
+				return true;
+			}
+		}
+		return false;
 	}
 }

@@ -135,25 +135,33 @@ public class ReportDAO {
 
 	public List<HeadcountRow> getHeadcount(Long departmentId, Boolean isActive) {
 		List<HeadcountRow> rows = new ArrayList<>();
+		int companyTotalEmployees = countHeadcountEmployees(isActive);
 
 		StringBuilder sql = new StringBuilder("""
 				SELECT d.id AS department_id, d.name AS department_name,
-				       u.employee_type,
-				       COUNT(u.id) AS total_employees,
-				       SUM(CASE WHEN u.is_active = TRUE THEN 1 ELSE 0 END) AS active_employees
+				       SUM(CASE WHEN u.employee_type = 'OFFICE' THEN 1 ELSE 0 END) AS office_employees,
+				       SUM(CASE WHEN u.employee_type = 'WORKER' THEN 1 ELSE 0 END) AS worker_employees,
+				       COUNT(u.id) AS active_employees
 				FROM users u
 				LEFT JOIN departments d ON u.department_id = d.id
-				WHERE u.is_active = TRUE
+				WHERE 1 = 1
 				""");
 
 		List<Object> params = new ArrayList<>();
+
+		if (isActive != null) {
+			sql.append(" AND u.is_active = ?");
+			params.add(isActive);
+		}
+
+		sql.append(" AND (u.department_id IS NULL OR d.is_active = TRUE)");
 
 		if (departmentId != null) {
 			sql.append(" AND u.department_id = ?");
 			params.add(departmentId);
 		}
 
-		sql.append(" GROUP BY d.id, d.name, u.employee_type ORDER BY d.name, u.employee_type");
+		sql.append(" GROUP BY d.id, d.name ORDER BY d.name");
 
 		try (Connection conn = DBContext.getConnection();
 				PreparedStatement ps = conn.prepareStatement(sql.toString())) {
@@ -162,10 +170,12 @@ public class ReportDAO {
 				while (rs.next()) {
 					HeadcountRow row = new HeadcountRow();
 					row.setDepartmentId(rs.getObject("department_id") != null ? rs.getLong("department_id") : null);
-					row.setDepartmentName(rs.getString("department_name"));
-					row.setEmployeeType(rs.getString("employee_type"));
-					row.setTotalEmployees(rs.getInt("total_employees"));
+					row.setDepartmentName(defaultDepartmentName(rs.getString("department_name")));
+					row.setOfficeEmployees(rs.getInt("office_employees"));
+					row.setWorkerEmployees(rs.getInt("worker_employees"));
 					row.setActiveEmployees(rs.getInt("active_employees"));
+					row.setTotalEmployees(row.getActiveEmployees());
+					row.setCompanyPercentage(calculatePercentage(row.getActiveEmployees(), companyTotalEmployees));
 					rows.add(row);
 				}
 			}
@@ -174,6 +184,49 @@ public class ReportDAO {
 		}
 
 		return rows;
+	}
+
+	private int countHeadcountEmployees(Boolean isActive) {
+		StringBuilder sql = new StringBuilder("""
+				SELECT COUNT(*)
+				FROM users u
+				LEFT JOIN departments d ON u.department_id = d.id
+				WHERE (u.department_id IS NULL OR d.is_active = TRUE)
+				""");
+		List<Object> params = new ArrayList<>();
+
+		if (isActive != null) {
+			sql.append(" AND u.is_active = ?");
+			params.add(isActive);
+		}
+
+		try (Connection conn = DBContext.getConnection();
+				PreparedStatement ps = conn.prepareStatement(sql.toString())) {
+			setParams(ps, params);
+			try (ResultSet rs = ps.executeQuery()) {
+				if (rs.next()) {
+					return rs.getInt(1);
+				}
+			}
+		} catch (SQLException e) {
+			System.err.println("ReportDAO.countHeadcountEmployees() ERROR: " + e.getMessage());
+		}
+		return 0;
+	}
+
+	private BigDecimal calculatePercentage(int value, int total) {
+		if (value <= 0 || total <= 0) {
+			return BigDecimal.ZERO;
+		}
+		return BigDecimal.valueOf(value).multiply(BigDecimal.valueOf(100)).divide(BigDecimal.valueOf(total), 2,
+				RoundingMode.HALF_UP);
+	}
+
+	private String defaultDepartmentName(String departmentName) {
+		if (departmentName == null || departmentName.isBlank()) {
+			return "Chưa phân phòng ban";
+		}
+		return departmentName;
 	}
 
 	public List<ContractStatusRow> getContractStatus(Long departmentId) {

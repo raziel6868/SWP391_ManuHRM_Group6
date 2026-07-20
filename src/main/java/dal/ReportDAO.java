@@ -62,15 +62,22 @@ public class ReportDAO {
 
 	public List<AttendanceSummaryRow> getAttendanceSummary(int year, Integer month, Long departmentId) {
 		List<AttendanceSummaryRow> rows = new ArrayList<>();
+		int expectedMonths = month != null ? 1 : 12;
 
 		StringBuilder sql = new StringBuilder("""
 				SELECT d.id AS department_id, d.name AS department_name,
-				       COUNT(DISTINCT ar.user_id) AS total_employees,
-				       COUNT(DISTINCT DATE(ar.date)) AS total_work_days
-				FROM attendance_records ar
-				JOIN users u ON ar.user_id = u.id
+				       COUNT(DISTINCT u.id) AS total_employees,
+				       COUNT(DISTINCT CASE
+				           WHEN ar.status <> 'ABSENT' THEN CONCAT(u.id, ':', ar.date)
+				       END) AS actual_work_days,
+				       COUNT(DISTINCT CASE
+				           WHEN ar.status = 'ABSENT' THEN CONCAT(u.id, ':', ar.date)
+				       END) AS absent_days,
+				       SUM(CASE WHEN ar.status = 'LATE' THEN 1 ELSE 0 END) AS late_count
+				FROM users u
 				LEFT JOIN departments d ON u.department_id = d.id
-				WHERE YEAR(ar.date) = ?
+				LEFT JOIN attendance_records ar ON ar.user_id = u.id
+				  AND YEAR(ar.date) = ?
 				""");
 
 		List<Object> params = new ArrayList<>();
@@ -80,6 +87,8 @@ public class ReportDAO {
 			sql.append(" AND MONTH(ar.date) = ?");
 			params.add(month);
 		}
+
+		sql.append(" WHERE u.is_active = TRUE AND (u.department_id IS NULL OR d.is_active = TRUE)");
 
 		if (departmentId != null) {
 			sql.append(" AND u.department_id = ?");
@@ -95,22 +104,17 @@ public class ReportDAO {
 				while (rs.next()) {
 					AttendanceSummaryRow row = new AttendanceSummaryRow();
 					row.setDepartmentId(rs.getObject("department_id") != null ? rs.getLong("department_id") : null);
-					row.setDepartmentName(rs.getString("department_name"));
+					row.setDepartmentName(defaultDepartmentName(rs.getString("department_name")));
 					row.setYear(year);
 					row.setMonth(month != null ? month : 0);
 					row.setTotalEmployees(rs.getInt("total_employees"));
-					row.setTotalWorkDays(rs.getInt("total_work_days"));
-					row.setTotalDays(STANDARD_WORK_DAYS);
-					BigDecimal rate = BigDecimal.ZERO;
-					if (row.getTotalEmployees() > 0) {
-						BigDecimal expectedDays = BigDecimal.valueOf(row.getTotalEmployees())
-								.multiply(BigDecimal.valueOf(row.getTotalDays()));
-						if (expectedDays.compareTo(BigDecimal.ZERO) > 0) {
-							rate = BigDecimal.valueOf(row.getTotalWorkDays())
-									.divide(expectedDays, 4, RoundingMode.HALF_UP).multiply(BigDecimal.valueOf(100));
-						}
-					}
-					row.setAttendanceRate(rate);
+					row.setExpectedWorkDays(row.getTotalEmployees() * STANDARD_WORK_DAYS * expectedMonths);
+					row.setActualWorkDays(rs.getInt("actual_work_days"));
+					row.setTotalWorkDays(row.getActualWorkDays());
+					row.setAbsentDays(rs.getInt("absent_days"));
+					row.setLateCount(rs.getInt("late_count"));
+					row.setTotalDays(row.getExpectedWorkDays());
+					row.setAttendanceRate(calculateAttendanceRate(row.getActualWorkDays(), row.getExpectedWorkDays()));
 					rows.add(row);
 				}
 			}
@@ -119,6 +123,10 @@ public class ReportDAO {
 		}
 
 		return rows;
+	}
+
+	private BigDecimal calculateAttendanceRate(int actualWorkDays, int expectedWorkDays) {
+		return calculatePercentage(actualWorkDays, expectedWorkDays);
 	}
 
 	public List<LeaveSummaryRow> getLeaveUtilization(int year, Long departmentId) {

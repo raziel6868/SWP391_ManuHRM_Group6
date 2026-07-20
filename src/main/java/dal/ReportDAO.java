@@ -142,6 +142,8 @@ public class ReportDAO {
 				LEFT JOIN departments d ON u.department_id = d.id
 				WHERE lr.start_date <= ?
 				  AND lr.end_date >= ?
+				  AND u.is_active = TRUE
+				  AND (u.department_id IS NULL OR d.is_active = TRUE)
 				""");
 
 		List<Object> params = new ArrayList<>();
@@ -164,12 +166,12 @@ public class ReportDAO {
 					LeaveSummaryRow row = rowsByDepartment.computeIfAbsent(rowDepartmentId, id -> {
 						LeaveSummaryRow newRow = new LeaveSummaryRow();
 						newRow.setDepartmentId(rowDepartmentId);
-						newRow.setDepartmentName(null);
+						newRow.setDepartmentName(defaultDepartmentName(null));
 						newRow.setYear(year);
 						newRow.setTotalDays(BigDecimal.ZERO);
 						return newRow;
 					});
-					row.setDepartmentName(rs.getString("department_name"));
+					row.setDepartmentName(defaultDepartmentName(rs.getString("department_name")));
 					row.setTotalRequests(row.getTotalRequests() + 1);
 
 					String status = rs.getString("status");
@@ -185,6 +187,8 @@ public class ReportDAO {
 						row.setRejectedRequests(row.getRejectedRequests() + 1);
 					} else if ("PENDING".equals(status) || "APPROVED_LEVEL_1".equals(status)) {
 						row.setPendingRequests(row.getPendingRequests() + 1);
+					} else if ("CANCELLED".equals(status)) {
+						row.setCancelledRequests(row.getCancelledRequests() + 1);
 					}
 				}
 			}
@@ -192,7 +196,14 @@ public class ReportDAO {
 			System.err.println("ReportDAO.getLeaveUtilization() ERROR: " + e.getMessage());
 		}
 
-		return new ArrayList<>(rowsByDepartment.values());
+		List<LeaveSummaryRow> rows = new ArrayList<>(rowsByDepartment.values());
+		for (LeaveSummaryRow row : rows) {
+			if (row.getApprovedRequests() > 0) {
+				row.setAverageApprovedDays(row.getApprovedDays().divide(BigDecimal.valueOf(row.getApprovedRequests()),
+						2, RoundingMode.HALF_UP));
+			}
+		}
+		return rows;
 	}
 
 	public List<HeadcountRow> getHeadcount(Long departmentId, Boolean isActive) {

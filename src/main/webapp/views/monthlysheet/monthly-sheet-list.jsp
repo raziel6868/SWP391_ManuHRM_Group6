@@ -18,7 +18,6 @@
         .badge-open       { background:#d1fae5; color:#065f46; }
         .badge-pending-sup{ background:#fef3c7; color:#92400e; }
         .badge-pending-hr { background:#dbeafe; color:#1e40af; }
-        .badge-pending-dir{ background:#ede9fe; color:#4c1d95; }
         .badge-closed     { background:var(--surface-container-high); color:var(--on-surface-variant); }
 
         .sup-progress { font-size: 0.72rem; color: var(--on-surface-variant); }
@@ -169,7 +168,7 @@
                             <select name="status" class="form-select input-premium">
                                 <option value="">-- Tất cả --</option>
                                 <option value="OPEN"             ${selectedStatus == 'OPEN'             ? 'selected' : ''}>Mở</option>
-                                <option value="PENDING_SUPERVISOR" ${selectedStatus == 'PENDING_SUPERVISOR' ? 'selected' : ''}>Chờ quản đốc</option>
+                                <option value="PENDING_SUPERVISOR" ${selectedStatus == 'PENDING_SUPERVISOR' ? 'selected' : ''}>Chờ trưởng phòng</option>
                                 <option value="PENDING_HR"       ${selectedStatus == 'PENDING_HR'       ? 'selected' : ''}>Chờ HR</option>
                                 <option value="CLOSED"           ${selectedStatus == 'CLOSED'           ? 'selected' : ''}>Đã đóng</option>
                             </select>
@@ -191,7 +190,7 @@
                             <tr>
                                 <th>Tháng</th>
                                 <th>Trạng thái</th>
-                                <th>Quản đốc xác nhận</th>
+                                <th>Trưởng phòng xác nhận</th>
                                 <th>HR chốt</th>
                                 <th class="text-end">Thao tác</th>
                             </tr>
@@ -217,13 +216,10 @@
                                                         <span class="status-badge badge-open"><div class="dot"></div>Mở</span>
                                                     </c:when>
                                                     <c:when test="${sheet.status == 'PENDING_SUPERVISOR'}">
-                                                        <span class="status-badge badge-pending-sup"><div class="dot"></div>Chờ quản đốc</span>
+                                                        <span class="status-badge badge-pending-sup"><div class="dot"></div>Chờ trưởng phòng</span>
                                                     </c:when>
                                                     <c:when test="${sheet.status == 'PENDING_HR'}">
                                                         <span class="status-badge badge-pending-hr"><div class="dot"></div>Chờ HR</span>
-                                                    </c:when>
-                                                    <c:when test="${sheet.status == 'PENDING_DIRECTOR'}">
-                                                        <span class="status-badge badge-pending-dir"><div class="dot"></div>Chờ Giám đốc</span>
                                                     </c:when>
                                                     <c:otherwise>
                                                         <span class="status-badge badge-closed"><div class="dot"></div>Đã đóng</span>
@@ -269,6 +265,14 @@
                                                                 Gửi duyệt
                                                             </button>
                                                         </form>
+                                                    </c:if>
+
+                                                    <%-- Trưởng phòng: duyệt bảng công phòng ban --%>
+                                                    <c:if test="${sheet.status == 'PENDING_SUPERVISOR' && canDepartmentHeadApprove}">
+                                                        <a class="btn btn-sm btn-primary"
+                                                           href="${pageContext.request.contextPath}/monthly-sheet-supervisor?year=${sheet.year}&month=${sheet.month}">
+                                                            Duyệt
+                                                        </a>
                                                     </c:if>
 
                                                     <%-- HR: chốt và đóng sổ --%>
@@ -349,7 +353,7 @@
                         <div>
                             <div class="fw-medium mb-1">Reset toàn bộ</div>
                             <div class="body-sm text-on-surface-variant">
-                                Bảng công quay về OPEN, xóa toàn bộ xác nhận quản đốc. HR cần gửi duyệt lại từ đầu.
+                                Bảng công quay về OPEN, xóa toàn bộ xác nhận trưởng phòng. HR cần gửi duyệt lại từ đầu.
                             </div>
                         </div>
                     </div>
@@ -361,7 +365,7 @@
                         <div class="flex-grow-1">
                             <div class="fw-medium mb-1">Reset theo phòng ban</div>
                             <div class="body-sm text-on-surface-variant mb-2">
-                                Chỉ đưa quản đốc của phòng ban được chọn về trạng thái chờ xác nhận lại. Phòng ban khác giữ nguyên.
+                                Chỉ đưa trưởng phòng của phòng ban được chọn về trạng thái chờ xác nhận lại. Phòng ban khác giữ nguyên.
                             </div>
                             <select name="departmentId" id="rejectDepartmentId" class="form-select input-premium" disabled>
                                 <option value="">-- Chọn phòng ban --</option>

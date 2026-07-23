@@ -199,7 +199,7 @@ public class MonthlySheetDAO {
 
 	/**
 	 * HR bấm "Gửi duyệt" — OPEN → PENDING_SUPERVISOR. Đồng thời tạo các record
-	 * trong monthly_sheet_approvals cho tất cả quản đốc.
+	 * trong monthly_sheet_approvals cho tất cả trưởng phòng.
 	 */
 	public boolean submit(Long sheetId, Long submittedBy) {
 		try (Connection conn = DBContext.getConnection()) {
@@ -225,8 +225,8 @@ public class MonthlySheetDAO {
 	}
 
 	/**
-	 * Tất cả quản đốc đã chốt → PENDING_SUPERVISOR → PENDING_HR. Gọi sau khi kiểm
-	 * tra allSupervisorsApproved().
+	 * Tất cả trưởng phòng đã chốt → PENDING_SUPERVISOR → PENDING_HR. Gọi sau khi
+	 * kiểm tra allSupervisorsApproved().
 	 */
 	public boolean advanceToHR(Long sheetId) {
 		try (Connection conn = DBContext.getConnection()) {
@@ -277,35 +277,8 @@ public class MonthlySheetDAO {
 	}
 
 	/**
-	 * Giám đốc chốt + đóng sổ — PENDING_DIRECTOR → CLOSED.
-	 */
-	public boolean directorClose(Long sheetId, Long directorId) {
-		try (Connection conn = DBContext.getConnection()) {
-			return directorClose(conn, sheetId, directorId);
-		} catch (SQLException e) {
-			System.err.println("MonthlySheetDAO.directorClose() ERROR: " + e.getMessage());
-		}
-		return false;
-	}
-
-	public boolean directorClose(Connection conn, Long sheetId, Long directorId) throws SQLException {
-		String sql = """
-				UPDATE monthly_sheets
-				SET status = 'CLOSED',
-				    closed_by = ?, closed_at = NOW()
-				WHERE id = ? AND status = 'PENDING_DIRECTOR'
-				""";
-		try (PreparedStatement ps = conn.prepareStatement(sql)) {
-			ps.setLong(1, directorId);
-			ps.setLong(2, sheetId);
-			return ps.executeUpdate() > 0;
-		}
-	}
-
-	/**
-	 * HR hoặc Giám đốc reject — reset về OPEN. Vì sheet đã quay lại từ đầu, xóa
-	 * toàn bộ approval cũ để lần gửi duyệt tiếp theo không giữ trạng thái APPROVED
-	 * cũ.
+	 * Người có quyền reject — reset về OPEN. Vì sheet đã quay lại từ đầu, xóa toàn
+	 * bộ approval cũ để lần gửi duyệt tiếp theo không giữ trạng thái APPROVED cũ.
 	 */
 	public boolean reject(Long sheetId, Long departmentId) {
 		try (Connection conn = DBContext.getConnection()) {
@@ -359,9 +332,9 @@ public class MonthlySheetDAO {
 		String countApprovalsSql = """
 				SELECT COUNT(DISTINCT msa.id)
 				FROM monthly_sheet_approvals msa
-				JOIN users emp ON emp.manager_id = msa.supervisor_id
+				JOIN users head ON head.id = msa.supervisor_id
 				WHERE msa.monthly_sheet_id = ?
-				  AND emp.department_id = ?
+				  AND head.department_id = ?
 				""";
 		String resetSheetSql = """
 				UPDATE monthly_sheets
@@ -369,16 +342,16 @@ public class MonthlySheetDAO {
 				    hr_approved_by = NULL, hr_approved_at = NULL,
 				    closed_by = NULL, closed_at = NULL
 				WHERE id = ?
-				  AND status IN ('PENDING_SUPERVISOR', 'PENDING_HR', 'PENDING_DIRECTOR')
+				  AND status IN ('PENDING_SUPERVISOR', 'PENDING_HR')
 				""";
 		String resetDepartmentApprovalsSql = """
 				UPDATE monthly_sheet_approvals msa
-				JOIN users emp ON emp.manager_id = msa.supervisor_id
+				JOIN users head ON head.id = msa.supervisor_id
 				SET msa.status = 'PENDING',
 				    msa.approved_at = NULL,
 				    msa.updated_at = NOW()
 				WHERE msa.monthly_sheet_id = ?
-				  AND emp.department_id = ?
+				  AND head.department_id = ?
 				""";
 
 		int matchingApprovals = 0;
@@ -410,7 +383,7 @@ public class MonthlySheetDAO {
 	}
 
 	/**
-	 * Kiểm tra tất cả quản đốc đã chốt chưa.
+	 * Kiểm tra tất cả trưởng phòng đã chốt chưa.
 	 */
 	public boolean allSupervisorsApproved(Long sheetId) {
 		try (Connection conn = DBContext.getConnection()) {
@@ -439,11 +412,6 @@ public class MonthlySheetDAO {
 			}
 		}
 		return false;
-	}
-
-	// Legacy methods giữ lại để không break code cũ
-	public boolean closeSheet(Long sheetId, Long closedBy) {
-		return directorClose(sheetId, closedBy);
 	}
 
 	public boolean reopenSheet(Long sheetId) {

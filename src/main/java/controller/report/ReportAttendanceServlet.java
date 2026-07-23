@@ -1,13 +1,17 @@
 package controller.report;
 
 import java.io.IOException;
-import java.math.BigDecimal;
-import java.math.RoundingMode;
+import java.time.DayOfWeek;
+import java.time.LocalDate;
+import java.time.YearMonth;
+import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Comparator;
 import java.util.List;
 import dal.DepartmentDAO;
 import dal.ReportDAO;
-import dto.AttendanceSummaryRow;
+import dto.AttendanceOtEmployeeRow;
+import dto.AttendanceOtReportStats;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
@@ -24,6 +28,9 @@ public class ReportAttendanceServlet extends HttpServlet {
 
 	private static final int MIN_REPORT_YEAR = 2020;
 	private static final int MAX_REPORT_YEAR = 2030;
+	private static final String PERIOD_MONTH = "month";
+	private static final String PERIOD_QUARTER = "quarter";
+	private static final String PERIOD_YEAR = "year";
 
 	private final ReportDAO reportDAO = new ReportDAO();
 	private final DepartmentDAO departmentDAO = new DepartmentDAO();
@@ -44,125 +51,182 @@ public class ReportAttendanceServlet extends HttpServlet {
 
 		Calendar now = Calendar.getInstance();
 		int currentYear = now.get(Calendar.YEAR);
+		int currentMonth = now.get(Calendar.MONTH) + 1;
+		int currentQuarter = ((currentMonth - 1) / 3) + 1;
 
-		String yearParam = request.getParameter("year");
-		String monthParam = request.getParameter("month");
-		String departmentIdParam = request.getParameter("departmentId");
-
-		int year = currentYear;
-		Integer month = null;
-		Long departmentId;
-		String errorMsg = null;
-
-		Integer parsedYear = parseInteger(yearParam);
-		if (parsedYear != null && parsedYear >= MIN_REPORT_YEAR && parsedYear <= MAX_REPORT_YEAR) {
-			year = parsedYear;
-		} else if (yearParam != null && !yearParam.isBlank()) {
-			errorMsg = appendError(errorMsg, "Năm không hợp lệ. Báo cáo đang dùng năm hiện tại.");
-		}
-
-		Integer parsedMonth = parseInteger(monthParam);
-		if (parsedMonth != null && parsedMonth >= 1 && parsedMonth <= 12) {
-			month = parsedMonth;
-		} else if (monthParam != null && !monthParam.isBlank()) {
-			errorMsg = appendError(errorMsg, "Tháng không hợp lệ. Báo cáo đang hiển thị cả năm.");
-		}
-
-		departmentId = parseDepartmentId(departmentIdParam);
-		if (departmentIdParam != null && !departmentIdParam.isBlank() && departmentId == null) {
-			errorMsg = appendError(errorMsg, "Phòng ban không hợp lệ. Báo cáo đang hiển thị tất cả phòng ban.");
-		}
+		List<String> validationErrors = new ArrayList<>();
+		String periodType = normalizePeriodType(request.getParameter("periodType"), validationErrors);
+		int year = parseYear(request.getParameter("year"), currentYear, validationErrors);
+		int month = parseMonth(request.getParameter("month"), currentMonth, validationErrors);
+		int quarter = parseQuarter(request.getParameter("quarter"), currentQuarter, validationErrors);
+		Long departmentId = parseDepartmentId(request.getParameter("departmentId"), validationErrors);
 
 		if (departmentId != null) {
 			Department department = departmentDAO.getById(departmentId);
 			if (department == null || !Boolean.TRUE.equals(department.getIsActive())) {
 				departmentId = null;
-				errorMsg = appendError(errorMsg,
-						"Phòng ban không tồn tại hoặc đã bị vô hiệu hóa. Báo cáo đang hiển thị tất cả phòng ban.");
+				validationErrors
+						.add("Phòng ban không tồn tại hoặc đã bị vô hiệu hóa. Báo cáo đang hiển thị tất cả phòng ban.");
 			}
 		}
 
-		List<AttendanceSummaryRow> rows = reportDAO.getAttendanceSummary(year, month, departmentId);
-		List<Department> departments = departmentDAO.getActiveDepartments();
-		AttendanceSummary summary = summarize(rows);
+		ReportPeriod period = resolvePeriod(periodType, year, month, quarter);
+		int expectedWorkDays = countWeekdays(period.startDate, period.endDate);
+		List<AttendanceOtEmployeeRow> employeeRows = reportDAO.getAttendanceOtEmployeeRows(period.startDate,
+				period.endDate, expectedWorkDays, departmentId);
+		AttendanceOtReportStats stats = summarize(employeeRows, expectedWorkDays);
 
-		request.setAttribute("rows", rows);
-		request.setAttribute("departments", departments);
+		request.setAttribute("employeeRows", employeeRows);
+		request.setAttribute("topDiligentRows", topDiligentRows(employeeRows));
+		request.setAttribute("warningRows", warningRows(employeeRows));
+		request.setAttribute("stats", stats);
+		request.setAttribute("departments", departmentDAO.getActiveDepartments());
 		request.setAttribute("yearOptions", YearOptionUtil.dataYearsWithCurrent(reportDAO.getAttendanceYears()));
+		request.setAttribute("selectedPeriodType", periodType);
 		request.setAttribute("selectedYear", year);
 		request.setAttribute("selectedMonth", month);
+		request.setAttribute("selectedQuarter", quarter);
 		request.setAttribute("selectedDepartmentId", departmentId);
-		request.setAttribute("summaryAttendanceRate", summary.attendanceRate);
-		request.setAttribute("summaryAttendanceRateBarWidth", clampPercentage(summary.attendanceRate));
-		request.setAttribute("summaryExpectedWorkDays", summary.expectedWorkDays);
-		request.setAttribute("summaryActualWorkDays", summary.actualWorkDays);
-		request.setAttribute("summaryAbsentDays", summary.absentDays);
-		request.setAttribute("summaryLateCount", summary.lateCount);
-		request.setAttribute("yearlyExpectedDaysNote", month == null);
-		request.setAttribute("hasAttendanceRecords", summary.actualWorkDays + summary.absentDays > 0);
-		request.setAttribute("errorMsg", errorMsg);
+		request.setAttribute("periodLabel", period.label);
+		request.setAttribute("periodStart", period.startDate);
+		request.setAttribute("periodEnd", period.endDate);
+		request.setAttribute("errorMsg", String.join(" ", validationErrors));
 
 		request.getRequestDispatcher("/views/report/report-attendance.jsp").forward(request, response);
 	}
 
-	private Integer parseInteger(String rawValue) {
-		if (rawValue == null || rawValue.isBlank()) {
-			return null;
+	private String normalizePeriodType(String rawPeriodType, List<String> errors) {
+		if (rawPeriodType == null || rawPeriodType.isBlank()) {
+			return PERIOD_MONTH;
 		}
-		try {
-			return Integer.parseInt(rawValue.trim());
-		} catch (NumberFormatException e) {
-			return null;
+		String periodType = rawPeriodType.trim().toLowerCase();
+		if (PERIOD_MONTH.equals(periodType) || PERIOD_QUARTER.equals(periodType) || PERIOD_YEAR.equals(periodType)) {
+			return periodType;
 		}
+		errors.add("Kỳ báo cáo không hợp lệ. Báo cáo đang dùng kỳ theo tháng.");
+		return PERIOD_MONTH;
 	}
 
-	private Long parseDepartmentId(String rawDepartmentId) {
+	private int parseYear(String rawYear, int fallback, List<String> errors) {
+		if (rawYear == null || rawYear.isBlank()) {
+			return fallback;
+		}
+		try {
+			int year = Integer.parseInt(rawYear.trim());
+			if (year >= MIN_REPORT_YEAR && year <= MAX_REPORT_YEAR) {
+				return year;
+			}
+		} catch (NumberFormatException e) {
+			// handled below
+		}
+		errors.add("Năm không hợp lệ. Báo cáo đang dùng năm hiện tại.");
+		return fallback;
+	}
+
+	private int parseMonth(String rawMonth, int fallback, List<String> errors) {
+		if (rawMonth == null || rawMonth.isBlank()) {
+			return fallback;
+		}
+		try {
+			int month = Integer.parseInt(rawMonth.trim());
+			if (month >= 1 && month <= 12) {
+				return month;
+			}
+		} catch (NumberFormatException e) {
+			// handled below
+		}
+		errors.add("Tháng không hợp lệ. Báo cáo đang dùng tháng hiện tại.");
+		return fallback;
+	}
+
+	private int parseQuarter(String rawQuarter, int fallback, List<String> errors) {
+		if (rawQuarter == null || rawQuarter.isBlank()) {
+			return fallback;
+		}
+		try {
+			int quarter = Integer.parseInt(rawQuarter.trim());
+			if (quarter >= 1 && quarter <= 4) {
+				return quarter;
+			}
+		} catch (NumberFormatException e) {
+			// handled below
+		}
+		errors.add("Quý không hợp lệ. Báo cáo đang dùng quý hiện tại.");
+		return fallback;
+	}
+
+	private Long parseDepartmentId(String rawDepartmentId, List<String> errors) {
 		if (rawDepartmentId == null || rawDepartmentId.isBlank()) {
 			return null;
 		}
 		try {
 			long departmentId = Long.parseLong(rawDepartmentId.trim());
-			return departmentId > 0 ? departmentId : null;
+			if (departmentId > 0) {
+				return departmentId;
+			}
 		} catch (NumberFormatException e) {
-			return null;
+			// handled below
 		}
+		errors.add("Phòng ban không hợp lệ. Báo cáo đang hiển thị tất cả phòng ban.");
+		return null;
 	}
 
-	private AttendanceSummary summarize(List<AttendanceSummaryRow> rows) {
-		AttendanceSummary summary = new AttendanceSummary();
-		for (AttendanceSummaryRow row : rows) {
-			summary.expectedWorkDays += row.getExpectedWorkDays();
-			summary.actualWorkDays += row.getActualWorkDays();
-			summary.absentDays += row.getAbsentDays();
-			summary.lateCount += row.getLateCount();
+	private ReportPeriod resolvePeriod(String periodType, int year, int month, int quarter) {
+		if (PERIOD_YEAR.equals(periodType)) {
+			return new ReportPeriod(LocalDate.of(year, 1, 1), LocalDate.of(year, 12, 31), "Năm " + year);
 		}
-		summary.attendanceRate = calculatePercentage(summary.actualWorkDays, summary.expectedWorkDays);
-		return summary;
+		if (PERIOD_QUARTER.equals(periodType)) {
+			int startMonth = ((quarter - 1) * 3) + 1;
+			LocalDate start = LocalDate.of(year, startMonth, 1);
+			LocalDate end = YearMonth.of(year, startMonth + 2).atEndOfMonth();
+			return new ReportPeriod(start, end, "Quý " + quarter + " / " + year);
+		}
+		YearMonth yearMonth = YearMonth.of(year, month);
+		String label = String.format("Tháng %02d / %d", month, year);
+		return new ReportPeriod(yearMonth.atDay(1), yearMonth.atEndOfMonth(), label);
 	}
 
-	private BigDecimal calculatePercentage(int value, int total) {
-		if (value <= 0 || total <= 0) {
-			return BigDecimal.ZERO;
+	private int countWeekdays(LocalDate startDate, LocalDate endDate) {
+		int weekdays = 0;
+		LocalDate current = startDate;
+		while (!current.isAfter(endDate)) {
+			DayOfWeek dayOfWeek = current.getDayOfWeek();
+			if (dayOfWeek != DayOfWeek.SATURDAY && dayOfWeek != DayOfWeek.SUNDAY) {
+				weekdays++;
+			}
+			current = current.plusDays(1);
 		}
-		return BigDecimal.valueOf(value).multiply(BigDecimal.valueOf(100)).divide(BigDecimal.valueOf(total), 2,
-				RoundingMode.HALF_UP);
+		return weekdays;
 	}
 
-	private BigDecimal clampPercentage(BigDecimal percentage) {
-		if (percentage == null || percentage.compareTo(BigDecimal.ZERO) < 0) {
-			return BigDecimal.ZERO;
+	private AttendanceOtReportStats summarize(List<AttendanceOtEmployeeRow> employeeRows, int expectedWorkDays) {
+		AttendanceOtReportStats stats = new AttendanceOtReportStats();
+		stats.setExpectedWorkDaysPerEmployee(expectedWorkDays);
+		for (AttendanceOtEmployeeRow row : employeeRows) {
+			stats.addRow(row);
 		}
-		if (percentage.compareTo(BigDecimal.valueOf(100)) > 0) {
-			return BigDecimal.valueOf(100);
-		}
-		return percentage;
+		return stats;
 	}
 
-	private String appendError(String currentError, String newError) {
-		if (currentError == null || currentError.isBlank()) {
-			return newError;
-		}
-		return currentError + " " + newError;
+	private List<AttendanceOtEmployeeRow> topDiligentRows(List<AttendanceOtEmployeeRow> employeeRows) {
+		return employeeRows.stream().filter(AttendanceOtEmployeeRow::isDiligent)
+				.sorted(Comparator.comparingInt(AttendanceOtEmployeeRow::getActualWorkDays).reversed()
+						.thenComparing(AttendanceOtEmployeeRow::getFullName, String.CASE_INSENSITIVE_ORDER))
+				.limit(5).toList();
+	}
+
+	private List<AttendanceOtEmployeeRow> warningRows(List<AttendanceOtEmployeeRow> employeeRows) {
+		return employeeRows.stream().filter(AttendanceOtEmployeeRow::isWarning).sorted((first, second) -> {
+			int absenceCompare = second.getUnauthorizedAbsenceDays().compareTo(first.getUnauthorizedAbsenceDays());
+			if (absenceCompare != 0) {
+				return absenceCompare;
+			}
+			int lateCompare = Integer.compare(second.getLateCount(), first.getLateCount());
+			if (lateCompare != 0) {
+				return lateCompare;
+			}
+			return String.CASE_INSENSITIVE_ORDER.compare(first.getFullName(), second.getFullName());
+		}).limit(5).toList();
 	}
 
 	private boolean hasPermission(List<Permission> permissions, String code) {
@@ -177,11 +241,15 @@ public class ReportAttendanceServlet extends HttpServlet {
 		return false;
 	}
 
-	private static class AttendanceSummary {
-		private int expectedWorkDays;
-		private int actualWorkDays;
-		private int absentDays;
-		private int lateCount;
-		private BigDecimal attendanceRate = BigDecimal.ZERO;
+	private static class ReportPeriod {
+		private final LocalDate startDate;
+		private final LocalDate endDate;
+		private final String label;
+
+		private ReportPeriod(LocalDate startDate, LocalDate endDate, String label) {
+			this.startDate = startDate;
+			this.endDate = endDate;
+			this.label = label;
+		}
 	}
 }

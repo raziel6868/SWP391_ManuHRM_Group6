@@ -11,7 +11,11 @@ public class AttendanceSummaryRow {
 	private int totalDays;
 	private int totalEmployees;
 	private int totalWorkDays;
-	private BigDecimal attendanceRate;
+	private int expectedWorkDays;
+	private int actualWorkDays;
+	private int absentDays;
+	private int lateCount;
+	private BigDecimal attendanceRate = BigDecimal.ZERO;
 
 	public AttendanceSummaryRow() {
 	}
@@ -72,11 +76,53 @@ public class AttendanceSummaryRow {
 		this.totalWorkDays = totalWorkDays;
 	}
 
+	public int getExpectedWorkDays() {
+		return expectedWorkDays;
+	}
+
+	public void setExpectedWorkDays(int expectedWorkDays) {
+		this.expectedWorkDays = expectedWorkDays;
+	}
+
+	public int getActualWorkDays() {
+		return actualWorkDays;
+	}
+
+	public void setActualWorkDays(int actualWorkDays) {
+		this.actualWorkDays = actualWorkDays;
+	}
+
+	public int getAbsentDays() {
+		return absentDays;
+	}
+
+	public void setAbsentDays(int absentDays) {
+		this.absentDays = absentDays;
+	}
+
+	public int getLateCount() {
+		return lateCount;
+	}
+
+	public void setLateCount(int lateCount) {
+		this.lateCount = lateCount;
+	}
+
 	public BigDecimal getAttendanceRate() {
 		return attendanceRate;
 	}
 
 	public void setAttendanceRate(BigDecimal attendanceRate) {
-		this.attendanceRate = attendanceRate;
+		this.attendanceRate = attendanceRate != null ? attendanceRate : BigDecimal.ZERO;
+	}
+
+	public BigDecimal getAttendanceRateBarWidth() {
+		if (attendanceRate == null || attendanceRate.compareTo(BigDecimal.ZERO) < 0) {
+			return BigDecimal.ZERO;
+		}
+		if (attendanceRate.compareTo(BigDecimal.valueOf(100)) > 0) {
+			return BigDecimal.valueOf(100);
+		}
+		return attendanceRate;
 	}
 }

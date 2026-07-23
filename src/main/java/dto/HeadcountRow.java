@@ -1,5 +1,7 @@
 package dto;
 
+import java.math.BigDecimal;
+
 public class HeadcountRow {
 
 	private Long departmentId;
@@ -7,6 +9,9 @@ public class HeadcountRow {
 	private String employeeType;
 	private int totalEmployees;
 	private int activeEmployees;
+	private int officeEmployees;
+	private int workerEmployees;
+	private BigDecimal companyPercentage = BigDecimal.ZERO;
 
 	public HeadcountRow() {
 	}
@@ -49,5 +54,29 @@ public class HeadcountRow {
 
 	public void setActiveEmployees(int activeEmployees) {
 		this.activeEmployees = activeEmployees;
+	}
+
+	public int getOfficeEmployees() {
+		return officeEmployees;
+	}
+
+	public void setOfficeEmployees(int officeEmployees) {
+		this.officeEmployees = officeEmployees;
+	}
+
+	public int getWorkerEmployees() {
+		return workerEmployees;
+	}
+
+	public void setWorkerEmployees(int workerEmployees) {
+		this.workerEmployees = workerEmployees;
+	}
+
+	public BigDecimal getCompanyPercentage() {
+		return companyPercentage;
+	}
+
+	public void setCompanyPercentage(BigDecimal companyPercentage) {
+		this.companyPercentage = companyPercentage != null ? companyPercentage : BigDecimal.ZERO;
 	}
 }

@@ -1,6 +1,10 @@
 package dto;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 public class PayrollPreviewRow {
 
@@ -20,6 +24,9 @@ public class PayrollPreviewRow {
 	private BigDecimal approvedOtHours;
 	private BigDecimal overtimePay;
 	private BigDecimal totalAllowances;
+	private BigDecimal attendanceBonus;
+	private List<PayrollAllowanceDetail> allowanceDetails = new ArrayList<>();
+	private Map<String, BigDecimal> allowanceAmountByCode = new LinkedHashMap<>();
 	private BigDecimal grossIncome;
 	private BigDecimal dailyRate;
 	private BigDecimal hourlyRate;
@@ -181,6 +188,39 @@ public class PayrollPreviewRow {
 
 	public void setTotalAllowances(BigDecimal totalAllowances) {
 		this.totalAllowances = totalAllowances;
+	}
+
+	public BigDecimal getAttendanceBonus() {
+		return attendanceBonus;
+	}
+
+	public void setAttendanceBonus(BigDecimal attendanceBonus) {
+		this.attendanceBonus = attendanceBonus;
+	}
+
+	public List<PayrollAllowanceDetail> getAllowanceDetails() {
+		return allowanceDetails;
+	}
+
+	public void setAllowanceDetails(List<PayrollAllowanceDetail> allowanceDetails) {
+		this.allowanceDetails = allowanceDetails != null ? allowanceDetails : new ArrayList<>();
+		rebuildAllowanceAmountByCode();
+	}
+
+	public Map<String, BigDecimal> getAllowanceAmountByCode() {
+		return allowanceAmountByCode;
+	}
+
+	private void rebuildAllowanceAmountByCode() {
+		allowanceAmountByCode = new LinkedHashMap<>();
+		for (PayrollAllowanceDetail detail : allowanceDetails) {
+			if (detail.getAllowanceCode() == null) {
+				continue;
+			}
+			BigDecimal currentAmount = allowanceAmountByCode.getOrDefault(detail.getAllowanceCode(), BigDecimal.ZERO);
+			BigDecimal detailAmount = detail.getAmount() != null ? detail.getAmount() : BigDecimal.ZERO;
+			allowanceAmountByCode.put(detail.getAllowanceCode(), currentAmount.add(detailAmount));
+		}
 	}
 
 	public BigDecimal getGrossIncome() {

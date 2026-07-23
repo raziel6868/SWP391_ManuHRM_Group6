@@ -20,7 +20,7 @@
                         ${empty payrollSetting.id ? 'Thêm cấu hình payroll' : 'Cập nhật cấu hình payroll'}
                     </h2>
                     <p class="body-md text-on-surface-variant mb-0">
-                        Cấu hình tham số chung cho giờ công, OT và giá trị ngày công chuẩn dự phòng.
+                        Cấu hình tham số chung cho giờ công, OT và thưởng chuyên cần theo thời gian áp dụng.
                     </p>
                 </div>
 
@@ -37,19 +37,19 @@
 
                         <div class="row g-4 mb-4">
                             <div class="col-md-4">
-                                <label class="form-label text-on-surface fw-medium mb-1">Ngày công chuẩn dự phòng <span class="text-danger">*</span></label>
-                                <input type="number" name="standardWorkDays" class="form-control input-premium"
-                                       min="0.01" step="0.01" required value="${payrollSetting.standardWorkDays}" />
-                            </div>
-                            <div class="col-md-4">
                                 <label class="form-label text-on-surface fw-medium mb-1">Giờ công/ngày <span class="text-danger">*</span></label>
                                 <input type="number" name="standardWorkHoursPerDay" class="form-control input-premium"
-                                       min="0.01" step="0.01" required value="${payrollSetting.standardWorkHoursPerDay}" />
+                                       min="0.01" step="0.01" required value="${standardWorkHoursPerDayValue}" />
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label text-on-surface fw-medium mb-1">Hệ số OT <span class="text-danger">*</span></label>
                                 <input type="number" name="normalOvertimeRate" class="form-control input-premium"
-                                       min="0.01" step="0.01" required value="${payrollSetting.normalOvertimeRate}" />
+                                       min="0.01" step="0.01" required value="${normalOvertimeRateValue}" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label text-on-surface fw-medium mb-1">M&#7913;c th&#432;&#7903;ng chuy&ecirc;n c&#7847;n <span class="text-danger">*</span></label>
+                                <input type="number" name="attendanceBonusAmount" class="form-control input-premium"
+                                       min="0" step="1000" required value="${attendanceBonusAmountValue}" />
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label text-on-surface fw-medium mb-1">Hiệu lực từ <span class="text-danger">*</span></label>
@@ -66,8 +66,7 @@
                         <div class="alert alert-light border d-flex align-items-start gap-2 mb-4" role="status">
                             <span class="material-symbols-outlined text-primary">info</span>
                             <div class="small">
-                                Payroll tự tính ngày công chuẩn theo lịch làm việc T2-T6 của từng tháng; tham số ngày công chuẩn ở đây chỉ dùng như giá trị dự phòng.
-                                Công thức OT hiện tại: giờ OT duyệt x lương giờ x hệ số OT.
+                                Payroll tự tính ngày công chuẩn theo lịch làm việc T2-T6 của từng tháng. Công thức OT hiện tại: giờ OT duyệt x lương giờ x hệ số OT.
                             </div>
                         </div>
 

@@ -113,6 +113,8 @@ public class PayrollGenerateServlet extends HttpServlet {
 			ms.setOtHours(row.getApprovedOtHours() != null ? row.getApprovedOtHours() : BigDecimal.ZERO);
 			ms.setOvertimePay(row.getOvertimePay());
 			ms.setTotalAllowances(row.getTotalAllowances());
+			ms.setAttendanceBonus(row.getAttendanceBonus());
+			ms.setAllowanceDetails(row.getAllowanceDetails());
 			ms.setGrossIncome(row.getGrossIncome());
 			ms.setGrossSalary(row.getGrossIncome());
 			ms.setInsuranceSalary(row.getInsuranceSalary());

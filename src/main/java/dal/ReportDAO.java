@@ -346,6 +346,7 @@ public class ReportDAO {
 			row.setEmployeeCount(row.getEmployeeCount() + 1);
 			row.setTotalSalary(money(row.getTotalSalary().add(safe(preview.getBaseSalary()))));
 			row.setTotalAllowances(money(row.getTotalAllowances().add(safe(preview.getTotalAllowances()))));
+			row.setTotalAttendanceBonus(money(row.getTotalAttendanceBonus().add(safe(preview.getAttendanceBonus()))));
 			row.setTotalOtCost(money(row.getTotalOtCost().add(safe(preview.getOvertimePay()))));
 			row.setGrossIncome(money(row.getGrossIncome().add(safe(preview.getGrossIncome()))));
 			row.setEmployeeInsurance(money(row.getEmployeeInsurance().add(safe(preview.getEmployeeInsurance()))));
@@ -375,6 +376,7 @@ public class ReportDAO {
 			row.setActualWorkDays(safe(preview.getActualWorkDays()));
 			row.setPaidLeaveDays(safe(preview.getPaidLeaveDays()));
 			row.setApprovedOtHours(safe(preview.getApprovedOtHours()));
+			row.setAttendanceBonus(safe(preview.getAttendanceBonus()));
 			row.setGrossIncome(safe(preview.getGrossIncome()));
 			row.setDeductions(safe(preview.getDeductions()));
 			row.setNetSalary(safe(preview.getNetSalary()));
@@ -398,19 +400,21 @@ public class ReportDAO {
 						       SUM(CASE
 						               WHEN ot.status = 'APPROVED'
 						               THEN COALESCE(ot.approved_hours, 0)
-						                    * COALESCE(sb.base_salary, 0) / ? / ? * ?
+						                    * COALESCE(c.salary, 0) / ? / ? * ?
 						               ELSE 0
 						           END) AS total_ot_cost
 						FROM overtime_records ot
 						JOIN users u ON ot.user_id = u.id
 						LEFT JOIN departments d ON u.department_id = d.id
-						LEFT JOIN salary_bases sb ON sb.id = (
-						    SELECT sb2.id
-						    FROM salary_bases sb2
-						    WHERE sb2.user_id = u.id
-						      AND sb2.effective_from <= ot.date
-						      AND (sb2.effective_to IS NULL OR sb2.effective_to >= ot.date)
-						    ORDER BY sb2.effective_from DESC, sb2.id DESC
+						LEFT JOIN contracts c ON c.id = (
+						    SELECT c2.id
+						    FROM contracts c2
+						    WHERE c2.user_id = u.id
+						      AND c2.status = 'ACTIVE'
+						      AND c2.start_date <= ot.date
+						      AND (c2.end_date IS NULL OR c2.end_date >= ot.date)
+						      AND c2.salary IS NOT NULL
+						    ORDER BY c2.start_date DESC, c2.id DESC
 						    LIMIT 1
 						)
 						WHERE YEAR(ot.date) = ?
@@ -462,27 +466,28 @@ public class ReportDAO {
 
 	public List<OvertimeEmployeeReportRow> getTopOvertimeEmployees(int year, Integer month, Long departmentId) {
 		List<OvertimeEmployeeReportRow> rows = new ArrayList<>();
-		StringBuilder sql = new StringBuilder(
-				"""
-						SELECT u.employee_code, u.full_name, d.name AS department_name,
-						       SUM(COALESCE(ot.approved_hours, 0)) AS total_approved_hours,
-						       SUM(COALESCE(ot.approved_hours, 0) * COALESCE(sb.base_salary, 0) / ? / ? * ?) AS estimated_ot_cost
-						FROM overtime_records ot
-						JOIN users u ON ot.user_id = u.id
-						LEFT JOIN departments d ON u.department_id = d.id
-						LEFT JOIN salary_bases sb ON sb.id = (
-						    SELECT sb2.id
-						    FROM salary_bases sb2
-						    WHERE sb2.user_id = u.id
-						      AND sb2.effective_from <= ot.date
-						      AND (sb2.effective_to IS NULL OR sb2.effective_to >= ot.date)
-						    ORDER BY sb2.effective_from DESC, sb2.id DESC
-						    LIMIT 1
-						)
-						WHERE ot.status = 'APPROVED'
-						  AND ot.approved_hours IS NOT NULL
-						  AND YEAR(ot.date) = ?
-						""");
+		StringBuilder sql = new StringBuilder("""
+				SELECT u.employee_code, u.full_name, d.name AS department_name,
+				       SUM(COALESCE(ot.approved_hours, 0)) AS total_approved_hours,
+				       SUM(COALESCE(ot.approved_hours, 0) * COALESCE(c.salary, 0) / ? / ? * ?) AS estimated_ot_cost
+				FROM overtime_records ot
+				JOIN users u ON ot.user_id = u.id
+				LEFT JOIN departments d ON u.department_id = d.id
+				LEFT JOIN contracts c ON c.id = (
+				    SELECT c2.id
+				    FROM contracts c2
+				    WHERE c2.user_id = u.id
+				      AND c2.status = 'ACTIVE'
+				      AND c2.start_date <= ot.date
+				      AND (c2.end_date IS NULL OR c2.end_date >= ot.date)
+				      AND c2.salary IS NOT NULL
+				    ORDER BY c2.start_date DESC, c2.id DESC
+				    LIMIT 1
+				)
+				WHERE ot.status = 'APPROVED'
+				  AND ot.approved_hours IS NOT NULL
+				  AND YEAR(ot.date) = ?
+				""");
 
 		List<Object> params = new ArrayList<>();
 		params.add(STANDARD_WORK_DAYS);
@@ -550,6 +555,7 @@ public class ReportDAO {
 		row.setTotalOtCost(MONEY_ZERO);
 		row.setTotalCost(MONEY_ZERO);
 		row.setTotalAllowances(MONEY_ZERO);
+		row.setTotalAttendanceBonus(MONEY_ZERO);
 		row.setGrossIncome(MONEY_ZERO);
 		row.setEmployeeInsurance(MONEY_ZERO);
 		row.setPitTax(MONEY_ZERO);

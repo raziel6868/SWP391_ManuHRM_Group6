@@ -1,0 +1,121 @@
+<%@ page pageEncoding="UTF-8" %>
+<div class="border-top border-outline-variant pt-4 mt-2">
+    <h3 class="h5 text-on-surface fw-bold mb-3">Cấu hình áp dụng</h3>
+
+    <div class="row g-4">
+        <div class="col-md-6">
+            <label class="form-label text-on-surface fw-medium mb-1">Cách áp dụng <span class="text-danger">*</span></label>
+            <select name="applyScope" id="applyScope" class="form-select input-premium">
+                <option value="ALL" ${rule.applyScope == 'ALL' ? 'selected' : ''}>Tất cả nhân viên</option>
+                <option value="EMPLOYEE_TYPE" ${rule.applyScope == 'EMPLOYEE_TYPE' ? 'selected' : ''}>Theo loại nhân viên</option>
+                <option value="DEPARTMENT_TYPE" ${rule.applyScope == 'DEPARTMENT_TYPE' ? 'selected' : ''}>Theo loại phòng ban</option>
+                <option value="DEPARTMENT" ${rule.applyScope == 'DEPARTMENT' ? 'selected' : ''}>Theo phòng ban</option>
+                <option value="JOB_TITLE" ${rule.applyScope == 'JOB_TITLE' ? 'selected' : ''}>Theo chức danh</option>
+            </select>
+        </div>
+
+        <div class="col-md-3">
+            <label class="form-label text-on-surface fw-medium mb-1">Hiệu lực từ <span class="text-danger">*</span></label>
+            <input type="date" name="effectiveFrom" class="form-control input-premium"
+                   value="${ruleEffectiveFromValue}" required />
+        </div>
+
+        <div class="col-md-3">
+            <label class="form-label text-on-surface fw-medium mb-1">Hiệu lực đến</label>
+            <input type="date" name="effectiveTo" class="form-control input-premium"
+                   value="${ruleEffectiveToValue}" />
+        </div>
+
+        <div class="col-md-6" data-rule-panel="single">
+            <label class="form-label text-on-surface fw-medium mb-1">Số tiền <span class="text-danger">*</span></label>
+            <input type="number" name="amount" class="form-control input-premium"
+                   value="${ruleAmountValue}" min="1000" step="1000" placeholder="1000000" />
+        </div>
+
+        <div class="col-md-6" data-rule-panel="employeeType">
+            <label class="form-label text-on-surface fw-medium mb-1">Loại nhân viên</label>
+            <select name="employeeType" class="form-select input-premium">
+                <option value="" ${empty rule.employeeType ? 'selected' : ''}>Tất cả loại nhân viên</option>
+                <option value="OFFICE" ${rule.employeeType == 'OFFICE' ? 'selected' : ''}>OFFICE</option>
+                <option value="WORKER" ${rule.employeeType == 'WORKER' ? 'selected' : ''}>WORKER</option>
+            </select>
+        </div>
+
+        <div class="col-md-6" data-rule-panel="departmentType">
+            <label class="form-label text-on-surface fw-medium mb-1">Loại phòng ban</label>
+            <select name="departmentType" class="form-select input-premium">
+                <option value="" ${empty rule.departmentType ? 'selected' : ''}>Chọn loại phòng ban</option>
+                <option value="OFFICE" ${rule.departmentType == 'OFFICE' ? 'selected' : ''}>OFFICE</option>
+                <option value="FACTORY" ${rule.departmentType == 'FACTORY' ? 'selected' : ''}>FACTORY</option>
+            </select>
+        </div>
+
+        <div class="col-md-6" data-rule-panel="department">
+            <label class="form-label text-on-surface fw-medium mb-1">Phòng ban</label>
+            <select name="departmentId" class="form-select input-premium">
+                <option value="" ${empty rule.departmentId ? 'selected' : ''}>Chọn phòng ban</option>
+                <c:forEach var="department" items="${departments}">
+                    <option value="${department.id}" ${rule.departmentId == department.id ? 'selected' : ''}>
+                        ${department.name}
+                    </option>
+                </c:forEach>
+            </select>
+        </div>
+
+        <div class="col-12" data-rule-panel="jobTitle">
+            <div class="table-responsive border border-outline-variant rounded-3 overflow-hidden">
+                <table class="table table-premium mb-0">
+                    <thead>
+                        <tr>
+                            <th>Chức danh</th>
+                            <th style="width: 240px;">Số tiền</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <c:forEach var="jobTitle" items="${jobTitles}">
+                            <tr>
+                                <td>${jobTitle.name}</td>
+                                <td>
+                                    <input type="number"
+                                           name="jobTitleAmount_${jobTitle.id}"
+                                           class="form-control input-premium"
+                                           value="${jobTitleAmountById[jobTitle.id]}"
+                                           min="1000"
+                                           step="1000"
+                                           placeholder="0" />
+                                </td>
+                            </tr>
+                        </c:forEach>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    (() => {
+        const scopeSelect = document.getElementById('applyScope');
+        if (!scopeSelect) {
+            return;
+        }
+        const panels = Array.from(document.querySelectorAll('[data-rule-panel]'));
+        const visibleByScope = {
+            ALL: ['single'],
+            EMPLOYEE_TYPE: ['single', 'employeeType'],
+            DEPARTMENT_TYPE: ['single', 'employeeType', 'departmentType'],
+            DEPARTMENT: ['single', 'employeeType', 'department'],
+            JOB_TITLE: ['jobTitle']
+        };
+
+        const updatePanels = () => {
+            const visiblePanels = visibleByScope[scopeSelect.value] || visibleByScope.ALL;
+            panels.forEach((panel) => {
+                panel.classList.toggle('d-none', !visiblePanels.includes(panel.dataset.rulePanel));
+            });
+        };
+
+        scopeSelect.addEventListener('change', updatePanels);
+        updatePanels();
+    })();
+</script>

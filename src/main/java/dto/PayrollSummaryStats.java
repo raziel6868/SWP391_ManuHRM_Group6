@@ -8,6 +8,7 @@ public class PayrollSummaryStats {
 	private BigDecimal totalGrossIncome = BigDecimal.ZERO;
 	private BigDecimal totalNetSalary = BigDecimal.ZERO;
 	private BigDecimal totalAllowances = BigDecimal.ZERO;
+	private BigDecimal totalAttendanceBonus = BigDecimal.ZERO;
 	private BigDecimal totalOvertimePay = BigDecimal.ZERO;
 	private BigDecimal totalDeductions = BigDecimal.ZERO;
 	private BigDecimal totalEmployeeInsurance = BigDecimal.ZERO;
@@ -43,6 +44,14 @@ public class PayrollSummaryStats {
 
 	public void setTotalAllowances(BigDecimal totalAllowances) {
 		this.totalAllowances = totalAllowances;
+	}
+
+	public BigDecimal getTotalAttendanceBonus() {
+		return totalAttendanceBonus;
+	}
+
+	public void setTotalAttendanceBonus(BigDecimal totalAttendanceBonus) {
+		this.totalAttendanceBonus = totalAttendanceBonus;
 	}
 
 	public BigDecimal getTotalOvertimePay() {

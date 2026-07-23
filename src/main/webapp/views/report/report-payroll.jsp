@@ -132,6 +132,10 @@
                                         <div class="progress"><div class="progress-bar bg-info" style="width: ${totals.grossIncome == 0 ? 0 : totals.totalAllowances * 100 / totals.grossIncome}%;"></div></div>
                                     </div>
                                     <div>
+                                        <div class="d-flex justify-content-between mb-1"><span>Thưởng chuyên cần</span><strong><fmt:formatNumber value="${totals.totalAttendanceBonus}" pattern="#,##0" /></strong></div>
+                                        <div class="progress"><div class="progress-bar bg-success" style="width: ${totals.grossIncome == 0 ? 0 : totals.totalAttendanceBonus * 100 / totals.grossIncome}%;"></div></div>
+                                    </div>
+                                    <div>
                                         <div class="d-flex justify-content-between mb-1"><span>Tiền OT</span><strong><fmt:formatNumber value="${totals.totalOtCost}" pattern="#,##0" /></strong></div>
                                         <div class="progress"><div class="progress-bar bg-warning" style="width: ${totals.grossIncome == 0 ? 0 : totals.totalOtCost * 100 / totals.grossIncome}%;"></div></div>
                                     </div>
@@ -153,6 +157,7 @@
                                         <th>Số nhân viên</th>
                                         <th>Gross income</th>
                                         <th>Phụ cấp</th>
+                                        <th>Thưởng chuyên cần</th>
                                         <th>Tiền OT</th>
                                         <th>Bảo hiểm</th>
                                         <th>Thuế PIT</th>
@@ -166,6 +171,7 @@
                                             <td>${row.employeeCount}</td>
                                             <td><fmt:formatNumber value="${row.grossIncome}" pattern="#,##0" /> VND</td>
                                             <td><fmt:formatNumber value="${row.totalAllowances}" pattern="#,##0" /> VND</td>
+                                            <td><fmt:formatNumber value="${row.totalAttendanceBonus}" pattern="#,##0" /> VND</td>
                                             <td><fmt:formatNumber value="${row.totalOtCost}" pattern="#,##0" /> VND</td>
                                             <td><fmt:formatNumber value="${row.employeeInsurance}" pattern="#,##0" /> VND</td>
                                             <td><fmt:formatNumber value="${row.pitTax}" pattern="#,##0" /> VND</td>
@@ -202,6 +208,7 @@
                                         <th>Ngày công</th>
                                         <th>Nghỉ có lương</th>
                                         <th>Giờ OT</th>
+                                        <th>Thưởng chuyên cần</th>
                                         <th>Gross income</th>
                                         <th>Deductions</th>
                                         <th>Net salary</th>
@@ -217,6 +224,7 @@
                                             <td><fmt:formatNumber value="${employee.actualWorkDays}" pattern="#,##0.##" /></td>
                                             <td><fmt:formatNumber value="${employee.paidLeaveDays}" pattern="#,##0.##" /></td>
                                             <td><fmt:formatNumber value="${employee.approvedOtHours}" pattern="#,##0.##" /></td>
+                                            <td><fmt:formatNumber value="${employee.attendanceBonus}" pattern="#,##0" /> VND</td>
                                             <td><fmt:formatNumber value="${employee.grossIncome}" pattern="#,##0" /> VND</td>
                                             <td><fmt:formatNumber value="${employee.deductions}" pattern="#,##0" /> VND</td>
                                             <td><fmt:formatNumber value="${employee.netSalary}" pattern="#,##0" /> VND</td>

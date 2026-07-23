@@ -1,6 +1,7 @@
 package controller.monthlysheet;
 
 import dal.DepartmentDAO;
+import dal.MonthlySheetApprovalDAO;
 import dal.MonthlySheetDAO;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
@@ -20,6 +21,7 @@ import util.YearOptionUtil;
 public class MonthlySheetListServlet extends HttpServlet {
 
 	private final MonthlySheetDAO monthlySheetDAO = new MonthlySheetDAO();
+	private final MonthlySheetApprovalDAO approvalDAO = new MonthlySheetApprovalDAO();
 	private final DepartmentDAO departmentDAO = new DepartmentDAO();
 
 	@Override
@@ -58,21 +60,22 @@ public class MonthlySheetListServlet extends HttpServlet {
 				.filter(s -> selectedMonth == null || selectedMonth.equals(s.getMonth()))
 				.filter(s -> selectedStatus == null || selectedStatus.equals(s.getStatus())).toList();
 
-		// Phân biệt HR thuần vs Giám đốc bằng job_title_id
-		boolean isDirector = authUser != null && authUser.getJobTitleId() != null && authUser.getJobTitleId() == 1L;
 		boolean isHR = hasPermission(session, "MONTHLY_SHEET_HR_APPROVE");
-		boolean canSubmit = hasPermission(session, "MONTHLY_SHEET_SUBMIT") && !isDirector;
-		boolean canHrApprove = hasPermission(session, "MONTHLY_SHEET_HR_APPROVE") && !isDirector;
+		boolean canSubmit = hasPermission(session, "MONTHLY_SHEET_SUBMIT");
+		boolean canHrApprove = hasPermission(session, "MONTHLY_SHEET_HR_APPROVE");
 		boolean canReject = hasPermission(session, "MONTHLY_SHEET_REJECT");
 		boolean canReopen = hasPermission(session, "MONTHLY_SHEET_REOPEN");
+		boolean canDepartmentHeadApprove = authUser != null
+				&& hasPermission(session, "MONTHLY_SHEET_SUPERVISOR_APPROVE")
+				&& approvalDAO.isActiveDepartmentHead(authUser.getId());
 
 		request.setAttribute("sheets", sheets);
 		request.setAttribute("isHR", isHR);
-		request.setAttribute("isDirector", isDirector);
 		request.setAttribute("canSubmit", canSubmit);
 		request.setAttribute("canHrApprove", canHrApprove);
 		request.setAttribute("canReject", canReject);
 		request.setAttribute("canReopen", canReopen);
+		request.setAttribute("canDepartmentHeadApprove", canDepartmentHeadApprove);
 		request.setAttribute("departments", departmentDAO.getActiveDepartments());
 		request.setAttribute("yearOptions", yearOptions);
 		request.setAttribute("selectedYear", selectedYear);
@@ -88,8 +91,7 @@ public class MonthlySheetListServlet extends HttpServlet {
 		if (status == null || status.isBlank())
 			return null;
 		return switch (status.trim().toUpperCase()) {
-			case "OPEN", "PENDING_SUPERVISOR", "PENDING_HR", "PENDING_DIRECTOR", "CLOSED" ->
-				status.trim().toUpperCase();
+			case "OPEN", "PENDING_SUPERVISOR", "PENDING_HR", "CLOSED" -> status.trim().toUpperCase();
 			default -> null;
 		};
 	}

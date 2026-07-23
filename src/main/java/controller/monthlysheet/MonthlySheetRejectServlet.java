@@ -25,7 +25,7 @@ public class MonthlySheetRejectServlet extends HttpServlet {
 		HttpSession session = request.getSession();
 		User authUser = (User) session.getAttribute("authUser");
 
-		// Chỉ HR thuần hoặc Giám đốc mới được reject
+		// Chỉ user có quyền reject mới được reset luồng duyệt.
 		if (authUser == null || !hasPermission(session, "MONTHLY_SHEET_REJECT")) {
 			response.sendError(HttpServletResponse.SC_FORBIDDEN);
 			return;
@@ -68,11 +68,11 @@ public class MonthlySheetRejectServlet extends HttpServlet {
 			if (departmentId == null) {
 				session.setAttribute("successMsg",
 						"Đã từ chối và reset bảng công tháng " + sheet.getMonth() + "/" + sheet.getYear()
-								+ " về OPEN. Toàn bộ xác nhận quản đốc cũ đã được xóa để gửi duyệt lại từ đầu.");
+								+ " về OPEN. Toàn bộ xác nhận trưởng phòng cũ đã được xóa để gửi duyệt lại từ đầu.");
 			} else {
 				session.setAttribute("successMsg",
 						"Đã reset phòng ban được chọn của bảng công tháng " + sheet.getMonth() + "/" + sheet.getYear()
-								+ " về bước quản đốc xác nhận. Các phòng ban khác giữ nguyên xác nhận.");
+								+ " về bước trưởng phòng xác nhận. Các phòng ban khác giữ nguyên xác nhận.");
 			}
 		} else {
 			session.setAttribute("errorMsg", "Không thể từ chối. Vui lòng thử lại.");

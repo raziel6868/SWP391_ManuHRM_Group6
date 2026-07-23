@@ -33,7 +33,7 @@
                     <div>
                         <h2 class="h3 text-on-surface fw-bold mb-1">Cấu hình payroll</h2>
                         <p class="body-md text-on-surface-variant mb-0">
-                            Quản lý giờ công chuẩn, hệ số OT và giá trị ngày công chuẩn dự phòng theo thời gian áp dụng.
+                            Quản lý giờ công chuẩn, hệ số OT và thưởng chuyên cần theo thời gian áp dụng.
                         </p>
                     </div>
                     <c:if test="${canSetup}">
@@ -59,6 +59,10 @@
                             <div class="small text-on-surface-variant mb-1">Số giờ công chuẩn mỗi ngày</div>
                             <div>Lấy từ <code>payroll_settings.standard_work_hours_per_day</code></div>
                         </div>
+                        <div class="col-md-4">
+                            <div class="small text-on-surface-variant mb-1">Thưởng chuyên cần</div>
+                            <div>Lấy từ <code>payroll_settings.attendance_bonus_amount</code></div>
+                        </div>
                     </div>
                 </div>
 
@@ -69,9 +73,9 @@
                                 <tr>
                                     <th>Hiệu lực từ</th>
                                     <th>Hiệu lực đến</th>
-                                    <th class="text-end">Ngày công dự phòng</th>
                                     <th class="text-end">Giờ/ngày</th>
                                     <th class="text-end">Hệ số OT</th>
+                                    <th class="text-end">Thưởng chuyên cần</th>
                                     <th class="text-end">Thao tác</th>
                                 </tr>
                             </thead>
@@ -87,9 +91,9 @@
                                                 <c:otherwise>Đang áp dụng</c:otherwise>
                                             </c:choose>
                                         </td>
-                                        <td class="text-end"><fmt:formatNumber value="${setting.standardWorkDays}" pattern="#,##0.##" /></td>
                                         <td class="text-end"><fmt:formatNumber value="${setting.standardWorkHoursPerDay}" pattern="#,##0.##" /></td>
                                         <td class="text-end"><fmt:formatNumber value="${setting.normalOvertimeRate}" pattern="#,##0.##" /></td>
+                                        <td class="text-end"><fmt:formatNumber value="${setting.attendanceBonusAmount}" pattern="#,##0" /></td>
                                         <td class="text-end">
                                             <c:if test="${canSetup}">
                                                 <a href="${pageContext.request.contextPath}/payroll-setting-setup?id=${setting.id}"

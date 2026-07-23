@@ -1,5 +1,6 @@
 package controller.employeedependent;
 
+import dal.DepartmentDAO;
 import dal.EmployeeDependentDAO;
 import dal.UserDAO;
 import jakarta.servlet.ServletException;
@@ -9,6 +10,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.sql.Date;
+import java.util.List;
+import model.Department;
 import model.EmployeeDependent;
 import model.User;
 
@@ -16,12 +19,15 @@ import model.User;
 public class EmployeeDependentSetupServlet extends HttpServlet {
 
 	private final EmployeeDependentDAO employeeDependentDAO = new EmployeeDependentDAO();
+	private final DepartmentDAO departmentDAO = new DepartmentDAO();
 	private final UserDAO userDAO = new UserDAO();
 
 	@Override
 	protected void doGet(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
 		Long id = parseLong(request.getParameter("id"));
+		boolean hasDepartmentParam = request.getParameterMap().containsKey("departmentId");
+		Long selectedDepartmentId = parseLong(request.getParameter("departmentId"));
 		EmployeeDependent employeeDependent = null;
 		if (id != null) {
 			employeeDependent = employeeDependentDAO.getById(id);
@@ -34,8 +40,11 @@ public class EmployeeDependentSetupServlet extends HttpServlet {
 
 		if (employeeDependent != null) {
 			request.setAttribute("employeeDependent", employeeDependent);
+			if (selectedDepartmentId == null && !hasDepartmentParam) {
+				selectedDepartmentId = findUserDepartmentId(employeeDependent.getUserId());
+			}
 		}
-		setFormOptions(request);
+		setFormOptions(request, selectedDepartmentId);
 		request.getRequestDispatcher("/views/employeedependent/employee-dependent-setup.jsp").forward(request,
 				response);
 	}
@@ -46,6 +55,7 @@ public class EmployeeDependentSetupServlet extends HttpServlet {
 		request.setCharacterEncoding("UTF-8");
 
 		Long id = parseLong(request.getParameter("id"));
+		Long selectedDepartmentId = parseLong(request.getParameter("departmentId"));
 		Long userId = parseLong(request.getParameter("userId"));
 		String fullName = normalizeText(request.getParameter("fullName"));
 		String relationship = normalizeText(request.getParameter("relationship"));
@@ -65,11 +75,11 @@ public class EmployeeDependentSetupServlet extends HttpServlet {
 		employeeDependent.setEffectiveTo(effectiveTo);
 		employeeDependent.setIsActive(true);
 
-		String validationError = validate(employeeDependent);
+		String validationError = validate(employeeDependent, selectedDepartmentId);
 		if (validationError != null) {
 			request.setAttribute("errorMsg", validationError);
 			request.setAttribute("employeeDependent", employeeDependent);
-			setFormOptions(request);
+			setFormOptions(request, selectedDepartmentId);
 			request.getRequestDispatcher("/views/employeedependent/employee-dependent-setup.jsp").forward(request,
 					response);
 			return;
@@ -97,22 +107,35 @@ public class EmployeeDependentSetupServlet extends HttpServlet {
 
 		request.setAttribute("errorMsg", "Không thể lưu người phụ thuộc. Vui lòng thử lại.");
 		request.setAttribute("employeeDependent", employeeDependent);
-		setFormOptions(request);
+		setFormOptions(request, selectedDepartmentId);
 		request.getRequestDispatcher("/views/employeedependent/employee-dependent-setup.jsp").forward(request,
 				response);
 	}
 
-	private void setFormOptions(HttpServletRequest request) {
-		request.setAttribute("users", userDAO.getActiveUsersForDropdown());
+	private void setFormOptions(HttpServletRequest request, Long selectedDepartmentId) {
+		request.setAttribute("departments", departmentDAO.getActiveDepartments());
+		request.setAttribute("selectedDepartmentId", selectedDepartmentId);
+
+		List<User> users = userDAO.getActiveUsersForDropdown();
+		if (selectedDepartmentId != null && isActiveDepartment(selectedDepartmentId)) {
+			users = userDAO.getActiveUsersByDepartment(selectedDepartmentId);
+		}
+		request.setAttribute("users", users);
 	}
 
-	private String validate(EmployeeDependent employeeDependent) {
+	private String validate(EmployeeDependent employeeDependent, Long selectedDepartmentId) {
+		if (selectedDepartmentId != null && !isActiveDepartment(selectedDepartmentId)) {
+			return "Phòng ban không tồn tại hoặc đã bị vô hiệu hóa.";
+		}
 		if (employeeDependent.getUserId() == null) {
 			return "Vui lòng chọn nhân viên.";
 		}
 		User user = userDAO.getById(employeeDependent.getUserId());
 		if (user == null || !Boolean.TRUE.equals(user.getIsActive())) {
 			return "Nhân viên không tồn tại hoặc đã bị vô hiệu hóa.";
+		}
+		if (selectedDepartmentId != null && !selectedDepartmentId.equals(user.getDepartmentId())) {
+			return "Nhân viên không thuộc phòng ban đã chọn.";
 		}
 		if (employeeDependent.getFullName() == null || employeeDependent.getFullName().isBlank()) {
 			return "Tên người phụ thuộc là bắt buộc.";
@@ -125,6 +148,16 @@ public class EmployeeDependentSetupServlet extends HttpServlet {
 			return "Ngày hiệu lực đến không được trước ngày hiệu lực từ.";
 		}
 		return null;
+	}
+
+	private Long findUserDepartmentId(Long userId) {
+		User user = userDAO.getById(userId);
+		return user != null ? user.getDepartmentId() : null;
+	}
+
+	private boolean isActiveDepartment(Long departmentId) {
+		Department department = departmentDAO.getById(departmentId);
+		return department != null && Boolean.TRUE.equals(department.getIsActive());
 	}
 
 	private String normalizeText(String value) {

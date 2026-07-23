@@ -14,10 +14,10 @@
         <div class="main-content">
             <jsp:include page="/components/header.jsp" />
 
-            <div class="page-container d-flex flex-column" style="max-width: 720px; margin: 40px auto; width: 100%;">
+            <div class="page-container d-flex flex-column" style="max-width: 960px; margin: 40px auto; width: 100%;">
                 <div class="mb-4">
                     <h2 class="h3 text-on-surface fw-bold mb-1">Thêm loại phụ cấp</h2>
-                    <p class="body-md text-on-surface-variant mb-0">Tạo danh mục phụ cấp để gán cho nhân viên khi tính lương.</p>
+                    <p class="body-md text-on-surface-variant mb-0">Tạo loại phụ cấp và quy tắc áp dụng khi tính lương.</p>
                 </div>
 
                 <c:if test="${not empty errorMsg}">
@@ -66,7 +66,9 @@
                             </div>
                         </div>
 
-                        <div class="d-flex gap-3 pt-3 border-top border-outline-variant">
+                        <%@ include file="/views/allowancetype/allowance-rule-form.jspf" %>
+
+                        <div class="d-flex gap-3 pt-3 border-top border-outline-variant mt-4">
                             <button type="submit" class="btn btn-primary px-4 py-2 d-flex align-items-center gap-2">
                                 <span class="material-symbols-outlined" style="font-size: 1.125rem;">add</span>
                                 Thêm loại phụ cấp

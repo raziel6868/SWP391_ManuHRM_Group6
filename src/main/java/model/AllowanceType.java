@@ -1,6 +1,8 @@
 package model;
 
 import java.sql.Timestamp;
+import java.util.ArrayList;
+import java.util.List;
 
 public class AllowanceType {
 
@@ -13,6 +15,7 @@ public class AllowanceType {
 	private Boolean isActive;
 	private Timestamp createdAt;
 	private Timestamp updatedAt;
+	private List<AllowanceRule> activeRules = new ArrayList<>();
 
 	public Long getId() {
 		return id;
@@ -84,5 +87,13 @@ public class AllowanceType {
 
 	public void setUpdatedAt(Timestamp updatedAt) {
 		this.updatedAt = updatedAt;
+	}
+
+	public List<AllowanceRule> getActiveRules() {
+		return activeRules;
+	}
+
+	public void setActiveRules(List<AllowanceRule> activeRules) {
+		this.activeRules = activeRules != null ? activeRules : new ArrayList<>();
 	}
 }

@@ -14,6 +14,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import dto.AttendanceOtEmployeeRow;
 import dto.AttendanceSummaryRow;
 import dto.ContractExpiryReportRow;
 import dto.ContractStatusRow;
@@ -58,6 +59,218 @@ public class ReportDAO {
 
 	public List<Integer> getPayrollYears() {
 		return getDistinctYears("SELECT DISTINCT year AS year_value FROM monthly_sheets ORDER BY year_value DESC");
+	}
+
+	public List<AttendanceOtEmployeeRow> getAttendanceOtEmployeeRows(LocalDate startDate, LocalDate endDate,
+			int expectedWorkDays, Long departmentId) {
+		List<AttendanceOtEmployeeRow> rows = new ArrayList<>();
+		Map<Long, List<EmploymentPeriod>> employmentPeriodsByUser = getEmploymentPeriodsByUser(startDate, endDate,
+				departmentId);
+		Map<Long, BigDecimal> approvedLeaveDaysByUser = getApprovedLeaveDaysByUser(startDate, endDate, departmentId);
+
+		StringBuilder sql = new StringBuilder("""
+				SELECT u.id AS user_id, u.employee_code, u.full_name, d.name AS department_name, u.is_active,
+				       COALESCE(att.actual_work_days, 0) AS actual_work_days,
+				       COALESCE(att.late_count, 0) AS late_count,
+				       COALESCE(ot.total_ot_hours, 0) AS total_ot_hours
+				FROM users u
+				LEFT JOIN departments d ON u.department_id = d.id
+				LEFT JOIN (
+				    SELECT user_id,
+				           SUM(CASE WHEN status <> 'ABSENT' THEN 1 ELSE 0 END) AS actual_work_days,
+				           SUM(CASE WHEN status = 'LATE' THEN 1 ELSE 0 END) AS late_count
+				    FROM attendance_records
+				    WHERE date BETWEEN ? AND ?
+				      AND DAYOFWEEK(date) NOT IN (1, 7)
+				    GROUP BY user_id
+				) att ON att.user_id = u.id
+				LEFT JOIN (
+				    SELECT user_id, SUM(COALESCE(approved_hours, 0)) AS total_ot_hours
+				    FROM overtime_records
+				    WHERE status = 'APPROVED'
+				      AND date BETWEEN ? AND ?
+				    GROUP BY user_id
+				) ot ON ot.user_id = u.id
+				LEFT JOIN (
+				    SELECT DISTINCT c.user_id
+				    FROM contracts c
+				    WHERE c.start_date <= ?
+				      AND (c.end_date IS NULL OR c.end_date >= ?)
+				      AND (c.terminated_at IS NULL OR c.terminated_at >= ?)
+				) cp ON cp.user_id = u.id
+				WHERE (u.is_active = TRUE OR cp.user_id IS NOT NULL)
+				  AND (u.department_id IS NULL OR d.is_active = TRUE)
+				""");
+
+		List<Object> params = new ArrayList<>();
+		params.add(Date.valueOf(startDate));
+		params.add(Date.valueOf(endDate));
+		params.add(Date.valueOf(startDate));
+		params.add(Date.valueOf(endDate));
+		params.add(Date.valueOf(endDate));
+		params.add(Date.valueOf(startDate));
+		params.add(Date.valueOf(startDate));
+
+		if (departmentId != null) {
+			sql.append(" AND u.department_id = ?");
+			params.add(departmentId);
+		}
+
+		sql.append(" ORDER BY d.name, u.full_name");
+
+		try (Connection conn = DBContext.getConnection();
+				PreparedStatement ps = conn.prepareStatement(sql.toString())) {
+			setParams(ps, params);
+			try (ResultSet rs = ps.executeQuery()) {
+				while (rs.next()) {
+					Long userId = rs.getLong("user_id");
+					int actualWorkDays = rs.getInt("actual_work_days");
+					int expectedWorkDaysForUser = countExpectedWorkDaysForUser(userId, employmentPeriodsByUser,
+							startDate, endDate, expectedWorkDays, rs.getBoolean("is_active"));
+					BigDecimal approvedLeaveDays = approvedLeaveDaysByUser.getOrDefault(userId, BigDecimal.ZERO);
+					BigDecimal unauthorizedAbsenceDays = BigDecimal.valueOf(expectedWorkDaysForUser - actualWorkDays)
+							.subtract(approvedLeaveDays);
+					if (unauthorizedAbsenceDays.compareTo(BigDecimal.ZERO) < 0) {
+						unauthorizedAbsenceDays = BigDecimal.ZERO;
+					}
+
+					AttendanceOtEmployeeRow row = new AttendanceOtEmployeeRow();
+					row.setUserId(userId);
+					row.setEmployeeCode(rs.getString("employee_code"));
+					row.setFullName(rs.getString("full_name"));
+					row.setDepartmentName(defaultDepartmentName(rs.getString("department_name")));
+					row.setExpectedWorkDays(expectedWorkDaysForUser);
+					row.setActualWorkDays(actualWorkDays);
+					row.setApprovedLeaveDays(approvedLeaveDays);
+					row.setUnauthorizedAbsenceDays(unauthorizedAbsenceDays);
+					row.setLateCount(rs.getInt("late_count"));
+					row.setTotalOtHours(safe(rs.getBigDecimal("total_ot_hours")));
+					rows.add(row);
+				}
+			}
+		} catch (SQLException e) {
+			System.err.println("ReportDAO.getAttendanceOtEmployeeRows() ERROR: " + e.getMessage());
+		}
+
+		return rows;
+	}
+
+	private Map<Long, BigDecimal> getApprovedLeaveDaysByUser(LocalDate startDate, LocalDate endDate,
+			Long departmentId) {
+		Map<Long, BigDecimal> leaveDaysByUser = new LinkedHashMap<>();
+		StringBuilder sql = new StringBuilder("""
+				SELECT lr.user_id, lr.start_date, lr.end_date
+				FROM leave_requests lr
+				JOIN users u ON lr.user_id = u.id
+				LEFT JOIN departments d ON u.department_id = d.id
+				WHERE lr.status = 'APPROVED'
+				  AND lr.start_date <= ?
+				  AND lr.end_date >= ?
+				  AND (u.department_id IS NULL OR d.is_active = TRUE)
+				""");
+
+		List<Object> params = new ArrayList<>();
+		params.add(Date.valueOf(endDate));
+		params.add(Date.valueOf(startDate));
+
+		if (departmentId != null) {
+			sql.append(" AND u.department_id = ?");
+			params.add(departmentId);
+		}
+
+		try (Connection conn = DBContext.getConnection();
+				PreparedStatement ps = conn.prepareStatement(sql.toString())) {
+			setParams(ps, params);
+			try (ResultSet rs = ps.executeQuery()) {
+				while (rs.next()) {
+					LocalDate requestStart = rs.getDate("start_date").toLocalDate();
+					LocalDate requestEnd = rs.getDate("end_date").toLocalDate();
+					LocalDate countedStart = requestStart.isBefore(startDate) ? startDate : requestStart;
+					LocalDate countedEnd = requestEnd.isAfter(endDate) ? endDate : requestEnd;
+					BigDecimal countedDays = LeavePolicyUtil.calculateRequestDays(countedStart, countedEnd,
+							"WORKING_DAY");
+					leaveDaysByUser.merge(rs.getLong("user_id"), countedDays, BigDecimal::add);
+				}
+			}
+		} catch (SQLException e) {
+			System.err.println("ReportDAO.getApprovedLeaveDaysByUser() ERROR: " + e.getMessage());
+		}
+		return leaveDaysByUser;
+	}
+
+	private Map<Long, List<EmploymentPeriod>> getEmploymentPeriodsByUser(LocalDate startDate, LocalDate endDate,
+			Long departmentId) {
+		Map<Long, List<EmploymentPeriod>> periodsByUser = new LinkedHashMap<>();
+		StringBuilder sql = new StringBuilder("""
+				SELECT c.user_id,
+				       GREATEST(c.start_date, ?) AS period_start,
+				       LEAST(COALESCE(c.end_date, ?), COALESCE(c.terminated_at, ?), ?) AS period_end
+				FROM contracts c
+				JOIN users u ON c.user_id = u.id
+				LEFT JOIN departments d ON u.department_id = d.id
+				WHERE c.start_date <= ?
+				  AND (c.end_date IS NULL OR c.end_date >= ?)
+				  AND (c.terminated_at IS NULL OR c.terminated_at >= ?)
+				  AND (u.department_id IS NULL OR d.is_active = TRUE)
+				""");
+
+		List<Object> params = new ArrayList<>();
+		params.add(Date.valueOf(startDate));
+		params.add(Date.valueOf(endDate));
+		params.add(Date.valueOf(endDate));
+		params.add(Date.valueOf(endDate));
+		params.add(Date.valueOf(endDate));
+		params.add(Date.valueOf(startDate));
+		params.add(Date.valueOf(startDate));
+
+		if (departmentId != null) {
+			sql.append(" AND u.department_id = ?");
+			params.add(departmentId);
+		}
+
+		try (Connection conn = DBContext.getConnection();
+				PreparedStatement ps = conn.prepareStatement(sql.toString())) {
+			setParams(ps, params);
+			try (ResultSet rs = ps.executeQuery()) {
+				while (rs.next()) {
+					Date periodStart = rs.getDate("period_start");
+					Date periodEnd = rs.getDate("period_end");
+					if (periodStart == null || periodEnd == null || periodEnd.before(periodStart)) {
+						continue;
+					}
+					periodsByUser.computeIfAbsent(rs.getLong("user_id"), id -> new ArrayList<>())
+							.add(new EmploymentPeriod(periodStart.toLocalDate(), periodEnd.toLocalDate()));
+				}
+			}
+		} catch (SQLException e) {
+			System.err.println("ReportDAO.getEmploymentPeriodsByUser() ERROR: " + e.getMessage());
+		}
+		return periodsByUser;
+	}
+
+	private int countExpectedWorkDaysForUser(Long userId, Map<Long, List<EmploymentPeriod>> periodsByUser,
+			LocalDate startDate, LocalDate endDate, int fullPeriodExpectedWorkDays, boolean isActive) {
+		List<EmploymentPeriod> periods = periodsByUser.get(userId);
+		if (periods == null || periods.isEmpty()) {
+			return isActive ? fullPeriodExpectedWorkDays : 0;
+		}
+		Set<LocalDate> expectedDates = new HashSet<>();
+		for (EmploymentPeriod period : periods) {
+			LocalDate current = period.startDate.isBefore(startDate) ? startDate : period.startDate;
+			LocalDate periodEnd = period.endDate.isAfter(endDate) ? endDate : period.endDate;
+			while (!current.isAfter(periodEnd)) {
+				switch (current.getDayOfWeek()) {
+					case SATURDAY :
+					case SUNDAY :
+						break;
+					default :
+						expectedDates.add(current);
+						break;
+				}
+				current = current.plusDays(1);
+			}
+		}
+		return expectedDates.size();
 	}
 
 	public List<AttendanceSummaryRow> getAttendanceSummary(int year, Integer month, Long departmentId) {
@@ -715,4 +928,14 @@ public class ReportDAO {
 		}
 		return years;
 	}
+	private static class EmploymentPeriod {
+		private final LocalDate startDate;
+		private final LocalDate endDate;
+
+		private EmploymentPeriod(LocalDate startDate, LocalDate endDate) {
+			this.startDate = startDate;
+			this.endDate = endDate;
+		}
+	}
+
 }

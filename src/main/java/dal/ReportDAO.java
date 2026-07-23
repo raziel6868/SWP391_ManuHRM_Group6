@@ -18,6 +18,8 @@ import dto.AttendanceOtEmployeeRow;
 import dto.AttendanceSummaryRow;
 import dto.ContractExpiryReportRow;
 import dto.ContractStatusRow;
+import dto.HeadcountMovementRow;
+import dto.HeadcountMovementStats;
 import dto.HeadcountRow;
 import dto.LeaveEmployeeReportRow;
 import dto.LeaveTypeUsageRow;
@@ -61,6 +63,20 @@ public class ReportDAO {
 
 	public List<Integer> getPayrollYears() {
 		return getDistinctYears("SELECT DISTINCT year AS year_value FROM monthly_sheets ORDER BY year_value DESC");
+	}
+
+	public List<Integer> getHeadcountYears() {
+		return getDistinctYears("""
+				SELECT DISTINCT year_value
+				FROM (
+				    SELECT YEAR(start_date) AS year_value FROM contracts
+				    UNION
+				    SELECT YEAR(terminated_at) AS year_value FROM contracts WHERE terminated_at IS NOT NULL
+				    UNION
+				    SELECT YEAR(created_at) AS year_value FROM users
+				) years
+				ORDER BY year_value DESC
+				""");
 	}
 
 	public List<AttendanceOtEmployeeRow> getAttendanceOtEmployeeRows(LocalDate startDate, LocalDate endDate,
@@ -597,8 +613,12 @@ public class ReportDAO {
 	}
 
 	public List<HeadcountRow> getHeadcount(Long departmentId, Boolean isActive) {
+		return getHeadcount(departmentId, isActive, null);
+	}
+
+	public List<HeadcountRow> getHeadcount(Long departmentId, Boolean isActive, String employeeType) {
 		List<HeadcountRow> rows = new ArrayList<>();
-		int companyTotalEmployees = countHeadcountEmployees(isActive);
+		int companyTotalEmployees = countHeadcountEmployees(isActive, employeeType);
 
 		StringBuilder sql = new StringBuilder("""
 				SELECT d.id AS department_id, d.name AS department_name,
@@ -618,6 +638,11 @@ public class ReportDAO {
 		}
 
 		sql.append(" AND (u.department_id IS NULL OR d.is_active = TRUE)");
+
+		if (employeeType != null && !employeeType.isBlank()) {
+			sql.append(" AND u.employee_type = ?");
+			params.add(employeeType);
+		}
 
 		if (departmentId != null) {
 			sql.append(" AND u.department_id = ?");
@@ -650,6 +675,10 @@ public class ReportDAO {
 	}
 
 	private int countHeadcountEmployees(Boolean isActive) {
+		return countHeadcountEmployees(isActive, null);
+	}
+
+	private int countHeadcountEmployees(Boolean isActive, String employeeType) {
 		StringBuilder sql = new StringBuilder("""
 				SELECT COUNT(*)
 				FROM users u
@@ -661,6 +690,11 @@ public class ReportDAO {
 		if (isActive != null) {
 			sql.append(" AND u.is_active = ?");
 			params.add(isActive);
+		}
+
+		if (employeeType != null && !employeeType.isBlank()) {
+			sql.append(" AND u.employee_type = ?");
+			params.add(employeeType);
 		}
 
 		try (Connection conn = DBContext.getConnection();
@@ -690,6 +724,241 @@ public class ReportDAO {
 			return "Chưa phân phòng ban";
 		}
 		return departmentName;
+	}
+
+	public HeadcountMovementStats getHeadcountMovementStats(LocalDate startDate, LocalDate endDate, Long departmentId,
+			String employeeType) {
+		HeadcountMovementStats stats = new HeadcountMovementStats();
+		stats.setCurrentEmployees(countCurrentContractEmployees(endDate, departmentId, employeeType));
+		stats.setNewEmployees(countNewContractEmployees(startDate, endDate, departmentId, employeeType));
+		stats.setTerminatedEmployees(countTerminatedContractEmployees(startDate, endDate, departmentId, employeeType));
+		if (stats.getCurrentEmployees() > 0) {
+			stats.setTurnoverRate(BigDecimal.valueOf(stats.getTerminatedEmployees()).multiply(BigDecimal.valueOf(100))
+					.divide(BigDecimal.valueOf(stats.getCurrentEmployees()), 2, RoundingMode.HALF_UP));
+		}
+		return stats;
+	}
+
+	public List<HeadcountMovementRow> getHeadcountMovementRows(LocalDate startDate, LocalDate endDate,
+			Long departmentId, String employeeType, String movementStatus) {
+		List<HeadcountMovementRow> rows = new ArrayList<>();
+		StringBuilder sql = new StringBuilder("""
+				SELECT u.employee_code, u.full_name, d.name AS department_name, u.employee_type,
+				       fc.start_date AS hire_date,
+				       tc.terminated_at, tc.terminate_reason,
+				       cc.id AS current_contract_id,
+				       fct.code AS first_contract_type_code,
+				       cct.code AS current_contract_type_code,
+				       COALESCE(cct.name, fct.name) AS contract_type_name
+				FROM users u
+				LEFT JOIN departments d ON u.department_id = d.id
+				LEFT JOIN contracts cc ON cc.id = (
+				    SELECT c2.id
+				    FROM contracts c2
+				    WHERE c2.user_id = u.id
+				      AND c2.start_date <= ?
+				      AND (c2.end_date IS NULL OR c2.end_date >= ?)
+				      AND (c2.terminated_at IS NULL OR c2.terminated_at > ?)
+				    ORDER BY c2.start_date DESC, c2.id DESC
+				    LIMIT 1
+				)
+				LEFT JOIN contract_types cct ON cc.contract_type_id = cct.id
+				LEFT JOIN contracts fc ON fc.id = (
+				    SELECT c3.id
+				    FROM contracts c3
+				    WHERE c3.user_id = u.id
+				    ORDER BY c3.start_date ASC, c3.id ASC
+				    LIMIT 1
+				)
+				LEFT JOIN contract_types fct ON fc.contract_type_id = fct.id
+				LEFT JOIN contracts tc ON tc.id = (
+				    SELECT c4.id
+				    FROM contracts c4
+				    WHERE c4.user_id = u.id
+				      AND c4.status = 'TERMINATED'
+				      AND c4.terminated_at BETWEEN ? AND ?
+				    ORDER BY c4.terminated_at DESC, c4.id DESC
+				    LIMIT 1
+				)
+				WHERE (u.department_id IS NULL OR d.is_active = TRUE)
+				  AND (
+				      cc.id IS NOT NULL
+				      OR fc.start_date BETWEEN ? AND ?
+				      OR tc.id IS NOT NULL
+				      OR (u.is_active = TRUE AND cc.id IS NULL)
+				  )
+				""");
+
+		List<Object> params = new ArrayList<>();
+		params.add(Date.valueOf(endDate));
+		params.add(Date.valueOf(endDate));
+		params.add(Date.valueOf(endDate));
+		params.add(Date.valueOf(startDate));
+		params.add(Date.valueOf(endDate));
+		params.add(Date.valueOf(startDate));
+		params.add(Date.valueOf(endDate));
+
+		appendHeadcountDimensionFilters(sql, params, departmentId, employeeType);
+		sql.append(" ORDER BY d.name ASC, u.full_name ASC");
+
+		try (Connection conn = DBContext.getConnection();
+				PreparedStatement ps = conn.prepareStatement(sql.toString())) {
+			setParams(ps, params);
+			try (ResultSet rs = ps.executeQuery()) {
+				while (rs.next()) {
+					Date hireDate = rs.getDate("hire_date");
+					Date terminatedAt = rs.getDate("terminated_at");
+					String status = resolveMovementStatus(hireDate, terminatedAt,
+							rs.getObject("current_contract_id") != null, rs.getString("first_contract_type_code"),
+							rs.getString("current_contract_type_code"), startDate, endDate);
+					if (!matchesMovementStatus(status, movementStatus)) {
+						continue;
+					}
+					HeadcountMovementRow row = new HeadcountMovementRow();
+					row.setEmployeeCode(rs.getString("employee_code"));
+					row.setFullName(rs.getString("full_name"));
+					row.setDepartmentName(defaultDepartmentName(rs.getString("department_name")));
+					row.setEmployeeType(rs.getString("employee_type"));
+					row.setHireDate(hireDate);
+					row.setTerminatedAt(terminatedAt);
+					row.setTerminateReason(rs.getString("terminate_reason"));
+					row.setContractTypeName(rs.getString("contract_type_name"));
+					row.setMovementStatus(status);
+					rows.add(row);
+				}
+			}
+		} catch (SQLException e) {
+			System.err.println("ReportDAO.getHeadcountMovementRows() ERROR: " + e.getMessage());
+		}
+
+		return rows;
+	}
+
+	private int countCurrentContractEmployees(LocalDate endDate, Long departmentId, String employeeType) {
+		StringBuilder sql = new StringBuilder("""
+				SELECT COUNT(DISTINCT u.id)
+				FROM contracts c
+				JOIN users u ON c.user_id = u.id
+				LEFT JOIN departments d ON u.department_id = d.id
+				WHERE c.start_date <= ?
+				  AND (c.end_date IS NULL OR c.end_date >= ?)
+				  AND (c.terminated_at IS NULL OR c.terminated_at > ?)
+				""");
+		List<Object> params = new ArrayList<>();
+		params.add(Date.valueOf(endDate));
+		params.add(Date.valueOf(endDate));
+		params.add(Date.valueOf(endDate));
+		appendHeadcountDimensionFilters(sql, params, departmentId, employeeType);
+		return executeCount(sql.toString(), params, "ReportDAO.countCurrentContractEmployees()");
+	}
+
+	private int countNewContractEmployees(LocalDate startDate, LocalDate endDate, Long departmentId,
+			String employeeType) {
+		StringBuilder sql = new StringBuilder("""
+				SELECT COUNT(DISTINCT u.id)
+				FROM users u
+				JOIN (
+				    SELECT user_id, MIN(start_date) AS first_start_date
+				    FROM contracts
+				    GROUP BY user_id
+				) first_contract ON first_contract.user_id = u.id
+				LEFT JOIN departments d ON u.department_id = d.id
+				WHERE first_contract.first_start_date BETWEEN ? AND ?
+				""");
+		List<Object> params = new ArrayList<>();
+		params.add(Date.valueOf(startDate));
+		params.add(Date.valueOf(endDate));
+		appendHeadcountDimensionFilters(sql, params, departmentId, employeeType);
+		return executeCount(sql.toString(), params, "ReportDAO.countNewContractEmployees()");
+	}
+
+	private int countTerminatedContractEmployees(LocalDate startDate, LocalDate endDate, Long departmentId,
+			String employeeType) {
+		StringBuilder sql = new StringBuilder("""
+				SELECT COUNT(DISTINCT u.id)
+				FROM contracts c
+				JOIN users u ON c.user_id = u.id
+				LEFT JOIN departments d ON u.department_id = d.id
+				WHERE c.status = 'TERMINATED'
+				  AND c.terminated_at BETWEEN ? AND ?
+				""");
+		List<Object> params = new ArrayList<>();
+		params.add(Date.valueOf(startDate));
+		params.add(Date.valueOf(endDate));
+		appendHeadcountDimensionFilters(sql, params, departmentId, employeeType);
+		return executeCount(sql.toString(), params, "ReportDAO.countTerminatedContractEmployees()");
+	}
+
+	private void appendHeadcountDimensionFilters(StringBuilder sql, List<Object> params, Long departmentId,
+			String employeeType) {
+		sql.append(" AND (u.department_id IS NULL OR d.is_active = TRUE)");
+		if (departmentId != null) {
+			sql.append(" AND u.department_id = ?");
+			params.add(departmentId);
+		}
+		if (employeeType != null && !employeeType.isBlank()) {
+			sql.append(" AND u.employee_type = ?");
+			params.add(employeeType);
+		}
+	}
+
+	private int executeCount(String sql, List<Object> params, String logContext) {
+		try (Connection conn = DBContext.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+			setParams(ps, params);
+			try (ResultSet rs = ps.executeQuery()) {
+				if (rs.next()) {
+					return rs.getInt(1);
+				}
+			}
+		} catch (SQLException e) {
+			System.err.println(logContext + " ERROR: " + e.getMessage());
+		}
+		return 0;
+	}
+
+	private String resolveMovementStatus(Date hireDate, Date terminatedAt, boolean hasCurrentContract,
+			String firstContractTypeCode, String currentContractTypeCode, LocalDate startDate, LocalDate endDate) {
+		if (terminatedAt != null) {
+			return "TERMINATED";
+		}
+		boolean isNew = isDateInRange(hireDate, startDate, endDate);
+		if (isNew && "PROBATION".equals(firstContractTypeCode)) {
+			return "NEW_PROBATION";
+		}
+		if (isNew) {
+			return "NEW";
+		}
+		if (hasCurrentContract && "PROBATION".equals(currentContractTypeCode)) {
+			return "PROBATION";
+		}
+		if (hasCurrentContract && "SEASONAL".equals(currentContractTypeCode)) {
+			return "SEASONAL";
+		}
+		if (hasCurrentContract) {
+			return "OFFICIAL";
+		}
+		return "NO_CONTRACT";
+	}
+
+	private boolean isDateInRange(Date date, LocalDate startDate, LocalDate endDate) {
+		if (date == null) {
+			return false;
+		}
+		LocalDate localDate = date.toLocalDate();
+		return !localDate.isBefore(startDate) && !localDate.isAfter(endDate);
+	}
+
+	private boolean matchesMovementStatus(String status, String filter) {
+		if (filter == null || filter.isBlank()) {
+			return true;
+		}
+		if ("NEW".equals(filter)) {
+			return "NEW".equals(status) || "NEW_PROBATION".equals(status);
+		}
+		if ("PROBATION".equals(filter)) {
+			return "PROBATION".equals(status) || "NEW_PROBATION".equals(status);
+		}
+		return filter.equals(status);
 	}
 
 	public List<ContractStatusRow> getContractStatus(Long departmentId) {
@@ -1105,6 +1374,7 @@ public class ReportDAO {
 		}
 		return years;
 	}
+
 	private static class EmploymentPeriod {
 		private final LocalDate startDate;
 		private final LocalDate endDate;
@@ -1122,4 +1392,5 @@ public class ReportDAO {
 		private String leaveTypeName;
 		private String salaryPaidBy;
 		private BigDecimal days = BigDecimal.ZERO;
-	}}
+	}
+}

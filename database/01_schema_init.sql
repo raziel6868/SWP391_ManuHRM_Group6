@@ -12,17 +12,17 @@ USE manufacturing_hrm;
 SET FOREIGN_KEY_CHECKS = 0;
 DROP TABLE IF EXISTS password_resets;
 DROP TABLE IF EXISTS holidays;
-DROP TABLE IF EXISTS employee_allowances;
+DROP TABLE IF EXISTS allowance_rules;
 DROP TABLE IF EXISTS employee_dependents;
 DROP TABLE IF EXISTS allowance_types;
 DROP TABLE IF EXISTS personal_tax_brackets;
 DROP TABLE IF EXISTS personal_tax_settings;
 DROP TABLE IF EXISTS insurance_rates;
 DROP TABLE IF EXISTS payroll_settings;
+DROP TABLE IF EXISTS monthly_salary_allowances;
 DROP TABLE IF EXISTS monthly_salaries;
 DROP TABLE IF EXISTS monthly_sheet_approvals;
 DROP TABLE IF EXISTS monthly_sheets;
-DROP TABLE IF EXISTS salary_bases;
 DROP TABLE IF EXISTS overtime_records;
 DROP TABLE IF EXISTS attendance_corrections;
 DROP TABLE IF EXISTS attendance_records;
@@ -342,6 +342,7 @@ CREATE TABLE payroll_settings (
     standard_work_days DECIMAL(5,2) NOT NULL DEFAULT 22.00,
     standard_work_hours_per_day DECIMAL(5,2) NOT NULL DEFAULT 8.00,
     normal_overtime_rate DECIMAL(5,2) NOT NULL DEFAULT 1.50,
+    attendance_bonus_amount DECIMAL(15,2) NOT NULL DEFAULT 0,
     effective_from DATE NOT NULL,
     effective_to DATE NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -406,35 +407,28 @@ CREATE TABLE allowance_types (
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
-CREATE TABLE salary_bases (
+CREATE TABLE allowance_rules (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    user_id BIGINT NOT NULL,
-    base_salary DECIMAL(15,2) NOT NULL,
-    insurance_salary DECIMAL(15,2) NULL,
-    effective_from DATE NOT NULL,
-    effective_to DATE NULL,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    CONSTRAINT fk_salary_bases_user
-        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-    CONSTRAINT uq_salary_bases_user_effective_from
-        UNIQUE (user_id, effective_from)
-);
-
-CREATE TABLE employee_allowances (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    user_id BIGINT NOT NULL,
     allowance_type_id BIGINT NOT NULL,
+    apply_scope ENUM('ALL', 'EMPLOYEE_TYPE', 'DEPARTMENT_TYPE', 'DEPARTMENT', 'JOB_TITLE') NOT NULL DEFAULT 'ALL',
+    employee_type ENUM('OFFICE', 'WORKER') NULL,
+    department_type ENUM('OFFICE', 'FACTORY') NULL,
+    department_id BIGINT NULL,
+    job_title_id BIGINT NULL,
     amount DECIMAL(15,2) NOT NULL,
     effective_from DATE NOT NULL,
     effective_to DATE NULL,
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    CONSTRAINT fk_employee_allowances_user
-        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-    CONSTRAINT fk_employee_allowances_allowance_type
-        FOREIGN KEY (allowance_type_id) REFERENCES allowance_types(id) ON DELETE RESTRICT
+    CONSTRAINT fk_allowance_rules_allowance_type
+        FOREIGN KEY (allowance_type_id) REFERENCES allowance_types(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_allowance_rules_department
+        FOREIGN KEY (department_id) REFERENCES departments(id) ON DELETE SET NULL,
+    CONSTRAINT fk_allowance_rules_job_title
+        FOREIGN KEY (job_title_id) REFERENCES job_titles(id) ON DELETE SET NULL,
+    INDEX idx_allowance_rules_type_active (allowance_type_id, is_active),
+    INDEX idx_allowance_rules_effective (effective_from, effective_to)
 );
 
 CREATE TABLE employee_dependents (
@@ -457,7 +451,7 @@ CREATE TABLE monthly_sheets (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     year INT NOT NULL,
     month INT NOT NULL,
-    status ENUM('OPEN', 'PENDING_SUPERVISOR', 'PENDING_HR', 'PENDING_DIRECTOR', 'CLOSED') NOT NULL DEFAULT 'OPEN',
+    status ENUM('OPEN', 'PENDING_SUPERVISOR', 'PENDING_HR', 'CLOSED') NOT NULL DEFAULT 'OPEN',
     submitted_by BIGINT NULL,
     submitted_at TIMESTAMP NULL,
     hr_approved_by BIGINT NULL,
@@ -507,6 +501,7 @@ CREATE TABLE monthly_salaries (
     ot_hours DECIMAL(5,2) NOT NULL DEFAULT 0,
     overtime_pay DECIMAL(15,2) NOT NULL DEFAULT 0,
     total_allowances DECIMAL(15,2) NOT NULL DEFAULT 0,
+    attendance_bonus DECIMAL(15,2) NOT NULL DEFAULT 0,
     gross_income DECIMAL(15,2) NOT NULL DEFAULT 0,
     gross_salary DECIMAL(15,2) NOT NULL DEFAULT 0,
     insurance_salary DECIMAL(15,2) NOT NULL DEFAULT 0,
@@ -535,6 +530,24 @@ CREATE TABLE monthly_salaries (
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE RESTRICT,
     CONSTRAINT uq_monthly_salaries_sheet_user
         UNIQUE (monthly_sheet_id, user_id)
+);
+
+CREATE TABLE monthly_salary_allowances (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    monthly_salary_id BIGINT NOT NULL,
+    allowance_type_id BIGINT NULL,
+    allowance_code VARCHAR(30) NOT NULL,
+    allowance_name VARCHAR(100) NOT NULL,
+    amount DECIMAL(15,2) NOT NULL DEFAULT 0,
+    is_taxable BOOLEAN NOT NULL DEFAULT TRUE,
+    is_insurance_based BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_monthly_salary_allowances_salary
+        FOREIGN KEY (monthly_salary_id) REFERENCES monthly_salaries(id) ON DELETE CASCADE,
+    CONSTRAINT fk_monthly_salary_allowances_type
+        FOREIGN KEY (allowance_type_id) REFERENCES allowance_types(id) ON DELETE SET NULL,
+    CONSTRAINT uq_monthly_salary_allowances_salary_type
+        UNIQUE (monthly_salary_id, allowance_type_id)
 );
 
 CREATE TABLE audit_logs (

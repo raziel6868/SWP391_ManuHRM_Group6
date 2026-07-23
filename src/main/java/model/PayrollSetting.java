@@ -10,6 +10,7 @@ public class PayrollSetting {
 	private BigDecimal standardWorkDays;
 	private BigDecimal standardWorkHoursPerDay;
 	private BigDecimal normalOvertimeRate;
+	private BigDecimal attendanceBonusAmount;
 	private Date effectiveFrom;
 	private Date effectiveTo;
 	private Timestamp createdAt;
@@ -45,6 +46,14 @@ public class PayrollSetting {
 
 	public void setNormalOvertimeRate(BigDecimal normalOvertimeRate) {
 		this.normalOvertimeRate = normalOvertimeRate;
+	}
+
+	public BigDecimal getAttendanceBonusAmount() {
+		return attendanceBonusAmount;
+	}
+
+	public void setAttendanceBonusAmount(BigDecimal attendanceBonusAmount) {
+		this.attendanceBonusAmount = attendanceBonusAmount;
 	}
 
 	public Date getEffectiveFrom() {

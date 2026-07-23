@@ -35,6 +35,10 @@ public class MonthlySheetSupervisorApproveServlet extends HttpServlet {
 			response.sendError(HttpServletResponse.SC_FORBIDDEN);
 			return;
 		}
+		if (!approvalDAO.isActiveDepartmentHead(authUser.getId())) {
+			response.sendError(HttpServletResponse.SC_FORBIDDEN);
+			return;
+		}
 
 		String idStr = request.getParameter("id");
 		if (idStr == null || idStr.isBlank()) {
@@ -94,7 +98,7 @@ public class MonthlySheetSupervisorApproveServlet extends HttpServlet {
 				conn.commit();
 				if (allApproved) {
 					session.setAttribute("successMsg",
-							"Đã chốt bảng công. Tất cả quản đốc đã xác nhận, bảng công chuyển sang HR duyệt.");
+							"Đã chốt bảng công. Tất cả trưởng phòng đã xác nhận, bảng công chuyển sang HR duyệt.");
 				} else {
 					session.setAttribute("successMsg",
 							"Đã chốt bảng công tháng " + sheet.getMonth() + "/" + sheet.getYear() + " thành công.");

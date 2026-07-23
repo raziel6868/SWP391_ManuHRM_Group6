@@ -9,17 +9,17 @@ SET FOREIGN_KEY_CHECKS = 0;
 TRUNCATE TABLE password_resets;
 TRUNCATE TABLE holidays;
 TRUNCATE TABLE audit_logs;
-TRUNCATE TABLE employee_allowances;
+TRUNCATE TABLE allowance_rules;
 TRUNCATE TABLE employee_dependents;
 TRUNCATE TABLE allowance_types;
 TRUNCATE TABLE personal_tax_brackets;
 TRUNCATE TABLE personal_tax_settings;
 TRUNCATE TABLE insurance_rates;
 TRUNCATE TABLE payroll_settings;
+TRUNCATE TABLE monthly_salary_allowances;
 TRUNCATE TABLE monthly_salaries;
 TRUNCATE TABLE monthly_sheet_approvals;
 TRUNCATE TABLE monthly_sheets;
-TRUNCATE TABLE salary_bases;
 TRUNCATE TABLE overtime_records;
 TRUNCATE TABLE attendance_corrections;
 TRUNCATE TABLE attendance_records;
@@ -141,8 +141,6 @@ INSERT INTO permissions (id, code, name, url_pattern, module) VALUES
 (60, 'OT_APPROVE',              'Duyệt tăng ca',              '/overtime-approve',        'OVERTIME'),
 (61, 'OT_CANCEL',               'Hủy tăng ca',                '/overtime-reject',         'OVERTIME'),
 -- Salary / Payroll
-(62, 'SALARY_BASE_VIEW',        '[Deprecated] Xem lương cơ bản',      '/salary-base-list',        'SALARY'),
-(63, 'SALARY_BASE_SETUP',       '[Deprecated] Cài đặt lương cơ bản', '/salary-base-setup',       'SALARY'),
 (64, 'PAYROLL_VIEW',            'Xem bảng lương',             '/payroll-preview',         'PAYROLL'),
 (65, 'PAYROLL_GENERATE',        'Tạo bảng lương tháng',      '/payroll-generate',        'PAYROLL'),
 (66, 'PAYSLIP_VIEW',            'Xem phiếu lương',            '/payslip-view',            'PAYSLIP'),
@@ -173,9 +171,6 @@ INSERT INTO permissions (id, code, name, url_pattern, module) VALUES
 (91, 'ALLOWANCE_TYPE_CREATE',   'Tạo loại phụ cấp',          '/allowance-type-create',        'ALLOWANCE'),
 (92, 'ALLOWANCE_TYPE_UPDATE',   'Cập nhật loại phụ cấp',     '/allowance-type-update',        'ALLOWANCE'),
 (93, 'ALLOWANCE_TYPE_STATUS',   'Khóa/Mở loại phụ cấp',      '/allowance-type-status',        'ALLOWANCE'),
-(94, 'EMPLOYEE_ALLOWANCE_VIEW', 'Xem phụ cấp nhân viên',     '/employee-allowance-list',      'ALLOWANCE'),
-(95, 'EMPLOYEE_ALLOWANCE_SETUP','Thiết lập phụ cấp NV',      '/employee-allowance-setup',     'ALLOWANCE'),
-(96, 'EMPLOYEE_ALLOWANCE_STATUS','Khóa/Mở phụ cấp NV',       '/employee-allowance-status',    'ALLOWANCE'),
 (97, 'INSURANCE_RATE_VIEW',     'Xem mức đóng bảo hiểm',     '/insurance-rate-list',          'INSURANCE'),
 (98, 'INSURANCE_RATE_SETUP',    'Thiết lập mức đóng BH',     '/insurance-rate-setup',         'INSURANCE'),
 (99, 'PERSONAL_TAX_SETTING_VIEW', 'Xem giảm trừ gia cảnh',   '/personal-tax-setting-list',    'TAX'),
@@ -187,10 +182,9 @@ INSERT INTO permissions (id, code, name, url_pattern, module) VALUES
 (105,'EMPLOYEE_DEPENDENT_STATUS','Khóa/Mở người phụ thuộc',  '/employee-dependent-status',    'DEPENDENT'),
 -- Monthly sheet workflow + supervisor correction
 (106,'MONTHLY_SHEET_SUBMIT',     'Gửi duyệt bảng công tháng',         '/monthly-sheet-submit',                'PAYROLL'),
-(107,'MONTHLY_SHEET_SUPERVISOR_VIEW', 'Xem bảng công cần quản đốc duyệt', '/monthly-sheet-supervisor',     'PAYROLL'),
-(108,'MONTHLY_SHEET_SUPERVISOR_APPROVE', 'Quản đốc xác nhận bảng công',   '/monthly-sheet-supervisor-approve', 'PAYROLL'),
+(107,'MONTHLY_SHEET_SUPERVISOR_VIEW', 'Xem bảng công cần trưởng phòng duyệt', '/monthly-sheet-supervisor',     'PAYROLL'),
+(108,'MONTHLY_SHEET_SUPERVISOR_APPROVE', 'Trưởng phòng xác nhận bảng công',   '/monthly-sheet-supervisor-approve', 'PAYROLL'),
 (109,'MONTHLY_SHEET_HR_APPROVE', 'HR chốt bảng công',                 '/monthly-sheet-hr-approve',            'PAYROLL'),
-(110,'MONTHLY_SHEET_DIRECTOR_APPROVE', 'Giám đốc đóng sổ bảng công',  '/monthly-sheet-director-approve',      'PAYROLL'),
 (111,'ATTENDANCE_CORRECTION_SUPERVISOR_APPROVE', 'Quản đốc duyệt điều chỉnh công', '/attendance-correction-supervisor-approve', 'ATTENDANCE'),
 (112,'MONTHLY_SHEET_REJECT',     'Từ chối bảng công tháng',           '/monthly-sheet-reject',                'PAYROLL'),
 (113,'PAYROLL_SETTING_VIEW',     'Xem cấu hình payroll',              '/payroll-setting-list',                'PAYROLL'),
@@ -240,13 +234,13 @@ INSERT INTO role_permissions (role_id, permission_id) VALUES
 (1, 39), (1, 40), (1, 41), (1, 42), (1, 43), (1, 44), (1, 45),
 (1, 46), (1, 47), (1, 51), (1, 52),
 (1, 53), (1, 54), (1, 55), (1, 56), (1, 57), (1, 58), (1, 59),
-(1, 60), (1, 61), (1, 62), (1, 63), (1, 64), (1, 65), (1, 66),
+(1, 60), (1, 61), (1, 64), (1, 65), (1, 66),
 (1, 67), (1, 68), (1, 69), (1, 70), (1, 71), (1, 72), (1, 73),
 (1, 74), (1, 75), (1, 76), (1, 77), (1, 83), (1, 84),
-(1, 87), (1, 88), (1, 89), (1, 90), (1, 91), (1, 92), (1, 93), (1, 94),
-(1, 95), (1, 96), (1, 97), (1, 98), (1, 99), (1, 100), (1, 101), (1, 102), (1, 103),
-(1, 104), (1, 105), (1, 106), (1, 107), (1, 108), (1, 109), (1, 110), (1, 111), (1, 112),
-(1, 113), (1, 114), (1, 115), (1, 117), (1, 118),-- Holiday permissions for SYSADMIN
+(1, 87), (1, 88), (1, 89), (1, 90), (1, 91), (1, 92), (1, 93),
+(1, 97), (1, 98), (1, 99), (1, 100), (1, 101), (1, 102), (1, 103),
+(1, 104), (1, 105), (1, 106), (1, 107), (1, 108), (1, 109), (1, 111), (1, 112),
+(1, 113), (1, 114), (1, 115), (1, 117), (1, 118), -- Holiday permissions for SYSADMIN
 (1, 78), (1, 79), (1, 80), (1, 81);
 
 -- HR_MANAGER: explicit operational scope
@@ -261,13 +255,12 @@ INSERT INTO role_permissions (role_id, permission_id) VALUES
 -- Overtime
 (2, 58),
 -- Salary / Payroll
-(2, 62), (2, 63), (2, 64), (2, 65), (2, 66), (2, 89),
+(2, 64), (2, 65), (2, 66), (2, 89),
 (2, 90), (2, 91), (2, 92), (2, 93),
-(2, 94), (2, 95), (2, 96),
 (2, 97), (2, 98),
 (2, 99), (2, 100), (2, 101), (2, 102),
 (2, 103), (2, 104), (2, 105), (2, 113), (2, 114), (2, 115), (2, 117),-- Monthly Sheet
-(2, 67), (2, 68), (2, 69), (2, 106), (2, 109), (2, 110), (2, 112),
+(2, 67), (2, 68), (2, 69), (2, 106), (2, 107), (2, 108), (2, 109), (2, 112),
 -- Reports
 (2, 70), (2, 71), (2, 72), (2, 73), (2, 74), (2, 75),
 -- Audit permissions belong to SYSADMIN (IT Manager) only
@@ -400,9 +393,10 @@ VALUES
 -- =========================================================
 
 INSERT INTO payroll_settings
-    (standard_work_days, standard_work_hours_per_day, normal_overtime_rate, effective_from, effective_to)
+    (standard_work_days, standard_work_hours_per_day, normal_overtime_rate, attendance_bonus_amount,
+     effective_from, effective_to)
 VALUES
-    (22.00, 8.00, 1.50, '2024-01-01', NULL);
+    (22.00, 8.00, 1.50, 1000000.00, '2024-01-01', NULL);
 
 INSERT INTO insurance_rates
     (social_insurance_employee_rate, health_insurance_employee_rate, unemployment_insurance_employee_rate,
@@ -431,8 +425,7 @@ VALUES
     (1, 'MEAL', 'Phụ cấp ăn trưa', 'Phụ cấp ăn ca cố định hàng tháng', FALSE, FALSE, TRUE),
     (2, 'POSITION', 'Phụ cấp vị trí', 'Phụ cấp vị trí tính vào thu nhập và căn cứ bảo hiểm', TRUE, TRUE, TRUE),
     (3, 'PHONE', 'Phụ cấp điện thoại', 'Phụ cấp điện thoại khoán cố định hàng tháng', FALSE, FALSE, TRUE),
-    (4, 'ATTENDANCE_BONUS', 'Phụ cấp chuyên cần',
-     'Chỉ được cộng khi nhân viên không đi muộn và không vắng không phép trong kỳ lương.', TRUE, FALSE, TRUE);
+    (4, 'HAZARD', 'Phụ cấp độc hại', 'Phụ cấp độc hại cố định cho công nhân xưởng sản xuất', FALSE, TRUE, TRUE);
 
 INSERT INTO contracts (user_id, contract_type_id, start_date, end_date, salary, file_path, status) VALUES
 (1, 2, '2024-01-01', '2029-12-31', 35000000, '/contracts/director_minhanh_full_time.pdf', 'ACTIVE'),
@@ -466,47 +459,21 @@ GROUP BY c.user_id;
 -- INSERT INTO monthly_sheets (year, month, status) VALUES
 -- (2026, 6, 'OPEN');
 
--- Company-wide allowance configuration.
--- MEAL and ATTENDANCE_BONUS apply to every active employee.
-INSERT INTO employee_allowances
-    (user_id, allowance_type_id, amount, effective_from, effective_to, is_active)
-SELECT u.id, at.id, 500000.00, '2024-01-01', NULL, TRUE
-FROM users u
-JOIN allowance_types at ON at.code = 'MEAL'
-WHERE u.is_active = TRUE;
-
-INSERT INTO employee_allowances
-    (user_id, allowance_type_id, amount, effective_from, effective_to, is_active)
-SELECT u.id, at.id, 1000000.00, '2024-01-01', NULL, TRUE
-FROM users u
-JOIN allowance_types at ON at.code = 'ATTENDANCE_BONUS'
-WHERE u.is_active = TRUE;
-
--- PHONE applies to office employees and production supervisors.
-INSERT INTO employee_allowances
-    (user_id, allowance_type_id, amount, effective_from, effective_to, is_active)
-SELECT u.id, at.id, 300000.00, '2024-01-01', NULL, TRUE
-FROM users u
-JOIN allowance_types at ON at.code = 'PHONE'
-WHERE u.is_active = TRUE
-  AND u.employee_type = 'OFFICE';
-
--- POSITION applies only to management/supervisor job titles.
-INSERT INTO employee_allowances
-    (user_id, allowance_type_id, amount, effective_from, effective_to, is_active)
-SELECT u.id,
-       at.id,
-       CASE
-           WHEN u.job_title_id = 1 THEN 3000000.00
-           WHEN u.job_title_id IN (2, 4, 6) THEN 1000000.00
-       END AS amount,
-       '2024-01-01',
-       NULL,
-       TRUE
-FROM users u
-JOIN allowance_types at ON at.code = 'POSITION'
-WHERE u.is_active = TRUE
-  AND u.job_title_id IN (1, 2, 4, 6);
+-- Company-wide allowance rules. Attendance bonus is configured in payroll_settings.
+INSERT INTO allowance_rules
+    (id, allowance_type_id, apply_scope, employee_type, department_type, department_id, job_title_id,
+     amount, effective_from, effective_to, is_active)
+VALUES
+    (1, 1, 'ALL', NULL, NULL, NULL, NULL, 500000.00, '2024-01-01', NULL, TRUE),
+    (2, 3, 'EMPLOYEE_TYPE', 'OFFICE', NULL, NULL, NULL, 300000.00, '2024-01-01', NULL, TRUE),
+    (3, 4, 'DEPARTMENT_TYPE', 'WORKER', 'FACTORY', NULL, NULL, 1000000.00, '2026-07-01', NULL, TRUE),
+    (4, 2, 'JOB_TITLE', NULL, NULL, NULL, 1, 3000000.00, '2024-01-01', NULL, TRUE),
+    (5, 2, 'JOB_TITLE', NULL, NULL, NULL, 2, 1000000.00, '2024-01-01', NULL, TRUE),
+    (6, 2, 'JOB_TITLE', NULL, NULL, NULL, 3, 500000.00, '2024-01-01', NULL, TRUE),
+    (7, 2, 'JOB_TITLE', NULL, NULL, NULL, 4, 1000000.00, '2024-01-01', NULL, TRUE),
+    (8, 2, 'JOB_TITLE', NULL, NULL, NULL, 5, 500000.00, '2024-01-01', NULL, TRUE),
+    (9, 2, 'JOB_TITLE', NULL, NULL, NULL, 6, 1000000.00, '2024-01-01', NULL, TRUE),
+    (10, 2, 'JOB_TITLE', NULL, NULL, NULL, 7, 300000.00, '2024-01-01', NULL, TRUE);
 
 INSERT INTO audit_logs (event_code, entity_type, entity_id, actor_id, actor_name, changed_fields, ip_address) VALUES
 ('SYSTEM_RESET', 'DATABASE', 1, 2, 'it_manager_khoa', 'Reset to Iter 3 baseline for manual attendance import and payroll demo', '127.0.0.1');

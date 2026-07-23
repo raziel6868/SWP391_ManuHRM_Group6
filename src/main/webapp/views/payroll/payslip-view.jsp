@@ -181,9 +181,21 @@
                                             <td class="text-on-surface-variant">Tiền làm thêm giờ</td>
                                             <td class="text-end fw-medium text-on-surface"><fmt:formatNumber value="${salary.overtimePay}" pattern="#,##0" /> VND</td>
                                         </tr>
+                                        <c:forEach var="allowance" items="${salary.allowanceDetails}">
+                                            <tr>
+                                                <td class="text-on-surface-variant">
+                                                    <c:out value="${allowance.allowanceName}" />
+                                                </td>
+                                                <td class="text-end fw-medium text-on-surface"><fmt:formatNumber value="${allowance.amount}" pattern="#,##0" /> VND</td>
+                                            </tr>
+                                        </c:forEach>
                                         <tr>
-                                            <td class="text-on-surface-variant">Phụ cấp hợp lệ</td>
+                                            <td class="text-on-surface-variant">Tổng phụ cấp</td>
                                             <td class="text-end fw-medium text-on-surface"><fmt:formatNumber value="${salary.totalAllowances}" pattern="#,##0" /> VND</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="text-on-surface-variant">Thưởng chuyên cần</td>
+                                            <td class="text-end fw-medium text-on-surface"><fmt:formatNumber value="${salary.attendanceBonus}" pattern="#,##0" /> VND</td>
                                         </tr>
                                         <tr>
                                             <td class="fw-bold text-on-surface">Tổng thu nhập trước khấu trừ</td>
@@ -288,13 +300,18 @@
                                                 <td class="text-end"><fmt:formatNumber value="${salary.overtimePay}" pattern="#,##0" /> VND</td>
                                             </tr>
                                             <tr>
-                                                <td class="fw-medium">Phụ cấp hợp lệ</td>
-                                                <td>Phụ cấp đang hiệu lực; ATTENDANCE_BONUS chỉ cộng khi không có LATE và không có ABSENT không phép trong kỳ</td>
+                                                <td class="fw-medium">Tổng phụ cấp</td>
+                                                <td>Phụ cấp theo cấu hình áp dụng trong kỳ lương</td>
                                                 <td class="text-end"><fmt:formatNumber value="${salary.totalAllowances}" pattern="#,##0" /> VND</td>
                                             </tr>
                                             <tr>
+                                                <td class="fw-medium">Thưởng chuyên cần</td>
+                                                <td>Chỉ cộng khi không đi muộn và không vắng không phép trong kỳ</td>
+                                                <td class="text-end"><fmt:formatNumber value="${salary.attendanceBonus}" pattern="#,##0" /> VND</td>
+                                            </tr>
+                                            <tr>
                                                 <td class="fw-medium">Tổng trước khấu trừ</td>
-                                                <td><fmt:formatNumber value="${salary.proratedBaseSalary}" pattern="#,##0" /> + <fmt:formatNumber value="${salary.paidLeaveSalary}" pattern="#,##0" /> + <fmt:formatNumber value="${salary.overtimePay}" pattern="#,##0" /> + <fmt:formatNumber value="${salary.totalAllowances}" pattern="#,##0" /></td>
+                                                <td><fmt:formatNumber value="${salary.proratedBaseSalary}" pattern="#,##0" /> + <fmt:formatNumber value="${salary.paidLeaveSalary}" pattern="#,##0" /> + <fmt:formatNumber value="${salary.overtimePay}" pattern="#,##0" /> + <fmt:formatNumber value="${salary.totalAllowances}" pattern="#,##0" /> + <fmt:formatNumber value="${salary.attendanceBonus}" pattern="#,##0" /></td>
                                                 <td class="text-end fw-bold"><fmt:formatNumber value="${salary.grossIncome}" pattern="#,##0" /> VND</td>
                                             </tr>
                                             <tr>

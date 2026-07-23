@@ -1,5 +1,6 @@
 package dal;
 
+import dto.PayrollAllowanceDetail;
 import dto.PayrollPreviewRow;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -26,7 +27,7 @@ public class PayrollDAO {
 	private static final BigDecimal MONEY_ZERO = BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
 
 	private final PayrollSettingDAO payrollSettingDAO = new PayrollSettingDAO();
-	private final EmployeeAllowanceDAO employeeAllowanceDAO = new EmployeeAllowanceDAO();
+	private final AllowanceRuleDAO allowanceRuleDAO = new AllowanceRuleDAO();
 	private final InsuranceRateDAO insuranceRateDAO = new InsuranceRateDAO();
 	private final PersonalTaxSettingDAO personalTaxSettingDAO = new PersonalTaxSettingDAO();
 	private final PersonalTaxBracketDAO personalTaxBracketDAO = new PersonalTaxBracketDAO();
@@ -110,19 +111,22 @@ public class PayrollDAO {
 						BigDecimal actualWorkDays = countActualWorkDays(conn, userId, year, month);
 						BigDecimal paidLeaveDays = countPaidLeaveDays(conn, userId, firstDay, lastDay);
 						BigDecimal approvedOtHours = sumApprovedOtHours(conn, userId, year, month);
-						boolean attendanceBonusEligible = !hasAttendanceBonusViolation(conn, userId, year, month);
-						BigDecimal totalAllowances = employeeAllowanceDAO.sumActiveAllowances(userId, year, month,
-								attendanceBonusEligible);
-						BigDecimal insuranceBasedAllowances = employeeAllowanceDAO.sumInsuranceBasedAllowances(userId,
-								year, month, attendanceBonusEligible);
-						BigDecimal nonTaxableAllowances = employeeAllowanceDAO.sumNonTaxableAllowances(userId, year,
-								month, attendanceBonusEligible);
+						boolean attendanceBonusEligible = isAttendanceBonusEligible(conn, userId, year, month,
+								standardWorkDays, actualWorkDays, paidLeaveDays);
+						BigDecimal attendanceBonus = resolveAttendanceBonus(setting, attendanceBonusEligible);
+						List<PayrollAllowanceDetail> allowanceDetails = allowanceRuleDAO
+								.getActiveAllowanceDetails(userId, year, month);
+						BigDecimal totalAllowances = sumAllowanceAmounts(allowanceDetails);
+						BigDecimal insuranceBasedAllowances = sumInsuranceBasedAllowanceAmounts(allowanceDetails);
+						BigDecimal nonTaxableAllowances = sumNonTaxableAllowanceAmounts(allowanceDetails);
 						int dependentCount = employeeDependentDAO.countActiveDependents(userId, year, month);
 
 						PayrollPreviewRow row = calculateRow(userId, fullName, empCode, departmentId, deptName,
 								baseSalary, actualWorkDays, paidLeaveDays, approvedOtHours, totalAllowances,
-								insuranceBasedAllowances, nonTaxableAllowances, dependentCount, personalDeductionAmount,
-								dependentDeductionAmount, standardWorkDays, setting, insuranceRate, taxBrackets);
+								attendanceBonus, insuranceBasedAllowances, nonTaxableAllowances, dependentCount,
+								personalDeductionAmount, dependentDeductionAmount, standardWorkDays, setting,
+								insuranceRate, taxBrackets);
+						row.setAllowanceDetails(allowanceDetails);
 						rows.add(row);
 					}
 				}
@@ -132,6 +136,50 @@ public class PayrollDAO {
 		}
 
 		return rows;
+	}
+
+	private BigDecimal resolveAttendanceBonus(PayrollSetting setting, boolean attendanceBonusEligible) {
+		if (!attendanceBonusEligible || setting == null) {
+			return MONEY_ZERO;
+		}
+		return money(setting.getAttendanceBonusAmount());
+	}
+
+	private BigDecimal sumAllowanceAmounts(List<PayrollAllowanceDetail> details) {
+		BigDecimal total = BigDecimal.ZERO;
+		if (details == null) {
+			return MONEY_ZERO;
+		}
+		for (PayrollAllowanceDetail detail : details) {
+			total = total.add(safeNumber(detail.getAmount()));
+		}
+		return money(total);
+	}
+
+	private BigDecimal sumInsuranceBasedAllowanceAmounts(List<PayrollAllowanceDetail> details) {
+		BigDecimal total = BigDecimal.ZERO;
+		if (details == null) {
+			return MONEY_ZERO;
+		}
+		for (PayrollAllowanceDetail detail : details) {
+			if (Boolean.TRUE.equals(detail.getInsuranceBased())) {
+				total = total.add(safeNumber(detail.getAmount()));
+			}
+		}
+		return money(total);
+	}
+
+	private BigDecimal sumNonTaxableAllowanceAmounts(List<PayrollAllowanceDetail> details) {
+		BigDecimal total = BigDecimal.ZERO;
+		if (details == null) {
+			return MONEY_ZERO;
+		}
+		for (PayrollAllowanceDetail detail : details) {
+			if (!Boolean.TRUE.equals(detail.getTaxable())) {
+				total = total.add(safeNumber(detail.getAmount()));
+			}
+		}
+		return money(total);
 	}
 
 	private BigDecimal countActualWorkDays(Connection conn, Long userId, int year, int month) throws SQLException {
@@ -229,6 +277,16 @@ public class PayrollDAO {
 		}
 	}
 
+	private boolean isAttendanceBonusEligible(Connection conn, Long userId, int year, int month,
+			BigDecimal standardWorkDays, BigDecimal actualWorkDays, BigDecimal paidLeaveDays) throws SQLException {
+		if (hasAttendanceBonusViolation(conn, userId, year, month)) {
+			return false;
+		}
+		BigDecimal unexcusedAbsenceDays = safeNumber(standardWorkDays).subtract(safeNumber(actualWorkDays))
+				.subtract(safeNumber(paidLeaveDays));
+		return unexcusedAbsenceDays.compareTo(BigDecimal.ZERO) <= 0;
+	}
+
 	private BigDecimal sumApprovedOtHours(Connection conn, Long userId, int year, int month) throws SQLException {
 		String sql = """
 				SELECT COALESCE(SUM(ot.approved_hours), 0) AS total_ot
@@ -262,10 +320,11 @@ public class PayrollDAO {
 
 	private PayrollPreviewRow calculateRow(Long userId, String fullName, String empCode, Long departmentId,
 			String deptName, BigDecimal baseSalary, BigDecimal actualWorkDays, BigDecimal paidLeaveDays,
-			BigDecimal approvedOtHours, BigDecimal totalAllowances, BigDecimal insuranceBasedAllowances,
-			BigDecimal nonTaxableAllowances, int dependentCount, BigDecimal personalDeductionAmount,
-			BigDecimal dependentDeductionAmount, BigDecimal calendarStandardWorkDays, PayrollSetting setting,
-			InsuranceRate insuranceRate, List<PersonalTaxBracket> taxBrackets) {
+			BigDecimal approvedOtHours, BigDecimal totalAllowances, BigDecimal attendanceBonus,
+			BigDecimal insuranceBasedAllowances, BigDecimal nonTaxableAllowances, int dependentCount,
+			BigDecimal personalDeductionAmount, BigDecimal dependentDeductionAmount,
+			BigDecimal calendarStandardWorkDays, PayrollSetting setting, InsuranceRate insuranceRate,
+			List<PersonalTaxBracket> taxBrackets) {
 
 		BigDecimal standardWorkDays = positiveOrDefault(calendarStandardWorkDays, DEFAULT_WORK_DAYS);
 		BigDecimal standardWorkHoursPerDay = positiveOrDefault(
@@ -277,6 +336,7 @@ public class PayrollDAO {
 		paidLeaveDays = safeNumber(paidLeaveDays);
 		approvedOtHours = safeNumber(approvedOtHours);
 		totalAllowances = money(totalAllowances);
+		attendanceBonus = money(attendanceBonus);
 		insuranceBasedAllowances = money(insuranceBasedAllowances);
 		nonTaxableAllowances = money(nonTaxableAllowances);
 		baseSalary = money(baseSalary);
@@ -289,7 +349,8 @@ public class PayrollDAO {
 		BigDecimal proratedBaseSalary = money(actualWorkDays.multiply(dailyRate));
 		BigDecimal paidLeaveSalary = money(paidLeaveDays.multiply(dailyRate));
 		BigDecimal overtimePay = money(approvedOtHours.multiply(hourlyRate).multiply(normalOvertimeRate));
-		BigDecimal grossIncome = money(proratedBaseSalary.add(paidLeaveSalary).add(overtimePay).add(totalAllowances));
+		BigDecimal grossIncome = money(
+				proratedBaseSalary.add(paidLeaveSalary).add(overtimePay).add(totalAllowances).add(attendanceBonus));
 		BigDecimal insuranceSalary = resolveInsuranceSalary(baseSalary, insuranceBasedAllowances);
 		BigDecimal socialInsuranceBase = applyCap(insuranceSalary, insuranceRate.getSocialHealthInsuranceCap());
 		BigDecimal healthInsuranceBase = applyCap(insuranceSalary, insuranceRate.getSocialHealthInsuranceCap());
@@ -332,6 +393,7 @@ public class PayrollDAO {
 		row.setApprovedOtHours(scaleDays(approvedOtHours));
 		row.setOvertimePay(overtimePay);
 		row.setTotalAllowances(totalAllowances);
+		row.setAttendanceBonus(attendanceBonus);
 		row.setGrossIncome(grossIncome);
 		row.setDailyRate(money(dailyRate));
 		row.setHourlyRate(hourlyRate.setScale(2, RoundingMode.HALF_UP));

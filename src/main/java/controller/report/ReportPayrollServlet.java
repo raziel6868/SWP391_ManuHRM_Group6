@@ -102,6 +102,7 @@ public class ReportPayrollServlet extends HttpServlet {
 		PayrollSummaryRow totals = new PayrollSummaryRow();
 		totals.setTotalSalary(BigDecimal.ZERO);
 		totals.setTotalAllowances(BigDecimal.ZERO);
+		totals.setTotalAttendanceBonus(BigDecimal.ZERO);
 		totals.setTotalOtCost(BigDecimal.ZERO);
 		totals.setGrossIncome(BigDecimal.ZERO);
 		totals.setEmployeeInsurance(BigDecimal.ZERO);
@@ -112,6 +113,7 @@ public class ReportPayrollServlet extends HttpServlet {
 			totals.setEmployeeCount(totals.getEmployeeCount() + row.getEmployeeCount());
 			totals.setTotalSalary(totals.getTotalSalary().add(safe(row.getTotalSalary())));
 			totals.setTotalAllowances(totals.getTotalAllowances().add(safe(row.getTotalAllowances())));
+			totals.setTotalAttendanceBonus(totals.getTotalAttendanceBonus().add(safe(row.getTotalAttendanceBonus())));
 			totals.setTotalOtCost(totals.getTotalOtCost().add(safe(row.getTotalOtCost())));
 			totals.setGrossIncome(totals.getGrossIncome().add(safe(row.getGrossIncome())));
 			totals.setEmployeeInsurance(totals.getEmployeeInsurance().add(safe(row.getEmployeeInsurance())));

@@ -19,6 +19,8 @@ import dto.AttendanceSummaryRow;
 import dto.ContractExpiryReportRow;
 import dto.ContractStatusRow;
 import dto.HeadcountRow;
+import dto.LeaveEmployeeReportRow;
+import dto.LeaveTypeUsageRow;
 import dto.LeaveSummaryRow;
 import dto.OvertimeEmployeeReportRow;
 import dto.OvertimeSummaryRow;
@@ -271,6 +273,181 @@ public class ReportDAO {
 			}
 		}
 		return expectedDates.size();
+	}
+
+	public List<LeaveEmployeeReportRow> getLeaveEmployeeReportRows(int year, LocalDate startDate, LocalDate endDate,
+			Long leaveTypeId) {
+		List<LeaveEmployeeReportRow> rows = new ArrayList<>();
+		Map<Long, LeaveEmployeeReportRow> rowsByUserId = new LinkedHashMap<>();
+		String sql = """
+				SELECT u.id AS user_id, u.employee_code, u.full_name, d.name AS department_name,
+				       lb.id AS annual_leave_balance_id,
+				       COALESCE(lb.total_days, 0) AS annual_leave_total_days,
+				       COALESCE(lb.used_days, 0) AS annual_leave_used_days
+				FROM users u
+				LEFT JOIN departments d ON u.department_id = d.id
+				LEFT JOIN leave_balances lb ON lb.user_id = u.id
+				  AND lb.year = ?
+				  AND lb.leave_type_id = (
+				      SELECT lt.id
+				      FROM leave_types lt
+				      WHERE lt.is_annual_leave = TRUE
+				        AND lt.requires_balance = TRUE
+				        AND lt.is_active = TRUE
+				      ORDER BY lt.id ASC
+				      LIMIT 1
+				  )
+				WHERE (u.department_id IS NULL OR d.is_active = TRUE)
+				  AND (
+				      u.is_active = TRUE
+				      OR EXISTS (
+				          SELECT 1
+				          FROM leave_requests lr2
+				          WHERE lr2.user_id = u.id
+				            AND lr2.status = 'APPROVED'
+				            AND lr2.start_date <= ?
+				            AND lr2.end_date >= ?
+				      )
+				      OR EXISTS (
+				          SELECT 1
+				          FROM contracts c2
+				          WHERE c2.user_id = u.id
+				            AND c2.start_date <= ?
+				            AND (c2.end_date IS NULL OR c2.end_date >= ?)
+				            AND (c2.terminated_at IS NULL OR c2.terminated_at >= ?)
+				      )
+				  )
+				ORDER BY d.name, u.full_name
+				""";
+
+		try (Connection conn = DBContext.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+			ps.setInt(1, year);
+			ps.setDate(2, Date.valueOf(endDate));
+			ps.setDate(3, Date.valueOf(startDate));
+			ps.setDate(4, Date.valueOf(endDate));
+			ps.setDate(5, Date.valueOf(startDate));
+			ps.setDate(6, Date.valueOf(startDate));
+			try (ResultSet rs = ps.executeQuery()) {
+				while (rs.next()) {
+					LeaveEmployeeReportRow row = new LeaveEmployeeReportRow();
+					row.setEmployeeCode(rs.getString("employee_code"));
+					row.setFullName(rs.getString("full_name"));
+					row.setDepartmentName(defaultDepartmentName(rs.getString("department_name")));
+					row.setHasAnnualLeaveBalance(rs.getObject("annual_leave_balance_id") != null);
+					row.setAnnualLeaveTotalDays(safe(rs.getBigDecimal("annual_leave_total_days")));
+					row.setAnnualLeaveUsedDays(safe(rs.getBigDecimal("annual_leave_used_days")));
+					rows.add(row);
+					rowsByUserId.put(rs.getLong("user_id"), row);
+				}
+			}
+		} catch (SQLException e) {
+			System.err.println("ReportDAO.getLeaveEmployeeReportRows() base ERROR: " + e.getMessage());
+			return rows;
+		}
+
+		for (ApprovedLeaveMetric metric : getApprovedLeaveMetrics(startDate, endDate, leaveTypeId)) {
+			LeaveEmployeeReportRow row = rowsByUserId.get(metric.userId);
+			if (row == null) {
+				continue;
+			}
+			if (isPaidLeaveMetric(metric.salaryPaidBy)) {
+				row.addPaidLeaveDays(metric.days);
+			} else if ("NONE".equals(metric.salaryPaidBy)) {
+				row.addUnpaidLeaveDays(metric.days);
+			}
+		}
+
+		return rows;
+	}
+
+	public List<LeaveTypeUsageRow> getLeaveTypeUsageRows(LocalDate startDate, LocalDate endDate, Long leaveTypeId) {
+		Map<Long, LeaveTypeUsageRow> rowsByTypeId = new LinkedHashMap<>();
+		BigDecimal totalDays = BigDecimal.ZERO;
+
+		for (ApprovedLeaveMetric metric : getApprovedLeaveMetrics(startDate, endDate, leaveTypeId)) {
+			LeaveTypeUsageRow row = rowsByTypeId.computeIfAbsent(metric.leaveTypeId, id -> {
+				LeaveTypeUsageRow newRow = new LeaveTypeUsageRow();
+				newRow.setLeaveTypeId(metric.leaveTypeId);
+				newRow.setLeaveTypeCode(metric.leaveTypeCode);
+				newRow.setLeaveTypeName(metric.leaveTypeName);
+				return newRow;
+			});
+			row.addTotalDays(metric.days);
+			totalDays = totalDays.add(metric.days);
+		}
+
+		List<LeaveTypeUsageRow> rows = new ArrayList<>(rowsByTypeId.values());
+		for (LeaveTypeUsageRow row : rows) {
+			row.calculatePercentage(totalDays);
+		}
+		rows.sort((first, second) -> {
+			int daysCompare = second.getTotalDays().compareTo(first.getTotalDays());
+			if (daysCompare != 0) {
+				return daysCompare;
+			}
+			return String.CASE_INSENSITIVE_ORDER.compare(first.getLeaveTypeName(), second.getLeaveTypeName());
+		});
+		return rows;
+	}
+
+	private List<ApprovedLeaveMetric> getApprovedLeaveMetrics(LocalDate startDate, LocalDate endDate,
+			Long leaveTypeId) {
+		List<ApprovedLeaveMetric> metrics = new ArrayList<>();
+		StringBuilder sql = new StringBuilder("""
+				SELECT lr.user_id, lr.leave_type_id, lt.code AS leave_type_code, lt.name AS leave_type_name,
+				       lr.salary_paid_by_snapshot, lr.start_date, lr.end_date, lr.day_count_method_snapshot
+				FROM leave_requests lr
+				JOIN users u ON lr.user_id = u.id
+				LEFT JOIN departments d ON u.department_id = d.id
+				JOIN leave_types lt ON lr.leave_type_id = lt.id
+				WHERE lr.status = 'APPROVED'
+				  AND lr.start_date <= ?
+				  AND lr.end_date >= ?
+				  AND (u.department_id IS NULL OR d.is_active = TRUE)
+				""");
+
+		List<Object> params = new ArrayList<>();
+		params.add(Date.valueOf(endDate));
+		params.add(Date.valueOf(startDate));
+
+		if (leaveTypeId != null) {
+			sql.append(" AND lr.leave_type_id = ?");
+			params.add(leaveTypeId);
+		}
+
+		sql.append(" ORDER BY lt.name, lr.start_date, lr.id");
+
+		try (Connection conn = DBContext.getConnection();
+				PreparedStatement ps = conn.prepareStatement(sql.toString())) {
+			setParams(ps, params);
+			try (ResultSet rs = ps.executeQuery()) {
+				while (rs.next()) {
+					LocalDate requestStart = rs.getDate("start_date").toLocalDate();
+					LocalDate requestEnd = rs.getDate("end_date").toLocalDate();
+					LocalDate countedStart = requestStart.isBefore(startDate) ? startDate : requestStart;
+					LocalDate countedEnd = requestEnd.isAfter(endDate) ? endDate : requestEnd;
+					BigDecimal countedDays = LeavePolicyUtil.calculateRequestDays(countedStart, countedEnd,
+							rs.getString("day_count_method_snapshot"));
+
+					ApprovedLeaveMetric metric = new ApprovedLeaveMetric();
+					metric.userId = rs.getLong("user_id");
+					metric.leaveTypeId = rs.getLong("leave_type_id");
+					metric.leaveTypeCode = rs.getString("leave_type_code");
+					metric.leaveTypeName = rs.getString("leave_type_name");
+					metric.salaryPaidBy = rs.getString("salary_paid_by_snapshot");
+					metric.days = countedDays;
+					metrics.add(metric);
+				}
+			}
+		} catch (SQLException e) {
+			System.err.println("ReportDAO.getApprovedLeaveMetrics() ERROR: " + e.getMessage());
+		}
+
+		return metrics;
+	}
+
+	private boolean isPaidLeaveMetric(String salaryPaidBy) {
+		return "COMPANY".equals(salaryPaidBy) || "SOCIAL_INSURANCE".equals(salaryPaidBy);
 	}
 
 	public List<AttendanceSummaryRow> getAttendanceSummary(int year, Integer month, Long departmentId) {
@@ -938,4 +1115,11 @@ public class ReportDAO {
 		}
 	}
 
-}
+	private static class ApprovedLeaveMetric {
+		private Long userId;
+		private Long leaveTypeId;
+		private String leaveTypeCode;
+		private String leaveTypeName;
+		private String salaryPaidBy;
+		private BigDecimal days = BigDecimal.ZERO;
+	}}

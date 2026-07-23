@@ -103,7 +103,7 @@ INSERT INTO permissions (id, code, name, url_pattern, module) VALUES
 (31, 'CONTRACT_TYPE_STATUS', 'Kích hoạt/Vô hiệu Loại hợp đồng',  '/contract-type-status', 'CONTRACT_TYPE');
 
 -- =========================================================
--- Iter 2 + Iter 3 Permissions (IDs 32-117)
+-- Iter 2 + Iter 3 Permissions (IDs 32+)
 -- =========================================================
 
 INSERT INTO permissions (id, code, name, url_pattern, module) VALUES
@@ -197,7 +197,10 @@ INSERT INTO permissions (id, code, name, url_pattern, module) VALUES
 (114,'PAYROLL_SETTING_SETUP',    'Thiết lập cấu hình payroll',        '/payroll-setting-setup',               'PAYROLL'),
 (115,'OT_UPDATE',                'Sửa tăng ca',                       '/overtime-edit',                       'OVERTIME'),
 (116,'OT_MY_VIEW',               'Xem tăng ca của tôi',               '/my-overtime',                         'OVERTIME'),
-(117,'LEAVE_TYPE_DETAIL',        'Xem chi tiết Loại nghỉ',            '/leave-type-detail',                   'LEAVE_TYPE');
+(117,'LEAVE_TYPE_DETAIL',        'Xem chi tiết Loại nghỉ',            '/leave-type-detail',                   'LEAVE_TYPE'),
+-- Ticket action URL. AuthFilter matches exact servlet paths, so this child URL
+-- needs its own permission row.
+(118,'TICKET_SET_PASSWORD',       'Đặt lại mật khẩu từ ticket',        '/admin/tickets/set-password',          'TICKET');
 
 -- =========================================================
 -- Iter 1 Role Permissions (Explicit)
@@ -243,7 +246,7 @@ INSERT INTO role_permissions (role_id, permission_id) VALUES
 (1, 87), (1, 88), (1, 89), (1, 90), (1, 91), (1, 92), (1, 93), (1, 94),
 (1, 95), (1, 96), (1, 97), (1, 98), (1, 99), (1, 100), (1, 101), (1, 102), (1, 103),
 (1, 104), (1, 105), (1, 106), (1, 107), (1, 108), (1, 109), (1, 110), (1, 111), (1, 112),
-(1, 113), (1, 114), (1, 115), (1, 117),-- Holiday permissions for SYSADMIN
+(1, 113), (1, 114), (1, 115), (1, 117), (1, 118),-- Holiday permissions for SYSADMIN
 (1, 78), (1, 79), (1, 80), (1, 81);
 
 -- HR_MANAGER: explicit operational scope

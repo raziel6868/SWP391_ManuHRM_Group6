@@ -154,7 +154,6 @@ INSERT INTO permissions (id, code, name, url_pattern, module) VALUES
 (72, 'REPORT_HEADCOUNT',        'Báo cáo nhân sự',            '/report-headcount',        'REPORT'),
 (73, 'REPORT_CONTRACT',         'Báo cáo hợp đồng',          '/report-contract',         'REPORT'),
 (74, 'REPORT_PAYROLL',          'Báo cáo lương',              '/report-payroll',          'REPORT'),
-(75, 'REPORT_OT',               'Báo cáo tăng ca',            '/report-overtime',         'REPORT'),
 -- Audit
 (76, 'AUDIT_LOG_VIEW',          'Xem lịch sử hệ thống',      '/audit-log-list',          'AUDIT'),
 (77, 'APPROVAL_HISTORY_VIEW',   'Xem lịch sử phê duyệt',     '/approval-history-list',   'AUDIT'),
@@ -236,7 +235,7 @@ INSERT INTO role_permissions (role_id, permission_id) VALUES
 (1, 53), (1, 54), (1, 55), (1, 56), (1, 57), (1, 58), (1, 59),
 (1, 60), (1, 61), (1, 64), (1, 65), (1, 66),
 (1, 67), (1, 68), (1, 69), (1, 70), (1, 71), (1, 72), (1, 73),
-(1, 74), (1, 75), (1, 76), (1, 77), (1, 83), (1, 84),
+(1, 74), (1, 76), (1, 77), (1, 83), (1, 84),
 (1, 87), (1, 88), (1, 89), (1, 90), (1, 91), (1, 92), (1, 93),
 (1, 97), (1, 98), (1, 99), (1, 100), (1, 101), (1, 102), (1, 103),
 (1, 104), (1, 105), (1, 106), (1, 107), (1, 108), (1, 109), (1, 111), (1, 112),
@@ -262,7 +261,7 @@ INSERT INTO role_permissions (role_id, permission_id) VALUES
 (2, 103), (2, 104), (2, 105), (2, 113), (2, 114), (2, 115), (2, 117),-- Monthly Sheet
 (2, 67), (2, 68), (2, 69), (2, 106), (2, 107), (2, 108), (2, 109), (2, 112),
 -- Reports
-(2, 70), (2, 71), (2, 72), (2, 73), (2, 74), (2, 75),
+(2, 70), (2, 71), (2, 72), (2, 73), (2, 74),
 -- Audit permissions belong to SYSADMIN (IT Manager) only
 -- (2, 76), (2, 77),
 -- Holiday permissions for HR_MANAGER
@@ -441,7 +440,9 @@ INSERT INTO contracts (contract_code, user_id, contract_type_id, start_date, end
 ('HĐLĐ10', 12, 2, '2024-01-01', '2027-01-01', 8000000, '/contracts/worker_b_dung_fixed_term.pdf', 'ACTIVE'),
 ('HĐLĐ11', 13, 1, '2024-01-01', NULL, 18000000, '/contracts/sup_c_phuc_indefinite.pdf', 'ACTIVE'),
 ('HĐLĐ12', 14, 2, '2024-01-01', '2027-01-01', 8050000, '/contracts/worker_c_hai_fixed_term.pdf', 'ACTIVE'),
-('HĐLĐ13', 15, 2, '2024-01-01', '2027-01-01', 8000000, '/contracts/worker_c_kiet_fixed_term.pdf', 'ACTIVE');
+('HĐLĐ13', 15, 2, '2024-01-01', '2027-01-01', 8000000, '/contracts/worker_c_kiet_fixed_term.pdf', 'ACTIVE'),
+('HĐLĐ14', 2, 1, '2024-01-01', NULL, 30000000, '/contracts/it_manager_khoa_indefinite.pdf', 'ACTIVE'),
+('HĐLĐ15', 3, 2, '2024-01-01', '2027-01-01', 18000000, '/contracts/it_staff_huy_fixed_term.pdf', 'ACTIVE');
 
 INSERT INTO leave_balances (user_id, leave_type_id, year, total_days, used_days)
 SELECT c.user_id,

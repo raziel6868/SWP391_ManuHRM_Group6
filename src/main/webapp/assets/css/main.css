@@ -201,11 +201,24 @@ a:hover {
 
 /* Material Icons configuration */
 .material-symbols-outlined {
+  direction: ltr;
+  display: inline-block;
+  font-family: 'Material Symbols Outlined';
+  font-size: 24px;
+  font-style: normal;
   font-variation-settings:
   'FILL' 0,
   'wght' 400,
   'GRAD' 0,
   'opsz' 24;
+  font-weight: normal;
+  letter-spacing: normal;
+  line-height: 1;
+  text-transform: none;
+  white-space: nowrap;
+  word-wrap: normal;
+  -webkit-font-feature-settings: 'liga';
+  -webkit-font-smoothing: antialiased;
 }
 
 /* Text Colors */
@@ -270,6 +283,12 @@ a:hover {
   margin-bottom: 0.25rem;
   font-weight: 500;
   transition: all 0.2s;
+}
+
+.sidebar-nav-item > .material-symbols-outlined {
+  flex: 0 0 24px;
+  overflow: hidden;
+  width: 24px;
 }
 
 .sidebar-nav-item:hover {

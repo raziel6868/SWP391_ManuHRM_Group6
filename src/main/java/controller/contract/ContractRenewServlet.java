@@ -2,11 +2,8 @@ package controller.contract;
 
 import dal.ContractDAO;
 import dal.ContractTypeDAO;
+import dal.LeaveBalanceDAO;
 import dto.ContractDetail;
-import model.Contract;
-import model.ContractType;
-import util.ValidationUtil;
-
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.MultipartConfig;
 import jakarta.servlet.annotation.WebServlet;
@@ -15,7 +12,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import jakarta.servlet.http.Part;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigDecimal;
@@ -26,14 +22,15 @@ import java.nio.file.StandardCopyOption;
 import java.sql.Date;
 import java.util.List;
 import java.util.UUID;
+import model.Contract;
+import model.ContractType;
+import util.ContractRuleUtil;
+import util.ValidationUtil;
 
 /**
- * Renews a contract: the old contract is moved to EXPIRED and a brand new
- * ACTIVE contract is created with renewal_of_id pointing to the old one.
- *
- * The renewal works on contracts in status ACTIVE / EXPIRED / PENDING_RENEWAL.
- * Pre-populates the new contract fields from the previous one so HR only has to
- * adjust the dates and salary. Supports optional PDF upload in the same step.
+ * Handles contract continuation by signing a new contract record. The previous
+ * contract is closed as EXPIRED, and the new contract receives its own
+ * generated contract code.
  */
 @WebServlet(name = "ContractRenewServlet", urlPatterns = {"/contract-renew"})
 @MultipartConfig(fileSizeThreshold = 1024 * 1024, maxFileSize = 5L * 1024 * 1024, maxRequestSize = 6L * 1024 * 1024)
@@ -44,6 +41,7 @@ public class ContractRenewServlet extends HttpServlet {
 
 	private final ContractDAO contractDAO = new ContractDAO();
 	private final ContractTypeDAO contractTypeDAO = new ContractTypeDAO();
+	private final LeaveBalanceDAO leaveBalanceDAO = new LeaveBalanceDAO();
 
 	@Override
 	protected void doGet(HttpServletRequest request, HttpServletResponse response)
@@ -61,7 +59,7 @@ public class ContractRenewServlet extends HttpServlet {
 			return;
 		}
 		if (!isRenewable(previous.getStatus())) {
-			session.setAttribute("errorMsg", "Chỉ có thể gia hạn hợp đồng đang hiệu lực, hết hạn, hoặc chờ gia hạn.");
+			session.setAttribute("errorMsg", "Chỉ có thể ký hợp đồng mới từ hợp đồng đang hiệu lực hoặc đã hết hạn.");
 			response.sendRedirect(request.getContextPath() + "/contract-detail?id=" + id);
 			return;
 		}
@@ -69,7 +67,6 @@ public class ContractRenewServlet extends HttpServlet {
 		List<ContractType> contractTypes = contractTypeDAO.getActiveContractTypes();
 		request.setAttribute("previous", previous);
 		request.setAttribute("contractTypes", contractTypes);
-		// Pre-fill startDate with the day after the previous end_date
 		if (previous.getEndDate() != null) {
 			request.setAttribute("defaultStartDate", new Date(previous.getEndDate().getTime() + 24L * 60 * 60 * 1000));
 		}
@@ -82,7 +79,7 @@ public class ContractRenewServlet extends HttpServlet {
 		request.setCharacterEncoding("UTF-8");
 		HttpSession session = request.getSession();
 
-		Long previousId = parseId(request.getParameter("id"));
+		Long previousId = parseLong(request.getParameter("id"));
 		if (previousId == null) {
 			session.setAttribute("errorMsg", "Thiếu mã hợp đồng.");
 			response.sendRedirect(request.getContextPath() + "/contract-list");
@@ -96,7 +93,7 @@ public class ContractRenewServlet extends HttpServlet {
 			return;
 		}
 		if (!isRenewable(previous.getStatus())) {
-			session.setAttribute("errorMsg", "Chỉ có thể gia hạn hợp đồng đang hiệu lực, hết hạn, hoặc chờ gia hạn.");
+			session.setAttribute("errorMsg", "Chỉ có thể ký hợp đồng mới từ hợp đồng đang hiệu lực hoặc đã hết hạn.");
 			response.sendRedirect(request.getContextPath() + "/contract-detail?id=" + previousId);
 			return;
 		}
@@ -112,28 +109,30 @@ public class ContractRenewServlet extends HttpServlet {
 
 		if (contractTypeId == null) {
 			returnWithError(request, response, previous, "Vui lòng chọn loại hợp đồng.", contractTypeId, startDateStr,
-					endDateStr, salaryStr, null, null);
+					endDateStr, salaryStr);
 			return;
 		}
 		if (startDate == null) {
 			returnWithError(request, response, previous, "Ngày bắt đầu không hợp lệ.", contractTypeId, startDateStr,
-					endDateStr, salaryStr, null, null);
+					endDateStr, salaryStr);
 			return;
 		}
 		if (previous.getEndDate() != null && startDate.before(previous.getEndDate())) {
 			returnWithError(request, response, previous,
-					"Ngày bắt đầu hợp đồng mới không được trước ngày kết thúc hợp đồng cũ.", contractTypeId,
-					startDateStr, endDateStr, salaryStr, null, null);
+					"Ngày bắt đầu hợp đồng mới không được trước ngày kết thúc hợp đồng ban đầu.", contractTypeId,
+					startDateStr, endDateStr, salaryStr);
 			return;
 		}
-		if (endDate != null && endDate.before(startDate)) {
-			returnWithError(request, response, previous, "Ngày kết thúc phải sau ngày bắt đầu.", contractTypeId,
-					startDateStr, endDateStr, salaryStr, null, null);
+		ContractType contractType = contractTypeDAO.getById(contractTypeId);
+		String termError = ContractRuleUtil.validateTerm(contractType, startDate, endDate);
+		if (termError != null) {
+			returnWithError(request, response, previous, termError, contractTypeId, startDateStr, endDateStr,
+					salaryStr);
 			return;
 		}
 		if (salary != null && salary.signum() < 0) {
 			returnWithError(request, response, previous, "Mức lương không được âm.", contractTypeId, startDateStr,
-					endDateStr, salaryStr, null, null);
+					endDateStr, salaryStr);
 			return;
 		}
 
@@ -142,18 +141,17 @@ public class ContractRenewServlet extends HttpServlet {
 			filePart = request.getPart("contractFile");
 		} catch (IllegalStateException e) {
 			returnWithError(request, response, previous, "File vượt quá 5MB. Vui lòng chọn file nhỏ hơn.",
-					contractTypeId, startDateStr, endDateStr, salaryStr, null, null);
+					contractTypeId, startDateStr, endDateStr, salaryStr);
 			return;
 		}
 
 		String fileError = validateFile(filePart);
 		if (fileError != null) {
-			returnWithError(request, response, previous, fileError, contractTypeId, startDateStr, endDateStr, salaryStr,
-					null, null);
+			returnWithError(request, response, previous, fileError, contractTypeId, startDateStr, endDateStr,
+					salaryStr);
 			return;
 		}
 
-		// Build the new contract: same employee, linked to previous via renewal_of_id
 		Contract renewed = new Contract();
 		renewed.setUserId(previous.getUserId());
 		renewed.setContractTypeId(contractTypeId);
@@ -165,29 +163,28 @@ public class ContractRenewServlet extends HttpServlet {
 
 		Long newId = contractDAO.renewReturningId(previous.getId(), renewed);
 		if (newId == null) {
-			session.setAttribute("errorMsg", "Lỗi: Không thể tạo hợp đồng gia hạn. Vui lòng thử lại.");
+			session.setAttribute("errorMsg", "Không thể ký hợp đồng mới. Vui lòng thử lại.");
 			response.sendRedirect(request.getContextPath() + "/contract-detail?id=" + previousId);
 			return;
 		}
 
-		// Attach PDF if one was supplied
 		boolean hasFile = filePart != null && filePart.getSize() > 0;
 		if (hasFile) {
 			String relativePath = saveFile(previous.getUserId(), newId, filePart);
-			if (relativePath != null) {
-				if (!contractDAO.updateFilePath(newId, relativePath)) {
-					deleteIfExists(absolutePath(relativePath));
-				}
+			if (relativePath != null && !contractDAO.updateFilePath(newId, relativePath)) {
+				deleteIfExists(absolutePath(relativePath));
 			}
 		}
+		leaveBalanceDAO.syncAnnualBalance(previous.getUserId(), startDate.toLocalDate().getYear());
 
-		session.setAttribute("successMsg", "Gia hạn hợp đồng thành công!");
+		session.setAttribute("successMsg",
+				"Đã ký hợp đồng mới thành công. Hợp đồng mới có mã riêng với hợp đồng ban đầu.");
 		response.sendRedirect(request.getContextPath() + "/contract-detail?id=" + newId);
 	}
 
 	private String validateFile(Part filePart) {
 		if (filePart == null || filePart.getSize() == 0) {
-			return null; // optional
+			return null;
 		}
 		if (filePart.getSize() > MAX_FILE_SIZE) {
 			return "File vượt quá 5MB. Vui lòng chọn file nhỏ hơn.";
@@ -239,8 +236,8 @@ public class ContractRenewServlet extends HttpServlet {
 	}
 
 	private void returnWithError(HttpServletRequest request, HttpServletResponse response, ContractDetail previous,
-			String message, Long contractTypeId, String startDateStr, String endDateStr, String salaryStr,
-			String attrName, Object attrValue) throws ServletException, IOException {
+			String message, Long contractTypeId, String startDateStr, String endDateStr, String salaryStr)
+			throws ServletException, IOException {
 		request.setAttribute("errorMsg", message);
 		request.setAttribute("previous", previous);
 		request.setAttribute("contractTypes", contractTypeDAO.getActiveContractTypes());
@@ -248,9 +245,6 @@ public class ContractRenewServlet extends HttpServlet {
 		request.setAttribute("startDate", startDateStr);
 		request.setAttribute("endDate", endDateStr);
 		request.setAttribute("salary", salaryStr);
-		if (attrValue != null) {
-			request.setAttribute(attrName, attrValue);
-		}
 		request.getRequestDispatcher("/views/contract/contract-renew.jsp").forward(request, response);
 	}
 
@@ -277,7 +271,7 @@ public class ContractRenewServlet extends HttpServlet {
 		}
 	}
 
-	private Long parseId(String s) {
+	private Long parseLong(String s) {
 		if (ValidationUtil.isBlank(s)) {
 			return null;
 		}
@@ -286,10 +280,6 @@ public class ContractRenewServlet extends HttpServlet {
 		} catch (NumberFormatException e) {
 			return null;
 		}
-	}
-
-	private Long parseLong(String s) {
-		return parseId(s);
 	}
 
 	private Date parseDate(String s) {

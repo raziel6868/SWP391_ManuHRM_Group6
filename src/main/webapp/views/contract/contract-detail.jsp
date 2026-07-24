@@ -20,8 +20,8 @@
 
                 <nav aria-label="breadcrumb" class="mb-3">
                     <ol class="breadcrumb label-sm mb-0">
-                        <li class="breadcrumb-item"><a href="${ctx}/contract-list" class="text-primary text-decoration-none">Hợp đồng</a></li>
-                        <li class="breadcrumb-item active" aria-current="page">Chi tiết #${contract.id}</li>
+                        <li class="breadcrumb-item"><a href="${ctx}${detailBackUrl}" class="text-primary text-decoration-none">${detailBackLabel}</a></li>
+                        <li class="breadcrumb-item active" aria-current="page">Chi tiết ${contract.contractCode}</li>
                     </ol>
                 </nav>
 
@@ -29,11 +29,11 @@
                     <div>
                         <h2 class="h3 text-on-surface fw-bold mb-1">Chi tiết hợp đồng lao động</h2>
                         <p class="body-md text-on-surface-variant mb-0">
-                            Mã hợp đồng #${contract.id} - ${contract.contractTypeName}
+                            Mã hợp đồng ${contract.contractCode} - ${contract.contractTypeName}
                         </p>
                     </div>
                     <div class="d-flex gap-2 flex-wrap">
-                        <a href="${ctx}/contract-list" class="btn btn-light border d-flex align-items-center gap-2">
+                        <a href="${ctx}${detailBackUrl}" class="btn btn-light border d-flex align-items-center gap-2">
                             <span class="material-symbols-outlined" style="font-size: 1.125rem;">arrow_back</span>
                             Quay lại
                         </a>
@@ -51,8 +51,8 @@
                         </c:if>
                         <c:if test="${hasContractRenewPerm and (contract.status == 'ACTIVE' or contract.status == 'EXPIRING_SOON' or contract.status == 'EXPIRED' or contract.status == 'PENDING_RENEWAL')}">
                             <a href="${ctx}/contract-renew?id=${contract.id}" class="btn btn-light border d-flex align-items-center gap-2">
-                                <span class="material-symbols-outlined" style="font-size: 1.125rem;">autorenew</span>
-                                Gia hạn
+                                <span class="material-symbols-outlined" style="font-size: 1.125rem;">post_add</span>
+                                Ký hợp đồng mới
                             </a>
                         </c:if>
                         <c:if test="${hasContractRenewRequestPerm and (contract.status == 'ACTIVE' or contract.status == 'EXPIRING_SOON')}">
@@ -76,7 +76,7 @@
                 <c:if test="${contract.status == 'PENDING_RENEWAL'}">
                     <div class="alert alert-warning border d-flex align-items-start gap-2 mb-4" role="alert">
                         <span class="material-symbols-outlined">hourglass_top</span>
-                        <div>Hợp đồng này đang chờ HR duyệt gia hạn.</div>
+                        <div>Nhân viên đã gửi yêu cầu gia hạn. HR cần ký hợp đồng mới để xử lý yêu cầu này.</div>
                     </div>
                 </c:if>
 
@@ -113,6 +113,9 @@
                                 Thông tin hợp đồng
                             </h3>
                             <dl class="row mb-0">
+                                <dt class="col-5 label-md text-on-surface-variant">Mã hợp đồng</dt>
+                                <dd class="col-7 fw-medium">${contract.contractCode}</dd>
+
                                 <dt class="col-5 label-md text-on-surface-variant">Loại hợp đồng</dt>
                                 <dd class="col-7 fw-medium">${contract.contractTypeName}
                                     <span class="label-sm text-on-surface-variant">(${contract.contractTypeCode})</span>
@@ -147,7 +150,7 @@
                                             <span class="badge" style="background-color: #e5e7eb; color: #374151;">Hết hạn</span>
                                         </c:when>
                                         <c:when test="${contract.status == 'PENDING_RENEWAL'}">
-                                            <span class="badge" style="background-color: #fef3c7; color: #92400e;">Chờ gia hạn</span>
+                                            <span class="badge" style="background-color: #fef3c7; color: #92400e;">Chờ ký hợp đồng mới</span>
                                         </c:when>
                                         <c:when test="${contract.status == 'TERMINATED'}">
                                             <span class="badge" style="background-color: #fee2e2; color: #991b1b;">Đã chấm dứt</span>
@@ -179,17 +182,17 @@
                 <c:if test="${not empty contract.renewalOfId}">
                     <div class="card-premium p-4 mb-4" style="border-left: 4px solid var(--primary);">
                         <h3 class="h6 fw-bold text-on-surface mb-3 d-flex align-items-center gap-2">
-                            <span class="material-symbols-outlined text-primary">autorenew</span>
-                            Hợp đồng trước đó
+                            <span class="material-symbols-outlined text-primary">post_add</span>
+                            Hợp đồng ban đầu
                         </h3>
                         <p class="mb-2">
-                            Hợp đồng này là bản gia hạn của
+                            Hợp đồng này được ký mới từ
                             <a href="${ctx}/contract-detail?id=${contract.renewalOfId}" class="text-primary fw-medium">
-                                hợp đồng #${contract.renewalOfCode}
+                                hợp đồng ${contract.renewalOfCode}
                             </a>.
                         </p>
                         <dl class="row mb-0">
-                            <dt class="col-3 label-md text-on-surface-variant">Thời hạn cũ</dt>
+                            <dt class="col-3 label-md text-on-surface-variant">Thời hạn ban đầu</dt>
                             <dd class="col-9">
                                 ${contract.renewalOfStartDate}
                                 <c:if test="${not empty contract.renewalOfEndDate}">

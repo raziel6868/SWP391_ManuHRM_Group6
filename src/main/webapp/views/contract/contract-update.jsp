@@ -21,7 +21,7 @@
                 <nav aria-label="breadcrumb" class="mb-3">
                     <ol class="breadcrumb label-sm mb-0">
                         <li class="breadcrumb-item"><a href="${ctx}/contract-list" class="text-primary text-decoration-none">Hợp đồng</a></li>
-                        <li class="breadcrumb-item"><a href="${ctx}/contract-detail?id=${contract.id}" class="text-primary text-decoration-none">Chi tiết #${contract.id}</a></li>
+                        <li class="breadcrumb-item"><a href="${ctx}/contract-detail?id=${contract.id}" class="text-primary text-decoration-none">Chi tiết ${contract.contractCode}</a></li>
                         <li class="breadcrumb-item active" aria-current="page">Chỉnh sửa</li>
                     </ol>
                 </nav>
@@ -81,7 +81,7 @@
                             <label for="endDate" class="form-label fw-medium">Ngày kết thúc</label>
                             <input type="date" id="endDate" name="endDate" value="${endDate != null ? endDate : contract.endDate}"
                                 class="input-premium w-100" />
-                            <div class="form-text">Để trống nếu là hợp đồng không xác định thời hạn.</div>
+                            <div class="form-text">Để trống với hợp đồng không xác định thời hạn; hợp đồng xác định thời hạn phải từ đủ 12 đến 36 tháng.</div>
                         </div>
                     </div>
 

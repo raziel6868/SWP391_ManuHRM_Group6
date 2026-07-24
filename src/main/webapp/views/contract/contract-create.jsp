@@ -27,7 +27,7 @@
 
                 <h2 class="h3 text-on-surface fw-bold mb-1">Tạo hợp đồng lao động</h2>
                 <p class="body-md text-on-surface-variant mb-4">
-                    Hợp đồng mới sẽ ở trạng thái <strong>Đang hiệu lực</strong>.
+                    Nhập thông tin từ hợp đồng bản cứng đã ký để lưu trữ và phục vụ tính lương.
                 </p>
 
                 <form action="${ctx}/contract-create" method="POST" enctype="multipart/form-data" class="card-premium p-4">
@@ -54,20 +54,21 @@
                                 </option>
                             </c:forEach>
                         </select>
+                        <div class="form-text">Chỉ gồm hợp đồng không xác định thời hạn và hợp đồng xác định thời hạn.</div>
                     </div>
 
                     <div class="row g-3 mb-3">
                         <div class="col-12 col-md-6">
                             <label for="startDate" class="form-label fw-medium">Ngày bắt đầu <span class="text-danger">*</span></label>
                             <input type="date" id="startDate" name="startDate" value="${startDate}"
-                                min="${todayDate}" max="${todayDate}" class="input-premium w-100" required />
-                            <div class="form-text">Chỉ được chọn ngày hiện tại khi tạo hợp đồng mới.</div>
+                                class="input-premium w-100" required />
+                            <div class="form-text">Nhập theo ngày hiệu lực ghi trên hợp đồng bản cứng.</div>
                         </div>
                         <div class="col-12 col-md-6">
                             <label for="endDate" class="form-label fw-medium">Ngày kết thúc</label>
                             <input type="date" id="endDate" name="endDate" value="${endDate}"
                                 class="input-premium w-100" />
-                            <div class="form-text">Để trống nếu là hợp đồng không xác định thời hạn.</div>
+                            <div class="form-text">Để trống với hợp đồng không xác định thời hạn; hợp đồng xác định thời hạn phải từ đủ 12 đến 36 tháng.</div>
                         </div>
                     </div>
 
@@ -82,7 +83,7 @@
                         <label for="contractFile" class="form-label fw-medium">File hợp đồng (PDF)</label>
                         <input type="file" id="contractFile" name="contractFile" accept=".pdf,application/pdf"
                             class="input-premium w-100" style="padding: 0.375rem 0.75rem;" />
-                        <div class="form-text">Không bắt buộc. Chấp nhận file PDF, tối đa 5MB. Nếu chưa có bản ký, có thể tải lên sau từ trang chi tiết hợp đồng.</div>
+                        <div class="form-text">Không bắt buộc. Chỉ dùng khi cần lưu bản scan PDF của hợp đồng bản cứng, tối đa 5MB.</div>
                     </div>
 
                     <div class="d-flex justify-content-end gap-2">

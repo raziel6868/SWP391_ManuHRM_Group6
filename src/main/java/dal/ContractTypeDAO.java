@@ -15,26 +15,29 @@ public class ContractTypeDAO {
 	// === QUERY: Danh sach & tim kiem ===
 	public List<ContractType> searchContractTypes(String keyword, int offset, int limit) {
 		if (keyword == null || keyword.trim().isEmpty()) {
-			return queryList("SELECT " + SELECT_COLUMNS + " FROM contract_types ORDER BY id ASC LIMIT ? OFFSET ?",
+			return queryList("SELECT " + SELECT_COLUMNS
+					+ " FROM contract_types WHERE code IN ('INDEFINITE', 'FIXED_TERM') ORDER BY id ASC LIMIT ? OFFSET ?",
 					List.of(limit, offset));
 		}
 		String like = "%" + keyword.trim() + "%";
 		String sql = """
 				SELECT """ + SELECT_COLUMNS + """
 				 FROM contract_types
-				WHERE code LIKE ? OR name LIKE ? OR description LIKE ?
+				WHERE code IN ('INDEFINITE', 'FIXED_TERM')
+				  AND (code LIKE ? OR name LIKE ? OR description LIKE ?)
 				ORDER BY id ASC LIMIT ? OFFSET ?""";
 		return queryList(sql, List.of(like, like, like, limit, offset));
 	}
 
 	public int countContractTypes(String keyword) {
 		if (keyword == null || keyword.trim().isEmpty()) {
-			return count("SELECT COUNT(*) FROM contract_types", null);
+			return count("SELECT COUNT(*) FROM contract_types WHERE code IN ('INDEFINITE', 'FIXED_TERM')", null);
 		}
 		String like = "%" + keyword.trim() + "%";
 		return count("""
 				SELECT COUNT(*) FROM contract_types
-				WHERE code LIKE ? OR name LIKE ? OR description LIKE ?""", List.of(like, like, like));
+				WHERE code IN ('INDEFINITE', 'FIXED_TERM')
+				  AND (code LIKE ? OR name LIKE ? OR description LIKE ?)""", List.of(like, like, like));
 	}
 
 	public ContractType getById(Long id) {
@@ -46,7 +49,8 @@ public class ContractTypeDAO {
 	}
 
 	public List<ContractType> getActiveContractTypes() {
-		String sql = "SELECT " + SELECT_COLUMNS + " FROM contract_types WHERE is_active = 1 ORDER BY name ASC";
+		String sql = "SELECT " + SELECT_COLUMNS
+				+ " FROM contract_types WHERE is_active = 1 AND code IN ('INDEFINITE', 'FIXED_TERM') ORDER BY id ASC";
 		return queryList(sql, null);
 	}
 	// === QUERY: Kiem tra ton tai ===

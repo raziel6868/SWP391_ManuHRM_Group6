@@ -5,6 +5,7 @@ import dal.ContractTypeDAO;
 import dto.ContractDetail;
 import model.Contract;
 import model.ContractType;
+import util.ContractRuleUtil;
 import util.ValidationUtil;
 
 import jakarta.servlet.ServletException;
@@ -119,6 +120,13 @@ public class ContractUpdateServlet extends HttpServlet {
 		if (endDate != null && endDate.before(startDate)) {
 			returnWithError(request, response, contract, "Ngày kết thúc phải sau ngày bắt đầu.", contractTypeId,
 					startDateStr, endDateStr, salaryStr);
+			return;
+		}
+		ContractType contractType = contractTypeDAO.getById(contractTypeId);
+		String termError = ContractRuleUtil.validateTerm(contractType, startDate, endDate);
+		if (termError != null) {
+			returnWithError(request, response, contract, termError, contractTypeId, startDateStr, endDateStr,
+					salaryStr);
 			return;
 		}
 		if (salary != null && salary.signum() < 0) {

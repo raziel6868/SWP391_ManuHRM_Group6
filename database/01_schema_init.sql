@@ -207,6 +207,7 @@ CREATE TABLE holidays (
 
 CREATE TABLE contracts (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    contract_code VARCHAR(30) NULL UNIQUE,
     user_id BIGINT NOT NULL,
     contract_type_id BIGINT NOT NULL,
     start_date DATE NOT NULL,

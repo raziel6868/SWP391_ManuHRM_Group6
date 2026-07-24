@@ -7,6 +7,7 @@ import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import model.ContractType;
+import util.ContractRuleUtil;
 import util.ValidationUtil;
 
 import java.io.IOException;
@@ -46,6 +47,12 @@ public class ContractTypeCreateServlet extends HttpServlet {
 		if (!ValidationUtil.matchRegex(normalizedCode, "^[A-Z][A-Z0-9_]*$")) {
 			request.setAttribute("errorMsg",
 					"Mã phải bắt đầu bằng chữ in hoa, chỉ chứa chữ in hoa, số và dấu gạch dưới.");
+			forwardCreate(request, response, code, name, description);
+			return;
+		}
+		if (!ContractRuleUtil.isAllowedContractTypeCode(normalizedCode)) {
+			request.setAttribute("errorMsg",
+					"Loại hợp đồng lao động chỉ gồm INDEFINITE hoặc FIXED_TERM theo Điều 20 Bộ luật Lao động 2019.");
 			forwardCreate(request, response, code, name, description);
 			return;
 		}

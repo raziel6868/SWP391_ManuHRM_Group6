@@ -14,9 +14,9 @@ import model.User;
 import util.ValidationUtil;
 
 /**
- * Self-service renewal request. Employees and production supervisors can mark
- * their own active contract as pending renewal; HR later approves by completing
- * the normal renew form.
+ * Self-service renewal request. The request only marks the current contract as
+ * waiting for HR; HR still signs a separate new contract through
+ * /contract-renew.
  */
 @WebServlet(name = "ContractRenewRequestServlet", urlPatterns = {"/contract-renew-request"})
 public class ContractRenewRequestServlet extends HttpServlet {
@@ -48,7 +48,8 @@ public class ContractRenewRequestServlet extends HttpServlet {
 			return;
 		}
 		if (!isRequestableStatus(contract.getStatus())) {
-			session.setAttribute("errorMsg", "Chỉ hợp đồng đang hiệu lực mới được gửi yêu cầu gia hạn.");
+			session.setAttribute("errorMsg",
+					"Chỉ hợp đồng đang hiệu lực hoặc sắp hết hạn mới được gửi yêu cầu gia hạn.");
 			response.sendRedirect(request.getContextPath() + "/contract-detail?id=" + id);
 			return;
 		}

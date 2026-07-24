@@ -186,7 +186,7 @@
 </c:forEach>
 
 <c:set var="hasSystemMenu" value="${hasUserView or hasRoleView or hasDepartmentView or hasJobTitleView or hasHolidayView}" />
-<c:set var="hasContractMenu" value="${hasContractTypeView or hasContractView}" />
+<c:set var="hasContractMenu" value="${hasContractTypeView or hasContractView or hasContractMyView}" />
 <c:set var="hasLeaveMenu" value="${hasLeaveTypeView or hasLeaveBalanceView or hasLeaveMyView or hasLeaveRequestView or hasLeaveRequestApproveL1}" />
 <c:set var="hasAttendanceMenu" value="${hasAttendanceView or hasAttendanceMyView or hasAttendanceCorrectionView or hasOtView or hasOtMyView}" /><c:set var="hasPayrollMenu" value="${hasMonthlySheetView or hasMonthlySheetSupervisorView or hasPayrollView or hasPayslipView or hasAllowanceTypeView or hasInsuranceRateView or hasPersonalTaxSettingView or hasPersonalTaxBracketView or hasEmployeeDependentView or hasPayrollSettingView}" />
 <c:set var="hasReportMenu" value="${hasReportAttendance or hasReportLeave or hasReportHeadcount or hasReportContract or hasReportPayroll or hasReportOt}" />

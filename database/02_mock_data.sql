@@ -112,7 +112,7 @@ INSERT INTO permissions (id, code, name, url_pattern, module) VALUES
 (33, 'CONTRACT_DETAIL',         'Xem chi tiết hợp đồng',      '/contract-detail',         'CONTRACT'),
 (34, 'CONTRACT_CREATE',         'Tạo hợp đồng',              '/contract-create',         'CONTRACT'),
 (35, 'CONTRACT_UPDATE',         'Cập nhật hợp đồng',         '/contract-update',         'CONTRACT'),
-(36, 'CONTRACT_RENEW',          'Gia hạn hợp đồng',          '/contract-renew',          'CONTRACT'),
+(36, 'CONTRACT_RENEW',          'Ký hợp đồng mới khi gia hạn', '/contract-renew',         'CONTRACT'),
 (37, 'CONTRACT_UPLOAD',         'Tải lên hợp đồng PDF',      '/contract-upload',         'CONTRACT'),
 (38, 'CONTRACT_STATUS',         'Thay đổi trạng thái hợp đồng', '/contract-status',       'CONTRACT'),
 (87, 'CONTRACT_RENEW_REQUEST',  'Gửi yêu cầu gia hạn hợp đồng', '/contract-renew-request', 'CONTRACT'),
@@ -273,7 +273,7 @@ INSERT INTO role_permissions (role_id, permission_id) VALUES
 (3, 41), (3, 45), (3, 47),
 (3, 51), (3, 52), (3, 54), (3, 57),
 (3, 58), (3, 59), (3, 61), (3, 115),
-(3, 107), (3, 108), (3, 111);
+(3, 87), (3, 107), (3, 108), (3, 111);
 
 -- EMPLOYEE: self-service scope only
 INSERT INTO role_permissions (role_id, permission_id) VALUES
@@ -348,9 +348,10 @@ VALUES
  TRUE, 'COMPANY', FALSE, FALSE, NULL, 3.00, FALSE, 5, 1.00, 'WORKING_DAY', TRUE);
 
 INSERT INTO contract_types (id, code, name, description, is_active) VALUES
-(1, 'PROBATION', 'Hợp đồng thử việc', 'Hợp đồng thử việc ban đầu', TRUE),
-(2, 'FULL_TIME', 'Hợp đồng chính thức', 'Hợp đồng lao động chính thức', TRUE),
-(3, 'SEASONAL', 'Hợp đồng thời vụ', 'Hợp đồng theo mùa vụ/sản lượng', TRUE);
+(1, 'INDEFINITE', 'Hợp đồng lao động không xác định thời hạn',
+ 'Hai bên không xác định thời hạn, thời điểm chấm dứt hiệu lực của hợp đồng.', TRUE),
+(2, 'FIXED_TERM', 'Hợp đồng lao động xác định thời hạn',
+ 'Hai bên xác định thời hạn, thời điểm chấm dứt hiệu lực của hợp đồng trong khoảng từ đủ 12 tháng đến 36 tháng.', TRUE);
 
 -- =========================================================
 -- Demo users
@@ -427,20 +428,20 @@ VALUES
     (3, 'PHONE', 'Phụ cấp điện thoại', 'Phụ cấp điện thoại khoán cố định hàng tháng', FALSE, FALSE, TRUE),
     (4, 'HAZARD', 'Phụ cấp độc hại', 'Phụ cấp độc hại cố định cho công nhân xưởng sản xuất', FALSE, TRUE, TRUE);
 
-INSERT INTO contracts (user_id, contract_type_id, start_date, end_date, salary, file_path, status) VALUES
-(1, 2, '2024-01-01', '2029-12-31', 35000000, '/contracts/director_minhanh_full_time.pdf', 'ACTIVE'),
-(4, 2, '2024-01-01', '2029-12-31', 28000000, '/contracts/hr_manager_lan_full_time.pdf', 'ACTIVE'),
-(5, 2, '2024-01-01', '2029-12-31', 16000000, '/contracts/hr_staff_hoa_full_time.pdf', 'ACTIVE'),
-(6, 2, '2024-01-01', '2029-12-31', 15500000, '/contracts/hr_staff_trang_full_time.pdf', 'ACTIVE'),
-(7, 2, '2024-01-01', '2029-12-31', 18000000, '/contracts/sup_a_tuan_full_time.pdf', 'ACTIVE'),
-(8, 2, '2024-01-01', '2029-12-31', 8000000, '/contracts/worker_a_an_full_time.pdf', 'ACTIVE'),
-(9, 2, '2024-01-01', '2029-12-31', 8200000, '/contracts/worker_a_binh_full_time.pdf', 'ACTIVE'),
-(10, 2, '2024-01-01', '2029-12-31', 18000000, '/contracts/sup_b_hung_full_time.pdf', 'ACTIVE'),
-(11, 2, '2024-01-01', '2029-12-31', 8100000, '/contracts/worker_b_cuong_full_time.pdf', 'ACTIVE'),
-(12, 2, '2024-01-01', '2029-12-31', 8000000, '/contracts/worker_b_dung_full_time.pdf', 'ACTIVE'),
-(13, 2, '2024-01-01', '2029-12-31', 18000000, '/contracts/sup_c_phuc_full_time.pdf', 'ACTIVE'),
-(14, 2, '2024-01-01', '2029-12-31', 8050000, '/contracts/worker_c_hai_full_time.pdf', 'ACTIVE'),
-(15, 2, '2024-01-01', '2029-12-31', 8000000, '/contracts/worker_c_kiet_full_time.pdf', 'ACTIVE');
+INSERT INTO contracts (contract_code, user_id, contract_type_id, start_date, end_date, salary, file_path, status) VALUES
+('HĐLĐ01', 1, 1, '2024-01-01', NULL, 35000000, '/contracts/director_minhanh_indefinite.pdf', 'ACTIVE'),
+('HĐLĐ02', 4, 1, '2024-01-01', NULL, 28000000, '/contracts/hr_manager_lan_indefinite.pdf', 'ACTIVE'),
+('HĐLĐ03', 5, 2, '2024-01-01', '2027-01-01', 16000000, '/contracts/hr_staff_hoa_fixed_term.pdf', 'ACTIVE'),
+('HĐLĐ04', 6, 2, '2024-01-01', '2027-01-01', 15500000, '/contracts/hr_staff_trang_fixed_term.pdf', 'ACTIVE'),
+('HĐLĐ05', 7, 1, '2024-01-01', NULL, 18000000, '/contracts/sup_a_tuan_indefinite.pdf', 'ACTIVE'),
+('HĐLĐ06', 8, 2, '2024-01-01', '2027-01-01', 8000000, '/contracts/worker_a_an_fixed_term.pdf', 'ACTIVE'),
+('HĐLĐ07', 9, 2, '2024-01-01', '2027-01-01', 8200000, '/contracts/worker_a_binh_fixed_term.pdf', 'ACTIVE'),
+('HĐLĐ08', 10, 1, '2024-01-01', NULL, 18000000, '/contracts/sup_b_hung_indefinite.pdf', 'ACTIVE'),
+('HĐLĐ09', 11, 2, '2024-01-01', '2027-01-01', 8100000, '/contracts/worker_b_cuong_fixed_term.pdf', 'ACTIVE'),
+('HĐLĐ10', 12, 2, '2024-01-01', '2027-01-01', 8000000, '/contracts/worker_b_dung_fixed_term.pdf', 'ACTIVE'),
+('HĐLĐ11', 13, 1, '2024-01-01', NULL, 18000000, '/contracts/sup_c_phuc_indefinite.pdf', 'ACTIVE'),
+('HĐLĐ12', 14, 2, '2024-01-01', '2027-01-01', 8050000, '/contracts/worker_c_hai_fixed_term.pdf', 'ACTIVE'),
+('HĐLĐ13', 15, 2, '2024-01-01', '2027-01-01', 8000000, '/contracts/worker_c_kiet_fixed_term.pdf', 'ACTIVE');
 
 INSERT INTO leave_balances (user_id, leave_type_id, year, total_days, used_days)
 SELECT c.user_id,

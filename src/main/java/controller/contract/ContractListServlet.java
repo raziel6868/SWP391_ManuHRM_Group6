@@ -80,7 +80,6 @@ public class ContractListServlet extends HttpServlet {
 		request.setAttribute("hasContractUploadPerm", hasPerm(session, "CONTRACT_UPLOAD"));
 		request.setAttribute("hasContractRenewPerm", hasPerm(session, "CONTRACT_RENEW"));
 		request.setAttribute("hasContractTerminatePerm", hasPerm(session, "CONTRACT_TERMINATE"));
-		request.setAttribute("hasContractRenewRequestPerm", hasPerm(session, "CONTRACT_RENEW_REQUEST"));
 		request.setAttribute("personalContractView", ownerUserId != null);
 
 		// Quick counts for the small KPI strip on top of the list.
@@ -102,7 +101,8 @@ public class ContractListServlet extends HttpServlet {
 		request.setAttribute("totalRecords", total);
 		request.setAttribute("keyword", keyword != null ? keyword : "");
 		request.setAttribute("selectedStatus", status != null ? status : "");
-		request.setAttribute("statuses", Contract.Status.values());
+		request.setAttribute("statuses", new Contract.Status[]{Contract.Status.ACTIVE, Contract.Status.EXPIRING_SOON,
+				Contract.Status.EXPIRED, Contract.Status.PENDING_RENEWAL, Contract.Status.TERMINATED});
 
 		// Keep the DAO instance available for the JSP via a request attribute (unused
 		// but

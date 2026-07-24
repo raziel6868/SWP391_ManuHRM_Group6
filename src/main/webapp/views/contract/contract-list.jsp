@@ -23,7 +23,7 @@
                     <div>
                         <h2 class="h3 text-on-surface fw-bold mb-1">Quản lý hợp đồng lao động</h2>
                         <p class="body-md text-on-surface-variant mb-0">
-                            Theo dõi hợp đồng lao động của nhân viên: tạo mới, gia hạn, tải PDF và chấm dứt.
+                            Theo dõi hợp đồng lao động của nhân viên: lưu thông tin cơ bản, mức lương, PDF và chấm dứt.
                         </p>
                     </div>
                     <c:if test="${hasContractCreatePerm}">
@@ -44,7 +44,7 @@
                     </div>
                     <div class="col-12 col-md-3">
                         <div class="card-premium p-3 d-flex flex-column gap-1">
-                            <span class="label-md text-on-surface-variant">Chờ gia hạn</span>
+                            <span class="label-md text-on-surface-variant">Chờ ký mới</span>
                             <span class="h3 fw-bold mb-0" style="color: #b45309;">${pendingRenewalCount}</span>
                         </div>
                     </div>
@@ -67,7 +67,7 @@
                         <div class="d-flex justify-content-between align-items-center gap-2 flex-wrap mb-2">
                             <div>
                                 <div class="label-md text-on-surface-variant">Yêu cầu gia hạn đang chờ HR xử lý</div>
-                                <div class="fw-bold text-on-surface">Có ${pendingRenewalCount} hợp đồng đang chờ duyệt gia hạn</div>
+                                <div class="fw-bold text-on-surface">Có ${pendingRenewalCount} hợp đồng đang chờ ký hợp đồng mới</div>
                             </div>
                             <a href="${ctx}/contract-list?status=PENDING_RENEWAL" class="btn btn-sm btn-light border">Xem tất cả</a>
                         </div>
@@ -78,10 +78,10 @@
                                         <tr>
                                             <td class="fw-medium">${p.fullName}</td>
                                             <td>${p.employeeCode}</td>
-                                            <td>${p.contractTypeName}</td>
+                                            <td>${p.contractCode}</td>
                                             <td>${p.endDate}</td>
                                             <td class="text-end">
-                                                <a href="${ctx}/contract-renew?id=${p.id}" class="btn btn-sm btn-primary">Duyệt gia hạn</a>
+                                                <a href="${ctx}/contract-renew?id=${p.id}" class="btn btn-sm btn-primary">Ký hợp đồng mới</a>
                                             </td>
                                         </tr>
                                     </c:forEach>
@@ -99,7 +99,7 @@
                                 style="left: 12px; font-size: 1.25rem;">search</span>
                             <input type="text" name="keyword" value="${keyword}"
                                 class="input-premium w-100 py-1"
-                                placeholder="Tìm theo mã NV, họ tên, loại HĐ..."
+                                placeholder="Tìm theo mã HĐ, mã NV, họ tên, loại HĐ..."
                                 style="padding-left: 2.5rem;" />
                         </form>
 
@@ -116,7 +116,7 @@
                                             <c:when test="${s.name() == 'ACTIVE'}">Đang hiệu lực</c:when>
                                             <c:when test="${s.name() == 'EXPIRING_SOON'}">Sắp hết hạn</c:when>
                                             <c:when test="${s.name() == 'EXPIRED'}">Hết hạn</c:when>
-                                            <c:when test="${s.name() == 'PENDING_RENEWAL'}">Chờ gia hạn</c:when>
+                                            <c:when test="${s.name() == 'PENDING_RENEWAL'}">Chờ ký mới</c:when>
                                             <c:when test="${s.name() == 'TERMINATED'}">Đã chấm dứt</c:when>
                                         </c:choose>
                                     </option>
@@ -130,6 +130,7 @@
                             <thead>
                                 <tr>
                                     <th>Nhân viên</th>
+                                    <th>Mã HĐ</th>
                                     <th>Loại HĐ</th>
                                     <th>Ngày bắt đầu</th>
                                     <th>Ngày kết thúc</th>
@@ -147,6 +148,7 @@
                                                 ${c.employeeCode} - ${c.departmentName}
                                             </div>
                                         </td>
+                                        <td class="fw-medium">${c.contractCode}</td>
                                         <td>
                                             <span class="label-md">${c.contractTypeName}</span>
                                             <div class="label-sm text-on-surface-variant">${c.contractTypeCode}</div>
@@ -185,7 +187,7 @@
                                                     <span class="badge" style="background-color: #e5e7eb; color: #374151;">Hết hạn</span>
                                                 </c:when>
                                                 <c:when test="${c.status == 'PENDING_RENEWAL'}">
-                                                    <span class="badge" style="background-color: #fef3c7; color: #92400e;">Chờ gia hạn</span>
+                                                    <span class="badge" style="background-color: #fef3c7; color: #92400e;">Chờ ký mới</span>
                                                 </c:when>
                                                 <c:when test="${c.status == 'TERMINATED'}">
                                                     <span class="badge" style="background-color: #fee2e2; color: #991b1b;">Đã chấm dứt</span>
@@ -206,7 +208,7 @@
                                 </c:forEach>
                                 <c:if test="${empty contracts}">
                                     <tr>
-                                        <td colspan="7" class="text-center py-4 text-on-surface-variant">
+                                        <td colspan="8" class="text-center py-4 text-on-surface-variant">
                                             Không tìm thấy hợp đồng nào phù hợp.
                                         </td>
                                     </tr>

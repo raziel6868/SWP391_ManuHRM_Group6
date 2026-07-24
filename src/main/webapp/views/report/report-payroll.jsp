@@ -358,6 +358,10 @@
                                         <div class="progress"><div class="progress-bar bg-info" style="width: ${totals.grossIncome == 0 ? 0 : totals.totalAllowances * 100 / totals.grossIncome}%;"></div></div>
                                     </div>
                                     <div>
+                                        <div class="d-flex justify-content-between mb-1"><span>Thưởng chuyên cần</span><strong><fmt:formatNumber value="${totals.totalAttendanceBonus}" pattern="#,##0" /></strong></div>
+                                        <div class="progress"><div class="progress-bar bg-success" style="width: ${totals.grossIncome == 0 ? 0 : totals.totalAttendanceBonus * 100 / totals.grossIncome}%;"></div></div>
+                                    </div>
+                                    <div>
                                         <div class="d-flex justify-content-between mb-1"><span>Tiền tăng ca</span><strong><fmt:formatNumber value="${totals.totalOtCost}" pattern="#,##0" /></strong></div>
                                         <div class="progress"><div class="progress-bar bg-warning" style="width: ${totals.grossIncome == 0 ? 0 : totals.totalOtCost * 100 / totals.grossIncome}%;"></div></div>
                                     </div>
@@ -427,6 +431,7 @@
                                         <th>Ngày công</th>
                                         <th>Nghỉ có lương</th>
                                         <th>Giờ tăng ca</th>
+                                        <th>Thưởng chuyên cần</th>
                                         <th>Tổng thu nhập</th>
                                         <th>Khấu trừ</th>
                                         <th>Lương thực nhận</th>
@@ -442,6 +447,7 @@
                                             <td><fmt:formatNumber value="${employee.actualWorkDays}" pattern="#,##0.##" /></td>
                                             <td><fmt:formatNumber value="${employee.paidLeaveDays}" pattern="#,##0.##" /></td>
                                             <td><fmt:formatNumber value="${employee.approvedOtHours}" pattern="#,##0.##" /></td>
+                                            <td><fmt:formatNumber value="${employee.attendanceBonus}" pattern="#,##0" /> VND</td>
                                             <td><fmt:formatNumber value="${employee.grossIncome}" pattern="#,##0" /> VND</td>
                                             <td><fmt:formatNumber value="${employee.deductions}" pattern="#,##0" /> VND</td>
                                             <td><fmt:formatNumber value="${employee.netSalary}" pattern="#,##0" /> VND</td>
@@ -449,7 +455,7 @@
                                         </tr>
                                     </c:forEach>
                                     <tr class="d-none" data-payroll-empty-row>
-                                        <td colspan="10" class="text-center text-on-surface-variant py-4">Không tìm thấy nhân viên phù hợp.</td>
+                                        <td colspan="11" class="text-center text-on-surface-variant py-4">Không tìm thấy nhân viên phù hợp.</td>
                                     </tr>
                                 </tbody>
                             </table>

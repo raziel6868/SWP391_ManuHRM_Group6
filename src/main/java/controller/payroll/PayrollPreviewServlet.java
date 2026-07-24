@@ -4,6 +4,7 @@ import dal.DepartmentDAO;
 import dal.MonthlySalaryDAO;
 import dal.MonthlySheetDAO;
 import dal.PayrollDAO;
+import dto.PayrollAllowanceDetail;
 import dto.PayrollPreviewRow;
 import dto.PayrollSummaryStats;
 import jakarta.servlet.ServletException;
@@ -19,6 +20,7 @@ import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import model.Department;
@@ -137,6 +139,8 @@ public class PayrollPreviewServlet extends HttpServlet {
 
 		List<PayrollPreviewRow> allPreviewRows = previewRows;
 		previewRows = filterByDepartment(allPreviewRows, selectedDepartmentId);
+		List<PayrollAllowanceDetail> allowanceColumns = buildAllowanceColumns(previewRows);
+		fillMissingAllowanceAmounts(previewRows, allowanceColumns);
 		PayrollSummaryStats summaryStats = buildSummaryStats(previewRows);
 		YearMonth previousPeriod = YearMonth.of(year, month).minusMonths(1);
 		PayrollSummaryStats previousSummaryStats = buildPreviousSummaryStats(previousPeriod, selectedDepartmentId);
@@ -148,6 +152,7 @@ public class PayrollPreviewServlet extends HttpServlet {
 
 		List<Department> departments = departmentDAO.getActiveDepartments();
 		request.setAttribute("previewRows", previewRows);
+		request.setAttribute("allowanceColumns", allowanceColumns);
 		request.setAttribute("generatedSalaries", generatedSalaries);
 		request.setAttribute("departments", departments);
 		request.setAttribute("yearOptions",
@@ -197,6 +202,8 @@ public class PayrollPreviewServlet extends HttpServlet {
 			row.setApprovedOtHours(firstNonNull(salary.getApprovedOtHours(), salary.getOtHours()));
 			row.setOvertimePay(salary.getOvertimePay());
 			row.setTotalAllowances(salary.getTotalAllowances());
+			row.setAttendanceBonus(salary.getAttendanceBonus());
+			row.setAllowanceDetails(salary.getAllowanceDetails());
 			row.setGrossIncome(firstNonNull(salary.getGrossIncome(), salary.getGrossSalary()));
 			row.setInsuranceSalary(salary.getInsuranceSalary());
 			row.setInsuranceBasedAllowances(salary.getInsuranceBasedAllowances());
@@ -262,6 +269,38 @@ public class PayrollPreviewServlet extends HttpServlet {
 		return filtered;
 	}
 
+	private List<PayrollAllowanceDetail> buildAllowanceColumns(List<PayrollPreviewRow> rows) {
+		Map<String, PayrollAllowanceDetail> columnsByCode = new LinkedHashMap<>();
+		if (rows == null) {
+			return List.of();
+		}
+		for (PayrollPreviewRow row : rows) {
+			if (row.getAllowanceDetails() == null) {
+				continue;
+			}
+			for (PayrollAllowanceDetail detail : row.getAllowanceDetails()) {
+				if (detail.getAllowanceCode() == null || columnsByCode.containsKey(detail.getAllowanceCode())) {
+					continue;
+				}
+				columnsByCode.put(detail.getAllowanceCode(), detail);
+			}
+		}
+		return new ArrayList<>(columnsByCode.values());
+	}
+
+	private void fillMissingAllowanceAmounts(List<PayrollPreviewRow> rows, List<PayrollAllowanceDetail> columns) {
+		if (rows == null || columns == null) {
+			return;
+		}
+		for (PayrollPreviewRow row : rows) {
+			for (PayrollAllowanceDetail column : columns) {
+				if (column.getAllowanceCode() != null) {
+					row.getAllowanceAmountByCode().putIfAbsent(column.getAllowanceCode(), BigDecimal.ZERO);
+				}
+			}
+		}
+	}
+
 	private PayrollSummaryStats buildSummaryStats(List<PayrollPreviewRow> rows) {
 		PayrollSummaryStats stats = new PayrollSummaryStats();
 		if (rows == null || rows.isEmpty()) {
@@ -273,6 +312,7 @@ public class PayrollPreviewServlet extends HttpServlet {
 			stats.setTotalGrossIncome(stats.getTotalGrossIncome().add(safeNumber(row.getGrossIncome())));
 			stats.setTotalNetSalary(stats.getTotalNetSalary().add(safeNumber(row.getNetSalary())));
 			stats.setTotalAllowances(stats.getTotalAllowances().add(safeNumber(row.getTotalAllowances())));
+			stats.setTotalAttendanceBonus(stats.getTotalAttendanceBonus().add(safeNumber(row.getAttendanceBonus())));
 			stats.setTotalOvertimePay(stats.getTotalOvertimePay().add(safeNumber(row.getOvertimePay())));
 			stats.setTotalDeductions(stats.getTotalDeductions().add(safeNumber(row.getDeductions())));
 			stats.setTotalEmployeeInsurance(

@@ -96,14 +96,16 @@ public class AttendanceCorrectionRequestServlet extends HttpServlet {
 			return;
 		}
 
-		// Quản đốc (PRODUCTION_SUPERVISOR) và HR (HR_MANAGER) gửi yêu cầu cho chính
-		// mình thì không có "quản đốc cấp trên" để duyệt bước 1 như worker thường —
-		// cho phép họ tự duyệt bước 1 bằng cách gán chính họ làm supervisor của
-		// request. Bước 2 vẫn luôn do HR xử lý như bình thường.
-		Long supervisorId;
-		if ("PRODUCTION_SUPERVISOR".equals(authUser.getRoleName()) || "HR_MANAGER".equals(authUser.getRoleName())) {
-			supervisorId = authUser.getId();
-		} else {
+		// Chỉ EMPLOYEE (công nhân xưởng, IT staff, ...) mới cần bước 1 do quản lý
+		// trực tiếp (manager_id) duyệt. Các role quản lý — PRODUCTION_SUPERVISOR,
+		// HR_MANAGER, SYSADMIN — không có ý nghĩa nghiệp vụ khi phải chờ ai đó
+		// "duyệt bước 1" hộ mình (quản đốc/HR manager tự quản lý chính mình, còn
+		// SYSADMIN không thuộc chuỗi quản lý sản xuất/nhân sự), nên bỏ hẳn bước 1,
+		// request đi thẳng vào hàng chờ HR duyệt bước 2.
+		boolean skipSupervisorStep = !"EMPLOYEE".equals(authUser.getRoleName());
+
+		Long supervisorId = null;
+		if (!skipSupervisorStep) {
 			supervisorId = authUser.getManagerId();
 			if (supervisorId == null) {
 				session.setAttribute("errorMsg", "Tài khoản của bạn chưa được gán quản đốc. Vui lòng liên hệ HR.");
@@ -120,11 +122,10 @@ public class AttendanceCorrectionRequestServlet extends HttpServlet {
 		correction.setReason(reason.trim());
 		correction.setSupervisorId(supervisorId);
 
-		boolean success = correctionDAO.insert(correction);
+		boolean success = correctionDAO.insert(correction, skipSupervisorStep);
 		if (success) {
-			if (supervisorId.equals(authUser.getId())) {
-				session.setAttribute("successMsg",
-						"Gửi yêu cầu điều chỉnh công thành công. Bạn có thể tự duyệt bước 1 tại mục Điều chỉnh công, sau đó chờ HR duyệt bước 2.");
+			if (skipSupervisorStep) {
+				session.setAttribute("successMsg", "Gửi yêu cầu điều chỉnh công thành công. Đang chờ HR duyệt.");
 			} else {
 				session.setAttribute("successMsg",
 						"Gửi yêu cầu điều chỉnh công thành công. Đang chờ quản đốc xác nhận.");

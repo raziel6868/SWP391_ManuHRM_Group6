@@ -1,6 +1,7 @@
 package controller.allowancetype;
 
 import dal.AllowanceTypeDAO;
+import dal.AllowanceRuleDAO;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
@@ -18,6 +19,7 @@ public class AllowanceTypeListServlet extends HttpServlet {
 	private static final int PAGE_SIZE = 10;
 
 	private final AllowanceTypeDAO allowanceTypeDAO = new AllowanceTypeDAO();
+	private final AllowanceRuleDAO allowanceRuleDAO = new AllowanceRuleDAO();
 
 	@Override
 	protected void doGet(HttpServletRequest request, HttpServletResponse response)
@@ -48,6 +50,7 @@ public class AllowanceTypeListServlet extends HttpServlet {
 			offset = (currentPage - 1) * PAGE_SIZE;
 			allowanceTypes = allowanceTypeDAO.search(keyword, selectedIsActive, offset, PAGE_SIZE);
 		}
+		attachActiveRules(allowanceTypes);
 
 		request.setAttribute("allowanceTypes", allowanceTypes);
 		request.setAttribute("keyword", keyword);
@@ -81,6 +84,15 @@ public class AllowanceTypeListServlet extends HttpServlet {
 		if (value != null) {
 			request.setAttribute(key, value);
 			session.removeAttribute(key);
+		}
+	}
+
+	private void attachActiveRules(List<AllowanceType> allowanceTypes) {
+		if (allowanceTypes == null || allowanceTypes.isEmpty()) {
+			return;
+		}
+		for (AllowanceType allowanceType : allowanceTypes) {
+			allowanceType.setActiveRules(allowanceRuleDAO.getActiveRulesByAllowanceTypeId(allowanceType.getId()));
 		}
 	}
 

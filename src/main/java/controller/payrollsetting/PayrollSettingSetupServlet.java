@@ -18,6 +18,8 @@ import model.User;
 @WebServlet(name = "PayrollSettingSetupServlet", urlPatterns = {"/payroll-setting-setup"})
 public class PayrollSettingSetupServlet extends HttpServlet {
 
+	private static final BigDecimal DEFAULT_STANDARD_WORK_DAYS = new BigDecimal("22.00");
+
 	private final PayrollSettingDAO payrollSettingDAO = new PayrollSettingDAO();
 
 	@Override
@@ -44,7 +46,7 @@ public class PayrollSettingSetupServlet extends HttpServlet {
 			}
 		}
 
-		request.setAttribute("payrollSetting", payrollSetting);
+		prepareForm(request, payrollSetting);
 		request.getRequestDispatcher("/views/payrollsetting/payroll-setting-setup.jsp").forward(request, response);
 	}
 
@@ -67,7 +69,7 @@ public class PayrollSettingSetupServlet extends HttpServlet {
 		String validationError = validate(payrollSetting);
 		if (validationError != null) {
 			request.setAttribute("errorMsg", validationError);
-			request.setAttribute("payrollSetting", payrollSetting);
+			prepareForm(request, payrollSetting);
 			request.getRequestDispatcher("/views/payrollsetting/payroll-setting-setup.jsp").forward(request, response);
 			return;
 		}
@@ -76,7 +78,7 @@ public class PayrollSettingSetupServlet extends HttpServlet {
 				payrollSetting.getEffectiveTo())) {
 			request.setAttribute("errorMsg",
 					"Đã tồn tại cấu hình payroll khác bắt đầu hiệu lực trong khoảng thời gian này.");
-			request.setAttribute("payrollSetting", payrollSetting);
+			prepareForm(request, payrollSetting);
 			request.getRequestDispatcher("/views/payrollsetting/payroll-setting-setup.jsp").forward(request, response);
 			return;
 		}
@@ -89,35 +91,53 @@ public class PayrollSettingSetupServlet extends HttpServlet {
 		}
 
 		request.setAttribute("errorMsg", "Không thể lưu cấu hình payroll. Vui lòng thử lại.");
-		request.setAttribute("payrollSetting", payrollSetting);
+		prepareForm(request, payrollSetting);
 		request.getRequestDispatcher("/views/payrollsetting/payroll-setting-setup.jsp").forward(request, response);
+	}
+
+	private void prepareForm(HttpServletRequest request, PayrollSetting payrollSetting) {
+		request.setAttribute("payrollSetting", payrollSetting);
+		request.setAttribute("standardWorkHoursPerDayValue",
+				formatDecimalInput(payrollSetting != null ? payrollSetting.getStandardWorkHoursPerDay() : null));
+		request.setAttribute("normalOvertimeRateValue",
+				formatDecimalInput(payrollSetting != null ? payrollSetting.getNormalOvertimeRate() : null));
+		request.setAttribute("attendanceBonusAmountValue",
+				formatDecimalInput(payrollSetting != null ? payrollSetting.getAttendanceBonusAmount() : null));
+	}
+
+	private String formatDecimalInput(BigDecimal value) {
+		if (value == null) {
+			return "";
+		}
+		return value.stripTrailingZeros().toPlainString();
 	}
 
 	private PayrollSetting buildSetting(HttpServletRequest request) {
 		PayrollSetting payrollSetting = new PayrollSetting();
 		payrollSetting.setId(parseLong(request.getParameter("id")));
-		payrollSetting.setStandardWorkDays(parseRequiredDecimal(request.getParameter("standardWorkDays")));
+		payrollSetting.setStandardWorkDays(DEFAULT_STANDARD_WORK_DAYS);
 		payrollSetting
 				.setStandardWorkHoursPerDay(parseRequiredDecimal(request.getParameter("standardWorkHoursPerDay")));
 		payrollSetting.setNormalOvertimeRate(parseRequiredDecimal(request.getParameter("normalOvertimeRate")));
+		payrollSetting.setAttendanceBonusAmount(parseRequiredDecimal(request.getParameter("attendanceBonusAmount")));
 		payrollSetting.setEffectiveFrom(parseDate(request.getParameter("effectiveFrom")));
 		payrollSetting.setEffectiveTo(parseDate(request.getParameter("effectiveTo")));
 		return payrollSetting;
 	}
 
 	private String validate(PayrollSetting payrollSetting) {
-		if (payrollSetting.getStandardWorkDays() == null || payrollSetting.getStandardWorkHoursPerDay() == null
-				|| payrollSetting.getNormalOvertimeRate() == null) {
+		if (payrollSetting.getStandardWorkHoursPerDay() == null || payrollSetting.getNormalOvertimeRate() == null
+				|| payrollSetting.getAttendanceBonusAmount() == null) {
 			return "Vui lòng nhập đầy đủ các tham số payroll.";
-		}
-		if (payrollSetting.getStandardWorkDays().compareTo(BigDecimal.ZERO) <= 0) {
-			return "Số ngày công chuẩn dự phòng phải lớn hơn 0.";
 		}
 		if (payrollSetting.getStandardWorkHoursPerDay().compareTo(BigDecimal.ZERO) <= 0) {
 			return "Số giờ công chuẩn mỗi ngày phải lớn hơn 0.";
 		}
 		if (payrollSetting.getNormalOvertimeRate().compareTo(BigDecimal.ZERO) <= 0) {
 			return "Hệ số OT phải lớn hơn 0.";
+		}
+		if (payrollSetting.getAttendanceBonusAmount().compareTo(BigDecimal.ZERO) < 0) {
+			return "Mức thưởng chuyên cần không được âm.";
 		}
 		if (payrollSetting.getEffectiveFrom() == null) {
 			return "Ngày hiệu lực từ là bắt buộc.";

@@ -4,25 +4,26 @@ import java.math.BigDecimal;
 import java.sql.Date;
 import java.sql.Timestamp;
 
-public class EmployeeAllowance {
+public class AllowanceRule {
 
 	private Long id;
-	private Long userId;
 	private Long allowanceTypeId;
+	private String applyScope;
+	private String employeeType;
+	private String departmentType;
+	private Long departmentId;
+	private Long jobTitleId;
 	private BigDecimal amount;
 	private Date effectiveFrom;
 	private Date effectiveTo;
 	private Boolean isActive;
 	private Timestamp createdAt;
 	private Timestamp updatedAt;
-	private String employeeCode;
-	private String employeeName;
-	private String departmentName;
+
 	private String allowanceCode;
 	private String allowanceName;
-	private Boolean allowanceTypeActive;
-	private Boolean isTaxable;
-	private Boolean isInsuranceBased;
+	private String departmentName;
+	private String jobTitleName;
 
 	public Long getId() {
 		return id;
@@ -32,20 +33,52 @@ public class EmployeeAllowance {
 		this.id = id;
 	}
 
-	public Long getUserId() {
-		return userId;
-	}
-
-	public void setUserId(Long userId) {
-		this.userId = userId;
-	}
-
 	public Long getAllowanceTypeId() {
 		return allowanceTypeId;
 	}
 
 	public void setAllowanceTypeId(Long allowanceTypeId) {
 		this.allowanceTypeId = allowanceTypeId;
+	}
+
+	public String getApplyScope() {
+		return applyScope;
+	}
+
+	public void setApplyScope(String applyScope) {
+		this.applyScope = applyScope;
+	}
+
+	public String getEmployeeType() {
+		return employeeType;
+	}
+
+	public void setEmployeeType(String employeeType) {
+		this.employeeType = employeeType;
+	}
+
+	public String getDepartmentType() {
+		return departmentType;
+	}
+
+	public void setDepartmentType(String departmentType) {
+		this.departmentType = departmentType;
+	}
+
+	public Long getDepartmentId() {
+		return departmentId;
+	}
+
+	public void setDepartmentId(Long departmentId) {
+		this.departmentId = departmentId;
+	}
+
+	public Long getJobTitleId() {
+		return jobTitleId;
+	}
+
+	public void setJobTitleId(Long jobTitleId) {
+		this.jobTitleId = jobTitleId;
 	}
 
 	public BigDecimal getAmount() {
@@ -96,30 +129,6 @@ public class EmployeeAllowance {
 		this.updatedAt = updatedAt;
 	}
 
-	public String getEmployeeCode() {
-		return employeeCode;
-	}
-
-	public void setEmployeeCode(String employeeCode) {
-		this.employeeCode = employeeCode;
-	}
-
-	public String getEmployeeName() {
-		return employeeName;
-	}
-
-	public void setEmployeeName(String employeeName) {
-		this.employeeName = employeeName;
-	}
-
-	public String getDepartmentName() {
-		return departmentName;
-	}
-
-	public void setDepartmentName(String departmentName) {
-		this.departmentName = departmentName;
-	}
-
 	public String getAllowanceCode() {
 		return allowanceCode;
 	}
@@ -136,27 +145,19 @@ public class EmployeeAllowance {
 		this.allowanceName = allowanceName;
 	}
 
-	public Boolean getAllowanceTypeActive() {
-		return allowanceTypeActive;
+	public String getDepartmentName() {
+		return departmentName;
 	}
 
-	public void setAllowanceTypeActive(Boolean allowanceTypeActive) {
-		this.allowanceTypeActive = allowanceTypeActive;
+	public void setDepartmentName(String departmentName) {
+		this.departmentName = departmentName;
 	}
 
-	public Boolean getIsTaxable() {
-		return isTaxable;
+	public String getJobTitleName() {
+		return jobTitleName;
 	}
 
-	public void setIsTaxable(Boolean isTaxable) {
-		this.isTaxable = isTaxable;
-	}
-
-	public Boolean getIsInsuranceBased() {
-		return isInsuranceBased;
-	}
-
-	public void setIsInsuranceBased(Boolean isInsuranceBased) {
-		this.isInsuranceBased = isInsuranceBased;
+	public void setJobTitleName(String jobTitleName) {
+		this.jobTitleName = jobTitleName;
 	}
 }

@@ -35,12 +35,24 @@
 
                         <div class="row g-4 mb-4">
                             <div class="col-md-6">
+                                <label class="form-label text-on-surface fw-medium mb-1">Phòng ban</label>
+                                <select name="departmentId" class="form-select input-premium"
+                                        onchange="this.form.method='GET'; this.form.submit();">
+                                    <option value="">Tất cả phòng ban</option>
+                                    <c:forEach var="department" items="${departments}">
+                                        <option value="${department.id}" ${department.id == selectedDepartmentId ? 'selected' : ''}>
+                                            <c:out value="${department.name}" />
+                                        </option>
+                                    </c:forEach>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
                                 <label class="form-label text-on-surface fw-medium mb-1">Nhân viên <span class="text-danger">*</span></label>
                                 <select name="userId" class="form-select input-premium" required>
                                     <option value="">Chọn nhân viên</option>
                                     <c:forEach var="user" items="${users}">
                                         <option value="${user.id}" ${user.id == employeeDependent.userId ? 'selected' : ''}>
-                                            ${user.employeeCode} - ${user.fullName}
+                                            <c:out value="${user.employeeCode}" /> - <c:out value="${user.fullName}" />
                                         </option>
                                     </c:forEach>
                                 </select>

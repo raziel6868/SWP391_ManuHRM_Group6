@@ -4,11 +4,15 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 import model.AllowanceType;
+import model.AllowanceRule;
 
 public class AllowanceTypeDAO {
+
+	private final AllowanceRuleDAO allowanceRuleDAO = new AllowanceRuleDAO();
 
 	public List<AllowanceType> search(String keyword, Boolean isActive, int offset, int limit) {
 		List<AllowanceType> allowanceTypes = new ArrayList<>();
@@ -181,6 +185,54 @@ public class AllowanceTypeDAO {
 		return false;
 	}
 
+	public boolean insertWithRules(AllowanceType allowanceType, List<AllowanceRule> rules) {
+		if (allowanceType == null || allowanceType.getCode() == null || allowanceType.getName() == null) {
+			return false;
+		}
+
+		String sql = """
+				INSERT INTO allowance_types
+				    (code, name, description, is_taxable, is_insurance_based, is_active)
+				VALUES (?, ?, ?, ?, ?, ?)
+				""";
+
+		try (Connection conn = DBContext.getConnection();
+				PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+			conn.setAutoCommit(false);
+			try {
+				ps.setString(1, allowanceType.getCode());
+				ps.setString(2, allowanceType.getName());
+				ps.setString(3, allowanceType.getDescription());
+				ps.setBoolean(4, Boolean.TRUE.equals(allowanceType.getIsTaxable()));
+				ps.setBoolean(5, Boolean.TRUE.equals(allowanceType.getIsInsuranceBased()));
+				ps.setBoolean(6, allowanceType.getIsActive() == null || allowanceType.getIsActive());
+				if (ps.executeUpdate() == 0) {
+					conn.rollback();
+					return false;
+				}
+				try (ResultSet keys = ps.getGeneratedKeys()) {
+					if (!keys.next()) {
+						conn.rollback();
+						return false;
+					}
+					Long allowanceTypeId = keys.getLong(1);
+					allowanceRuleDAO.replaceActiveRules(conn, allowanceTypeId, rules);
+				}
+				conn.commit();
+				return true;
+			} catch (SQLException e) {
+				conn.rollback();
+				throw e;
+			} finally {
+				conn.setAutoCommit(true);
+			}
+		} catch (SQLException e) {
+			System.err.println("AllowanceTypeDAO.insertWithRules() ERROR: " + e.getMessage());
+		}
+
+		return false;
+	}
+
 	public boolean update(AllowanceType allowanceType) {
 		if (allowanceType == null || allowanceType.getId() == null || allowanceType.getCode() == null
 				|| allowanceType.getName() == null) {
@@ -205,6 +257,49 @@ public class AllowanceTypeDAO {
 			return ps.executeUpdate() > 0;
 		} catch (SQLException e) {
 			System.err.println("AllowanceTypeDAO.update() ERROR: " + e.getMessage());
+		}
+
+		return false;
+	}
+
+	public boolean updateWithRules(AllowanceType allowanceType, List<AllowanceRule> rules) {
+		if (allowanceType == null || allowanceType.getId() == null || allowanceType.getCode() == null
+				|| allowanceType.getName() == null) {
+			return false;
+		}
+
+		String sql = """
+				UPDATE allowance_types
+				SET code = ?, name = ?, description = ?,
+				    is_taxable = ?, is_insurance_based = ?,
+				    updated_at = CURRENT_TIMESTAMP
+				WHERE id = ?
+				""";
+
+		try (Connection conn = DBContext.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+			conn.setAutoCommit(false);
+			try {
+				ps.setString(1, allowanceType.getCode());
+				ps.setString(2, allowanceType.getName());
+				ps.setString(3, allowanceType.getDescription());
+				ps.setBoolean(4, Boolean.TRUE.equals(allowanceType.getIsTaxable()));
+				ps.setBoolean(5, Boolean.TRUE.equals(allowanceType.getIsInsuranceBased()));
+				ps.setLong(6, allowanceType.getId());
+				if (ps.executeUpdate() == 0) {
+					conn.rollback();
+					return false;
+				}
+				allowanceRuleDAO.replaceActiveRules(conn, allowanceType.getId(), rules);
+				conn.commit();
+				return true;
+			} catch (SQLException e) {
+				conn.rollback();
+				throw e;
+			} finally {
+				conn.setAutoCommit(true);
+			}
+		} catch (SQLException e) {
+			System.err.println("AllowanceTypeDAO.updateWithRules() ERROR: " + e.getMessage());
 		}
 
 		return false;

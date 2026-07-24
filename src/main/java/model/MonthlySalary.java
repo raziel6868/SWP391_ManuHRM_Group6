@@ -1,7 +1,10 @@
 package model;
 
+import dto.PayrollAllowanceDetail;
 import java.math.BigDecimal;
 import java.sql.Timestamp;
+import java.util.ArrayList;
+import java.util.List;
 
 public class MonthlySalary {
 
@@ -19,6 +22,8 @@ public class MonthlySalary {
 	private BigDecimal otHours;
 	private BigDecimal overtimePay;
 	private BigDecimal totalAllowances;
+	private BigDecimal attendanceBonus;
+	private List<PayrollAllowanceDetail> allowanceDetails = new ArrayList<>();
 	private BigDecimal grossIncome;
 	private BigDecimal grossSalary;
 	private BigDecimal insuranceSalary;
@@ -164,6 +169,22 @@ public class MonthlySalary {
 
 	public void setTotalAllowances(BigDecimal totalAllowances) {
 		this.totalAllowances = totalAllowances;
+	}
+
+	public BigDecimal getAttendanceBonus() {
+		return attendanceBonus;
+	}
+
+	public void setAttendanceBonus(BigDecimal attendanceBonus) {
+		this.attendanceBonus = attendanceBonus;
+	}
+
+	public List<PayrollAllowanceDetail> getAllowanceDetails() {
+		return allowanceDetails;
+	}
+
+	public void setAllowanceDetails(List<PayrollAllowanceDetail> allowanceDetails) {
+		this.allowanceDetails = allowanceDetails != null ? allowanceDetails : new ArrayList<>();
 	}
 
 	public BigDecimal getGrossIncome() {

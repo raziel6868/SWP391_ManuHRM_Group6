@@ -10,6 +10,7 @@ public class PayrollEmployeeReportRow {
 	private BigDecimal actualWorkDays;
 	private BigDecimal paidLeaveDays;
 	private BigDecimal approvedOtHours;
+	private BigDecimal attendanceBonus;
 	private BigDecimal grossIncome;
 	private BigDecimal deductions;
 	private BigDecimal netSalary;
@@ -61,6 +62,14 @@ public class PayrollEmployeeReportRow {
 
 	public void setApprovedOtHours(BigDecimal approvedOtHours) {
 		this.approvedOtHours = approvedOtHours;
+	}
+
+	public BigDecimal getAttendanceBonus() {
+		return attendanceBonus;
+	}
+
+	public void setAttendanceBonus(BigDecimal attendanceBonus) {
+		this.attendanceBonus = attendanceBonus;
 	}
 
 	public BigDecimal getGrossIncome() {

@@ -14,6 +14,7 @@ public class PayrollSummaryRow {
 	private BigDecimal totalOtCost;
 	private BigDecimal totalCost;
 	private BigDecimal totalAllowances;
+	private BigDecimal totalAttendanceBonus;
 	private BigDecimal grossIncome;
 	private BigDecimal employeeInsurance;
 	private BigDecimal pitTax;
@@ -101,6 +102,14 @@ public class PayrollSummaryRow {
 
 	public void setTotalAllowances(BigDecimal totalAllowances) {
 		this.totalAllowances = totalAllowances;
+	}
+
+	public BigDecimal getTotalAttendanceBonus() {
+		return totalAttendanceBonus;
+	}
+
+	public void setTotalAttendanceBonus(BigDecimal totalAttendanceBonus) {
+		this.totalAttendanceBonus = totalAttendanceBonus;
 	}
 
 	public BigDecimal getGrossIncome() {

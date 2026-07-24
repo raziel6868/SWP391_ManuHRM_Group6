@@ -24,8 +24,6 @@ import dto.HeadcountRow;
 import dto.LeaveEmployeeReportRow;
 import dto.LeaveTypeUsageRow;
 import dto.LeaveSummaryRow;
-import dto.OvertimeEmployeeReportRow;
-import dto.OvertimeSummaryRow;
 import dto.PayrollEmployeeReportRow;
 import dto.PayrollPreviewRow;
 import dto.PayrollSummaryRow;
@@ -34,9 +32,7 @@ import util.LeavePolicyUtil;
 
 public class ReportDAO {
 
-	private static final BigDecimal OT_RATE_NORMAL = new BigDecimal("1.5");
 	private static final int STANDARD_WORK_DAYS = 26;
-	private static final BigDecimal HOURS_PER_DAY = new BigDecimal("8");
 	private static final BigDecimal MONEY_ZERO = BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
 	private final PayrollDAO payrollDAO = new PayrollDAO();
 
@@ -55,11 +51,6 @@ public class ReportDAO {
 				) years
 				ORDER BY year_value DESC
 				""");
-	}
-
-	public List<Integer> getOvertimeYears() {
-		return getDistinctYears(
-				"SELECT DISTINCT YEAR(date) AS year_value FROM overtime_records ORDER BY year_value DESC");
 	}
 
 	public List<Integer> getPayrollYears() {
@@ -1152,165 +1143,6 @@ public class ReportDAO {
 			rows.add(row);
 		}
 		return rows;
-	}
-
-	public List<OvertimeSummaryRow> getOvertimeSummary(int year, Integer month, Long departmentId) {
-		List<OvertimeSummaryRow> rows = new ArrayList<>();
-
-		StringBuilder sql = new StringBuilder(
-				"""
-						SELECT d.id AS department_id, d.name AS department_name,
-						       COUNT(ot.id) AS total_requests,
-						       SUM(CASE WHEN ot.status = 'APPROVED' THEN 1 ELSE 0 END) AS approved_requests,
-						       SUM(CASE WHEN ot.status = 'REJECTED' THEN 1 ELSE 0 END) AS rejected_requests,
-						       SUM(CASE WHEN ot.status = 'PENDING' THEN 1 ELSE 0 END) AS pending_requests,
-						       SUM(CASE WHEN ot.status = 'APPROVED' THEN COALESCE(ot.approved_hours, 0) ELSE 0 END) AS total_ot_hours,
-						       SUM(CASE
-						               WHEN ot.status = 'APPROVED'
-						               THEN COALESCE(ot.approved_hours, 0)
-						                    * COALESCE(c.salary, 0) / ? / ? * ?
-						               ELSE 0
-						           END) AS total_ot_cost
-						FROM overtime_records ot
-						JOIN users u ON ot.user_id = u.id
-						LEFT JOIN departments d ON u.department_id = d.id
-						LEFT JOIN contracts c ON c.id = (
-						    SELECT c2.id
-						    FROM contracts c2
-						    WHERE c2.user_id = u.id
-						      AND c2.status = 'ACTIVE'
-						      AND c2.start_date <= ot.date
-						      AND (c2.end_date IS NULL OR c2.end_date >= ot.date)
-						      AND c2.salary IS NOT NULL
-						    ORDER BY c2.start_date DESC, c2.id DESC
-						    LIMIT 1
-						)
-						WHERE YEAR(ot.date) = ?
-						""");
-
-		List<Object> params = new ArrayList<>();
-		params.add(STANDARD_WORK_DAYS);
-		params.add(HOURS_PER_DAY);
-		params.add(OT_RATE_NORMAL);
-		params.add(year);
-
-		if (month != null) {
-			sql.append(" AND MONTH(ot.date) = ?");
-			params.add(month);
-		}
-
-		if (departmentId != null) {
-			sql.append(" AND u.department_id = ?");
-			params.add(departmentId);
-		}
-
-		sql.append(" GROUP BY d.id, d.name ORDER BY d.name");
-
-		try (Connection conn = DBContext.getConnection();
-				PreparedStatement ps = conn.prepareStatement(sql.toString())) {
-			setParams(ps, params);
-			try (ResultSet rs = ps.executeQuery()) {
-				while (rs.next()) {
-					OvertimeSummaryRow row = new OvertimeSummaryRow();
-					row.setDepartmentId(rs.getObject("department_id") != null ? rs.getLong("department_id") : null);
-					row.setDepartmentName(rs.getString("department_name"));
-					row.setYear(year);
-					row.setMonth(month != null ? month : 0);
-					row.setTotalRequests(rs.getInt("total_requests"));
-					row.setApprovedRequests(rs.getInt("approved_requests"));
-					row.setRejectedRequests(rs.getInt("rejected_requests"));
-					row.setPendingRequests(rs.getInt("pending_requests"));
-					row.setTotalOtHours(safe(rs.getBigDecimal("total_ot_hours")));
-					row.setTotalOtCost(money(rs.getBigDecimal("total_ot_cost")));
-					rows.add(row);
-				}
-			}
-		} catch (SQLException e) {
-			System.err.println("ReportDAO.getOvertimeSummary() ERROR: " + e.getMessage());
-		}
-
-		return rows;
-	}
-
-	public List<OvertimeEmployeeReportRow> getTopOvertimeEmployees(int year, Integer month, Long departmentId) {
-		List<OvertimeEmployeeReportRow> rows = new ArrayList<>();
-		StringBuilder sql = new StringBuilder("""
-				SELECT u.employee_code, u.full_name, d.name AS department_name,
-				       SUM(COALESCE(ot.approved_hours, 0)) AS total_approved_hours,
-				       SUM(COALESCE(ot.approved_hours, 0) * COALESCE(c.salary, 0) / ? / ? * ?) AS estimated_ot_cost
-				FROM overtime_records ot
-				JOIN users u ON ot.user_id = u.id
-				LEFT JOIN departments d ON u.department_id = d.id
-				LEFT JOIN contracts c ON c.id = (
-				    SELECT c2.id
-				    FROM contracts c2
-				    WHERE c2.user_id = u.id
-				      AND c2.status = 'ACTIVE'
-				      AND c2.start_date <= ot.date
-				      AND (c2.end_date IS NULL OR c2.end_date >= ot.date)
-				      AND c2.salary IS NOT NULL
-				    ORDER BY c2.start_date DESC, c2.id DESC
-				    LIMIT 1
-				)
-				WHERE ot.status = 'APPROVED'
-				  AND ot.approved_hours IS NOT NULL
-				  AND YEAR(ot.date) = ?
-				""");
-
-		List<Object> params = new ArrayList<>();
-		params.add(STANDARD_WORK_DAYS);
-		params.add(HOURS_PER_DAY);
-		params.add(OT_RATE_NORMAL);
-		params.add(year);
-
-		if (month != null) {
-			sql.append(" AND MONTH(ot.date) = ?");
-			params.add(month);
-		}
-
-		if (departmentId != null) {
-			sql.append(" AND u.department_id = ?");
-			params.add(departmentId);
-		}
-
-		sql.append("""
-				 GROUP BY u.id, u.employee_code, u.full_name, d.name
-				 ORDER BY total_approved_hours DESC, u.full_name ASC
-				 LIMIT 10
-				""");
-
-		try (Connection conn = DBContext.getConnection();
-				PreparedStatement ps = conn.prepareStatement(sql.toString())) {
-			setParams(ps, params);
-			try (ResultSet rs = ps.executeQuery()) {
-				while (rs.next()) {
-					OvertimeEmployeeReportRow row = new OvertimeEmployeeReportRow();
-					row.setEmployeeCode(rs.getString("employee_code"));
-					row.setFullName(rs.getString("full_name"));
-					row.setDepartmentName(normalizeDepartment(rs.getString("department_name")));
-					row.setTotalApprovedHours(safe(rs.getBigDecimal("total_approved_hours")));
-					row.setEstimatedOtCost(money(rs.getBigDecimal("estimated_ot_cost")));
-					rows.add(row);
-				}
-			}
-		} catch (SQLException e) {
-			System.err.println("ReportDAO.getTopOvertimeEmployees() ERROR: " + e.getMessage());
-		}
-		return rows;
-	}
-
-	private BigDecimal calculateOtCost(BigDecimal otHours, BigDecimal totalSalary, int employeeCount) {
-		if (otHours == null || otHours.compareTo(BigDecimal.ZERO) <= 0) {
-			return BigDecimal.ZERO;
-		}
-		if (totalSalary == null || employeeCount <= 0) {
-			return BigDecimal.ZERO;
-		}
-
-		BigDecimal perDaySalary = totalSalary.divide(BigDecimal.valueOf(employeeCount * STANDARD_WORK_DAYS), 10,
-				RoundingMode.HALF_UP);
-		BigDecimal perHourSalary = perDaySalary.divide(HOURS_PER_DAY, 10, RoundingMode.HALF_UP);
-		return perHourSalary.multiply(otHours).multiply(OT_RATE_NORMAL).setScale(2, RoundingMode.HALF_UP);
 	}
 
 	private PayrollSummaryRow newPayrollSummaryRow(int year, int month, String departmentName) {

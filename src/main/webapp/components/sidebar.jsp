@@ -29,11 +29,9 @@
 
 <c:set var="hasMonthlySheetView" value="${false}" />
 <c:set var="hasMonthlySheetSupervisorView" value="${false}" />
-<c:set var="hasSalaryBaseSetup" value="${false}" />
 <c:set var="hasPayrollView" value="${false}" />
 <c:set var="hasPayslipView" value="${false}" />
 <c:set var="hasAllowanceTypeView" value="${false}" />
-<c:set var="hasEmployeeAllowanceView" value="${false}" />
 <c:set var="hasInsuranceRateView" value="${false}" />
 <c:set var="hasPersonalTaxSettingView" value="${false}" />
 <c:set var="hasPersonalTaxBracketView" value="${false}" />
@@ -128,10 +126,6 @@
             <c:set var="hasMonthlySheetSupervisorView" value="${true}" />
             <c:set var="monthlySheetSupervisorViewUrl" value="${permission.urlPattern}" />
         </c:when>
-        <c:when test="${permission.code == 'SALARY_BASE_SETUP'}">
-            <c:set var="hasSalaryBaseSetup" value="${true}" />
-            <c:set var="salaryBaseSetupUrl" value="${permission.urlPattern}" />
-        </c:when>
         <c:when test="${permission.code == 'PAYROLL_VIEW'}">
             <c:set var="hasPayrollView" value="${true}" />
             <c:set var="payrollViewUrl" value="${permission.urlPattern}" />
@@ -143,10 +137,6 @@
         <c:when test="${permission.code == 'ALLOWANCE_TYPE_VIEW'}">
             <c:set var="hasAllowanceTypeView" value="${true}" />
             <c:set var="allowanceTypeViewUrl" value="${permission.urlPattern}" />
-        </c:when>
-        <c:when test="${permission.code == 'EMPLOYEE_ALLOWANCE_VIEW'}">
-            <c:set var="hasEmployeeAllowanceView" value="${true}" />
-            <c:set var="employeeAllowanceViewUrl" value="${permission.urlPattern}" />
         </c:when>
         <c:when test="${permission.code == 'INSURANCE_RATE_VIEW'}">
             <c:set var="hasInsuranceRateView" value="${true}" />
@@ -198,7 +188,7 @@
 <c:set var="hasSystemMenu" value="${hasUserView or hasRoleView or hasDepartmentView or hasJobTitleView or hasHolidayView}" />
 <c:set var="hasContractMenu" value="${hasContractTypeView or hasContractView or hasContractMyView}" />
 <c:set var="hasLeaveMenu" value="${hasLeaveTypeView or hasLeaveBalanceView or hasLeaveMyView or hasLeaveRequestView or hasLeaveRequestApproveL1}" />
-<c:set var="hasAttendanceMenu" value="${hasAttendanceView or hasAttendanceMyView or hasAttendanceCorrectionView or hasOtView or hasOtMyView}" /><c:set var="hasPayrollMenu" value="${hasMonthlySheetView or hasMonthlySheetSupervisorView or hasPayrollView or hasPayslipView or hasAllowanceTypeView or hasEmployeeAllowanceView or hasInsuranceRateView or hasPersonalTaxSettingView or hasPersonalTaxBracketView or hasEmployeeDependentView or hasPayrollSettingView}" />
+<c:set var="hasAttendanceMenu" value="${hasAttendanceView or hasAttendanceMyView or hasAttendanceCorrectionView or hasOtView or hasOtMyView}" /><c:set var="hasPayrollMenu" value="${hasMonthlySheetView or hasMonthlySheetSupervisorView or hasPayrollView or hasPayslipView or hasAllowanceTypeView or hasInsuranceRateView or hasPersonalTaxSettingView or hasPersonalTaxBracketView or hasEmployeeDependentView or hasPayrollSettingView}" />
 <c:set var="hasReportMenu" value="${hasReportAttendance or hasReportLeave or hasReportHeadcount or hasReportContract or hasReportPayroll or hasReportOt}" />
 <c:set var="hasMenuPermission" value="${hasSystemMenu or hasContractMenu or hasLeaveMenu or hasAttendanceMenu or hasPayrollMenu or hasReportMenu}" />
 
@@ -206,7 +196,7 @@
 <c:set var="contractMenuOpen" value="${currentPath == '/contract-type-list' or currentPath == '/contract-type-create' or currentPath == '/contract-type-update' or currentPath == '/contract-list' or currentPath == '/my-contract' or currentPath == '/contract-create' or currentPath == '/contract-detail' or currentPath == '/contract-update' or currentPath == '/contract-upload' or currentPath == '/contract-renew' or currentPath == '/contract-terminate' or currentPath == '/contract-expiry'}" />
 <c:set var="leaveMenuOpen" value="${currentPath == '/leave-type-list' or currentPath == '/leave-type-detail' or currentPath == '/leave-type-update' or currentPath == '/leave-balance-list' or currentPath == '/leave-balance-setup' or currentPath == '/leave-request-my' or currentPath == '/leave-request-create' or currentPath == '/leave-request-list'}" />
 <c:set var="attendanceMenuOpen" value="${currentPath == '/attendance-list' or currentPath == '/attendance-import' or currentPath == '/attendance-my' or currentPath == '/attendance-correction-list' or currentPath == '/overtime-list' or currentPath == '/overtime-request'}" />
-<c:set var="payrollMenuOpen" value="${currentPath == '/monthly-sheet-list' or currentPath == '/monthly-sheet-supervisor' or currentPath == '/payroll-preview' or currentPath == '/payslip-view' or currentPath == '/allowance-type-list' or currentPath == '/allowance-type-create' or currentPath == '/allowance-type-update' or currentPath == '/employee-allowance-list' or currentPath == '/employee-allowance-setup' or currentPath == '/insurance-rate-list' or currentPath == '/insurance-rate-setup' or currentPath == '/personal-tax-setting-list' or currentPath == '/personal-tax-setting-setup' or currentPath == '/personal-tax-bracket-list' or currentPath == '/personal-tax-bracket-setup' or currentPath == '/employee-dependent-list' or currentPath == '/employee-dependent-setup' or currentPath == '/payroll-setting-list' or currentPath == '/payroll-setting-setup'}" />
+<c:set var="payrollMenuOpen" value="${currentPath == '/monthly-sheet-list' or currentPath == '/monthly-sheet-supervisor' or currentPath == '/payroll-preview' or currentPath == '/payslip-view' or currentPath == '/allowance-type-list' or currentPath == '/allowance-type-create' or currentPath == '/allowance-type-update' or currentPath == '/insurance-rate-list' or currentPath == '/insurance-rate-setup' or currentPath == '/personal-tax-setting-list' or currentPath == '/personal-tax-setting-setup' or currentPath == '/personal-tax-bracket-list' or currentPath == '/personal-tax-bracket-setup' or currentPath == '/employee-dependent-list' or currentPath == '/employee-dependent-setup' or currentPath == '/payroll-setting-list' or currentPath == '/payroll-setting-setup'}" />
 <c:set var="reportMenuOpen" value="${currentPath == '/report-attendance' or currentPath == '/report-leave' or currentPath == '/report-headcount' or currentPath == '/report-contract' or currentPath == '/report-payroll' or currentPath == '/report-overtime'}" />
 
 <aside class="sidebar">
@@ -377,17 +367,9 @@
                         <c:url var="menuUrl" value="${monthlySheetSupervisorViewUrl}" />
                         <a class="${currentPath == monthlySheetSupervisorViewUrl ? 'sidebar-subitem active' : 'sidebar-subitem'}" href="${menuUrl}">Bảng công tháng</a>
                     </c:if>
-                    <c:if test="${hasSalaryBaseSetup and false}">
-                        <c:url var="menuUrl" value="${salaryBaseSetupUrl}" />
-                        <a class="${currentPath == salaryBaseSetupUrl ? 'sidebar-subitem active' : 'sidebar-subitem'}" href="${menuUrl}">Thiết lập lương</a>
-                    </c:if>
                     <c:if test="${hasAllowanceTypeView}">
                         <c:url var="menuUrl" value="${allowanceTypeViewUrl}" />
                         <a class="${currentPath == allowanceTypeViewUrl ? 'sidebar-subitem active' : 'sidebar-subitem'}" href="${menuUrl}">Loại phụ cấp</a>
-                    </c:if>
-                    <c:if test="${hasEmployeeAllowanceView}">
-                        <c:url var="menuUrl" value="${employeeAllowanceViewUrl}" />
-                        <a class="${currentPath == employeeAllowanceViewUrl ? 'sidebar-subitem active' : 'sidebar-subitem'}" href="${menuUrl}">Phụ cấp nhân viên</a>
                     </c:if>
                     <c:if test="${hasInsuranceRateView and false}">
                         <c:url var="menuUrl" value="${insuranceRateViewUrl}" />

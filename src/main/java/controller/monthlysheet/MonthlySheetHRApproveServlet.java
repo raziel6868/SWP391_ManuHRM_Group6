@@ -29,8 +29,7 @@ public class MonthlySheetHRApproveServlet extends HttpServlet {
 		HttpSession session = request.getSession();
 		User authUser = (User) session.getAttribute("authUser");
 
-		// HR thuần: role HR_MANAGER nhưng job_title_id != 1 (Giám đốc)
-		if (authUser == null || !hasPermission(session, "MONTHLY_SHEET_HR_APPROVE") || isDirector(authUser)) {
+		if (authUser == null || !hasPermission(session, "MONTHLY_SHEET_HR_APPROVE")) {
 			response.sendError(HttpServletResponse.SC_FORBIDDEN);
 			return;
 		}
@@ -91,11 +90,6 @@ public class MonthlySheetHRApproveServlet extends HttpServlet {
 		}
 
 		response.sendRedirect(request.getContextPath() + "/monthly-sheet-list");
-	}
-
-	// Giám đốc: role HR_MANAGER + job_title_id = 1
-	private boolean isDirector(User user) {
-		return user.getJobTitleId() != null && user.getJobTitleId() == 1L;
 	}
 
 	private Long parseLong(String value) {

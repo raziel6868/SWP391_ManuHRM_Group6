@@ -18,6 +18,7 @@ public class PayrollSettingDAO {
 			standard_work_days,
 			standard_work_hours_per_day,
 			normal_overtime_rate,
+			attendance_bonus_amount,
 			effective_from,
 			effective_to,
 			created_at,
@@ -26,6 +27,7 @@ public class PayrollSettingDAO {
 	private static final BigDecimal DEFAULT_WORK_DAYS = new BigDecimal("22");
 	private static final BigDecimal DEFAULT_HOURS_PER_DAY = new BigDecimal("8");
 	private static final BigDecimal DEFAULT_OT_RATE = new BigDecimal("1.5");
+	private static final BigDecimal DEFAULT_ATTENDANCE_BONUS_AMOUNT = BigDecimal.ZERO;
 
 	public PayrollSetting getActiveForPeriod(int year, int month) {
 		PayrollSetting setting = getConfiguredForPeriod(year, month);
@@ -176,6 +178,7 @@ public class PayrollSettingDAO {
 		setting.setStandardWorkDays(DEFAULT_WORK_DAYS);
 		setting.setStandardWorkHoursPerDay(DEFAULT_HOURS_PER_DAY);
 		setting.setNormalOvertimeRate(DEFAULT_OT_RATE);
+		setting.setAttendanceBonusAmount(DEFAULT_ATTENDANCE_BONUS_AMOUNT);
 		return setting;
 	}
 
@@ -225,8 +228,9 @@ public class PayrollSettingDAO {
 	private boolean insert(Connection conn, PayrollSetting setting) throws SQLException {
 		String sql = """
 				INSERT INTO payroll_settings
-				    (standard_work_days, standard_work_hours_per_day, normal_overtime_rate, effective_from, effective_to)
-				VALUES (?, ?, ?, ?, ?)
+				    (standard_work_days, standard_work_hours_per_day, normal_overtime_rate,
+				     attendance_bonus_amount, effective_from, effective_to)
+				VALUES (?, ?, ?, ?, ?, ?)
 				""";
 		try (PreparedStatement ps = conn.prepareStatement(sql)) {
 			setMutationParams(ps, setting);
@@ -240,6 +244,7 @@ public class PayrollSettingDAO {
 				SET standard_work_days = ?,
 				    standard_work_hours_per_day = ?,
 				    normal_overtime_rate = ?,
+				    attendance_bonus_amount = ?,
 				    effective_from = ?,
 				    effective_to = ?,
 				    updated_at = CURRENT_TIMESTAMP
@@ -247,7 +252,7 @@ public class PayrollSettingDAO {
 				""";
 		try (PreparedStatement ps = conn.prepareStatement(sql)) {
 			setMutationParams(ps, setting);
-			ps.setLong(6, setting.getId());
+			ps.setLong(7, setting.getId());
 			return ps.executeUpdate() > 0;
 		}
 	}
@@ -256,11 +261,13 @@ public class PayrollSettingDAO {
 		ps.setBigDecimal(1, setting.getStandardWorkDays());
 		ps.setBigDecimal(2, setting.getStandardWorkHoursPerDay());
 		ps.setBigDecimal(3, setting.getNormalOvertimeRate());
-		ps.setDate(4, setting.getEffectiveFrom());
+		ps.setBigDecimal(4,
+				setting.getAttendanceBonusAmount() != null ? setting.getAttendanceBonusAmount() : BigDecimal.ZERO);
+		ps.setDate(5, setting.getEffectiveFrom());
 		if (setting.getEffectiveTo() != null) {
-			ps.setDate(5, setting.getEffectiveTo());
+			ps.setDate(6, setting.getEffectiveTo());
 		} else {
-			ps.setNull(5, java.sql.Types.DATE);
+			ps.setNull(6, java.sql.Types.DATE);
 		}
 	}
 
@@ -270,6 +277,7 @@ public class PayrollSettingDAO {
 		setting.setStandardWorkDays(rs.getBigDecimal("standard_work_days"));
 		setting.setStandardWorkHoursPerDay(rs.getBigDecimal("standard_work_hours_per_day"));
 		setting.setNormalOvertimeRate(rs.getBigDecimal("normal_overtime_rate"));
+		setting.setAttendanceBonusAmount(rs.getBigDecimal("attendance_bonus_amount"));
 		setting.setEffectiveFrom(rs.getDate("effective_from"));
 		setting.setEffectiveTo(rs.getDate("effective_to"));
 		setting.setCreatedAt(rs.getTimestamp("created_at"));

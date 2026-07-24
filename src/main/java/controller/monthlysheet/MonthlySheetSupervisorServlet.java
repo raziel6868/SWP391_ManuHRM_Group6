@@ -43,6 +43,10 @@ public class MonthlySheetSupervisorServlet extends HttpServlet {
 			response.sendError(HttpServletResponse.SC_FORBIDDEN);
 			return;
 		}
+		if (!approvalDAO.isActiveDepartmentHead(authUser.getId())) {
+			response.sendError(HttpServletResponse.SC_FORBIDDEN);
+			return;
+		}
 
 		moveFlashMessage(session, request, "successMsg");
 		moveFlashMessage(session, request, "errorMsg");
@@ -52,19 +56,19 @@ public class MonthlySheetSupervisorServlet extends HttpServlet {
 		int month = parseInt(request.getParameter("month"), today.getMonthValue());
 
 		Long filterUserId = parseLong(request.getParameter("userId"));
-		List<User> subordinates = resolveSupervisorScope(authUser);
+		List<User> departmentUsers = resolveDepartmentScope(authUser);
 		MonthlySheet sheet = monthlySheetDAO.getByYearMonth(year, month);
 		MonthlySheetApproval myApproval = null;
 		List<MonthlySheetApproval> allApprovals = new ArrayList<>();
-		List<Long> visibleUserIds = resolveVisibleUserIds(subordinates, filterUserId);
+		List<Long> visibleUserIds = resolveVisibleUserIds(departmentUsers, filterUserId);
 		List<AttendanceRecord> records = new ArrayList<>();
 
 		if (sheet != null && !"OPEN".equals(sheet.getStatus())) {
 			myApproval = approvalDAO.getBySupervisorAndSheet(sheet.getId(), authUser.getId());
 			allApprovals = approvalDAO.getBySheetId(sheet.getId());
 			records = attendanceDAO.searchByUserIdsAndMonth(visibleUserIds, year, month);
-			if (subordinates.isEmpty() && !records.isEmpty()) {
-				subordinates = buildUsersFromRecords(records);
+			if (departmentUsers.isEmpty() && !records.isEmpty()) {
+				departmentUsers = buildUsersFromRecords(records);
 			}
 		}
 
@@ -81,7 +85,8 @@ public class MonthlySheetSupervisorServlet extends HttpServlet {
 		request.setAttribute("myApproval", myApproval);
 		request.setAttribute("allApprovals", allApprovals);
 		request.setAttribute("records", records);
-		request.setAttribute("subordinates", subordinates);
+		request.setAttribute("departmentUsers", departmentUsers);
+		request.setAttribute("subordinates", departmentUsers);
 		request.setAttribute("canApprove", canApprove);
 		request.setAttribute("hasPendingCorrections", hasPendingCorrections);
 		request.setAttribute("yearOptions", YearOptionUtil.dataYearsWithCurrent(monthlySheetDAO.getAvailableYears()));
@@ -92,33 +97,20 @@ public class MonthlySheetSupervisorServlet extends HttpServlet {
 		request.getRequestDispatcher("/views/monthlysheet/monthly-sheet-supervisor.jsp").forward(request, response);
 	}
 
-	private List<User> resolveSupervisorScope(User authUser) {
-		List<User> subordinates = userDAO.findByManagerId(authUser.getId());
-		if (!subordinates.isEmpty()) {
-			return subordinates;
-		}
-
-		List<User> departmentUsers = userDAO.getActiveUsersByDepartment(authUser.getDepartmentId());
-		List<User> fallbackUsers = new ArrayList<>();
-		for (User departmentUser : departmentUsers) {
-			if (departmentUser.getId() == null || departmentUser.getId().equals(authUser.getId())) {
-				continue;
-			}
-			fallbackUsers.add(departmentUser);
-		}
-		return fallbackUsers;
+	private List<User> resolveDepartmentScope(User authUser) {
+		return userDAO.getActiveUsersByDepartment(authUser.getDepartmentId());
 	}
 
-	private List<Long> resolveVisibleUserIds(List<User> subordinates, Long filterUserId) {
+	private List<Long> resolveVisibleUserIds(List<User> departmentUsers, Long filterUserId) {
 		List<Long> userIds = new ArrayList<>();
-		if (subordinates == null || subordinates.isEmpty()) {
+		if (departmentUsers == null || departmentUsers.isEmpty()) {
 			return userIds;
 		}
 
 		List<Long> allowedUserIds = new ArrayList<>();
-		for (User subordinate : subordinates) {
-			if (subordinate.getId() != null && !allowedUserIds.contains(subordinate.getId())) {
-				allowedUserIds.add(subordinate.getId());
+		for (User departmentUser : departmentUsers) {
+			if (departmentUser.getId() != null && !allowedUserIds.contains(departmentUser.getId())) {
+				allowedUserIds.add(departmentUser.getId());
 			}
 		}
 

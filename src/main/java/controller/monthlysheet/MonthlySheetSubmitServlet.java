@@ -66,6 +66,16 @@ public class MonthlySheetSubmitServlet extends HttpServlet {
 		try (Connection conn = DBContext.getConnection()) {
 			conn.setAutoCommit(false);
 			try {
+				List<String> departmentsWithoutHead = approvalDAO.findActiveDepartmentsWithoutHead(conn);
+				if (!departmentsWithoutHead.isEmpty()) {
+					conn.rollback();
+					session.setAttribute("errorMsg",
+							"Chưa xác định trưởng phòng cho: " + String.join(", ", departmentsWithoutHead)
+									+ ". Vui lòng cập nhật cơ cấu quản lý trước khi gửi duyệt.");
+					response.sendRedirect(request.getContextPath() + "/monthly-sheet-list");
+					return;
+				}
+
 				boolean submitted = monthlySheetDAO.submit(conn, sheetId, authUser.getId());
 				if (!submitted) {
 					conn.rollback();
@@ -74,19 +84,18 @@ public class MonthlySheetSubmitServlet extends HttpServlet {
 					return;
 				}
 
-				int createdApprovals = approvalDAO.createForSheetSupervisors(conn, sheetId, sheet.getYear(),
-						sheet.getMonth());
+				int createdApprovals = approvalDAO.createForDepartmentHeads(conn, sheetId);
 				if (createdApprovals <= 0) {
 					conn.rollback();
 					session.setAttribute("errorMsg",
-							"Không tìm thấy quản đốc phù hợp cho kỳ công này. Vui lòng kiểm tra dữ liệu attendance và cơ cấu quản lý.");
+							"Không tìm thấy trưởng phòng phù hợp. Vui lòng kiểm tra cơ cấu phòng ban và quản lý.");
 					response.sendRedirect(request.getContextPath() + "/monthly-sheet-list");
 					return;
 				}
 
 				conn.commit();
 				session.setAttribute("successMsg", "Đã gửi bảng công tháng " + sheet.getMonth() + "/" + sheet.getYear()
-						+ " đến các quản đốc để xác nhận.");
+						+ " đến các trưởng phòng để xác nhận.");
 			} catch (Exception e) {
 				conn.rollback();
 				throw e;

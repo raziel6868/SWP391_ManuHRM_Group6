@@ -363,7 +363,11 @@
                                             <th class="text-end">Lương nghỉ phép</th>
                                             <th class="text-center">Số giờ OT</th>
                                             <th class="text-end">Tiền OT</th>
-                                            <th class="text-end">Phụ cấp</th>
+                                            <c:forEach var="allowanceColumn" items="${allowanceColumns}">
+                                                <th class="text-end"><c:out value="${allowanceColumn.allowanceName}" /></th>
+                                            </c:forEach>
+                                            <th class="text-end">Tổng phụ cấp</th>
+                                            <th class="text-end">Thưởng chuyên cần</th>
                                             <th class="text-end">Tổng trước khấu trừ</th>
                                             <th class="text-end">Phụ cấp tính BH</th>
                                             <th class="text-end">Lương tính bảo hiểm</th>
@@ -397,7 +401,11 @@
                                                 <td class="text-end"><fmt:formatNumber value="${row.paidLeaveSalary}" pattern="#,##0" /></td>
                                                 <td class="text-center"><fmt:formatNumber value="${row.approvedOtHours}" pattern="#,##0.##" /></td>
                                                 <td class="text-end"><fmt:formatNumber value="${row.overtimePay}" pattern="#,##0" /></td>
+                                                <c:forEach var="allowanceColumn" items="${allowanceColumns}">
+                                                    <td class="text-end"><fmt:formatNumber value="${row.allowanceAmountByCode[allowanceColumn.allowanceCode]}" pattern="#,##0" /></td>
+                                                </c:forEach>
                                                 <td class="text-end"><fmt:formatNumber value="${row.totalAllowances}" pattern="#,##0" /></td>
+                                                <td class="text-end"><fmt:formatNumber value="${row.attendanceBonus}" pattern="#,##0" /></td>
                                                 <td class="text-end fw-bold"><fmt:formatNumber value="${row.grossIncome}" pattern="#,##0" /></td>
                                                 <td class="text-end"><fmt:formatNumber value="${row.insuranceBasedAllowances}" pattern="#,##0" /></td>
                                                 <td class="text-end"><fmt:formatNumber value="${row.insuranceSalary}" pattern="#,##0" /></td>
@@ -519,13 +527,18 @@
                                             <td>Số giờ OT, Tiền OT</td>
                                         </tr>
                                         <tr>
-                                            <td class="fw-medium">Phụ cấp</td>
-                                            <td>Cộng phụ cấp đang hiệu lực; riêng ATTENDANCE_BONUS chỉ cộng khi không có LATE và không có ABSENT không phép trong kỳ</td>
-                                            <td>Phụ cấp, Đi muộn, Vắng</td>
+                                            <td class="fw-medium">Tổng phụ cấp</td>
+                                            <td>Cộng các phụ cấp theo cấu hình áp dụng trong kỳ lương; các cột phụ cấp chi tiết đứng trước cột tổng phụ cấp</td>
+                                            <td>Các cột phụ cấp, Tổng phụ cấp</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="fw-medium">Thưởng chuyên cần</td>
+                                            <td>Cộng mức thưởng chuyên cần của cấu hình payroll khi nhân viên không đi muộn và không vắng không phép trong kỳ</td>
+                                            <td>Thưởng chuyên cần, Đi muộn, Vắng</td>
                                         </tr>
                                         <tr>
                                             <td class="fw-medium">Tổng trước khấu trừ</td>
-                                            <td>Lương ngày công + Lương nghỉ phép + Tiền OT + Phụ cấp</td>
+                                            <td>Lương ngày công + Lương nghỉ phép + Tiền OT + Tổng phụ cấp + Thưởng chuyên cần</td>
                                             <td>Tổng trước khấu trừ</td>
                                         </tr>
                                         <tr>

@@ -1,13 +1,20 @@
 package controller.allowancetype;
 
+import dal.AllowanceRuleDAO;
 import dal.AllowanceTypeDAO;
+import dal.DepartmentDAO;
+import dal.JobTitleDAO;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.util.List;
+import model.AllowanceRule;
 import model.AllowanceType;
+import model.Department;
+import model.JobTitle;
 import util.ValidationUtil;
 
 @WebServlet(name = "AllowanceTypeUpdateServlet", urlPatterns = {"/allowance-type-update"})
@@ -16,6 +23,9 @@ public class AllowanceTypeUpdateServlet extends HttpServlet {
 	private static final String CODE_REGEX = "^[A-Z][A-Z0-9_]*$";
 
 	private final AllowanceTypeDAO allowanceTypeDAO = new AllowanceTypeDAO();
+	private final AllowanceRuleDAO allowanceRuleDAO = new AllowanceRuleDAO();
+	private final DepartmentDAO departmentDAO = new DepartmentDAO();
+	private final JobTitleDAO jobTitleDAO = new JobTitleDAO();
 
 	@Override
 	protected void doGet(HttpServletRequest request, HttpServletResponse response)
@@ -34,7 +44,9 @@ public class AllowanceTypeUpdateServlet extends HttpServlet {
 			return;
 		}
 
+		List<AllowanceRule> rules = allowanceRuleDAO.getActiveRulesByAllowanceTypeId(id);
 		request.setAttribute("allowanceType", allowanceType);
+		prepareForm(request, AllowanceTypeFormHelper.fromRules(rules));
 		request.getRequestDispatcher("/views/allowancetype/allowance-type-update.jsp").forward(request, response);
 	}
 
@@ -69,15 +81,24 @@ public class AllowanceTypeUpdateServlet extends HttpServlet {
 		existingAllowanceType.setIsTaxable(isTaxable);
 		existingAllowanceType.setIsInsuranceBased(isInsuranceBased);
 
+		List<JobTitle> jobTitles = jobTitleDAO.getActiveJobTitles();
+		List<AllowanceRule> existingRules = allowanceRuleDAO.getActiveRulesByAllowanceTypeId(id);
+		AllowanceTypeFormHelper.RuleFormData ruleForm = AllowanceTypeFormHelper.fromRequest(request, jobTitles,
+				existingRules);
+
 		String validationError = validate(code, name, id);
+		if (validationError == null) {
+			validationError = AllowanceTypeFormHelper.validateRules(ruleForm);
+		}
 		if (validationError != null) {
 			request.setAttribute("errorMsg", validationError);
 			request.setAttribute("allowanceType", existingAllowanceType);
+			prepareForm(request, ruleForm, jobTitles);
 			request.getRequestDispatcher("/views/allowancetype/allowance-type-update.jsp").forward(request, response);
 			return;
 		}
 
-		boolean success = allowanceTypeDAO.update(existingAllowanceType);
+		boolean success = allowanceTypeDAO.updateWithRules(existingAllowanceType, ruleForm.getRules());
 		if (success) {
 			request.getSession().setAttribute("successMsg", "Cập nhật loại phụ cấp thành công.");
 			response.sendRedirect(request.getContextPath() + "/allowance-type-list");
@@ -86,7 +107,18 @@ public class AllowanceTypeUpdateServlet extends HttpServlet {
 
 		request.setAttribute("errorMsg", "Không thể cập nhật loại phụ cấp. Vui lòng thử lại.");
 		request.setAttribute("allowanceType", existingAllowanceType);
+		prepareForm(request, ruleForm, jobTitles);
 		request.getRequestDispatcher("/views/allowancetype/allowance-type-update.jsp").forward(request, response);
+	}
+
+	private void prepareForm(HttpServletRequest request, AllowanceTypeFormHelper.RuleFormData ruleForm) {
+		prepareForm(request, ruleForm, jobTitleDAO.getActiveJobTitles());
+	}
+
+	private void prepareForm(HttpServletRequest request, AllowanceTypeFormHelper.RuleFormData ruleForm,
+			List<JobTitle> jobTitles) {
+		List<Department> departments = departmentDAO.getActiveDepartments();
+		AllowanceTypeFormHelper.populateRequest(request, ruleForm, jobTitles, departments);
 	}
 
 	private String validate(String code, String name, Long id) {

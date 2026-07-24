@@ -5,7 +5,7 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Bảng công tháng - Quản đốc - ManuHRM</title>
+    <title>Bảng công tháng - Trưởng phòng - ManuHRM</title>
     <link href="${pageContext.request.contextPath}/assets/css/main.css" rel="stylesheet">
     <style>
         /* ── Stepper ── */
@@ -175,7 +175,7 @@
             <div class="d-flex justify-content-between align-items-end mb-4 flex-wrap gap-3">
                 <div>
                     <h2 class="h3 fw-bold mb-1">Bảng công tháng</h2>
-                    <p class="body-md text-on-surface-variant mb-0">Xem và xác nhận bảng công cấp dưới trước khi chuyển HR.</p>
+                    <p class="body-md text-on-surface-variant mb-0">Xem và xác nhận bảng công phòng ban trước khi chuyển HR.</p>
                 </div>
             </div>
 
@@ -191,7 +191,7 @@
 
             <%-- ── TAB: Bảng công ── --%>
 
-                <%-- Filter tháng + nhân viên luôn hiển thị để quản đốc đổi kỳ --%>
+                <%-- Filter tháng + nhân viên luôn hiển thị để trưởng phòng đổi kỳ --%>
                 <div class="card-premium overflow-hidden mb-3">
                     <div class="p-3 bg-surface border-bottom border-outline-variant">
                         <form action="${pageContext.request.contextPath}/monthly-sheet-supervisor"
@@ -217,7 +217,7 @@
                                 <label class="form-label fw-medium mb-1">Nhân viên</label>
                                 <select name="userId" class="form-select input-premium">
                                     <option value="">-- Tất cả --</option>
-                                    <c:forEach var="sub" items="${subordinates}">
+                                    <c:forEach var="sub" items="${departmentUsers}">
                                         <option value="${sub.id}"
                                             ${selectedUserId == sub.id ? 'selected' : ''}>
                                             ${sub.employeeCode} - ${sub.fullName}
@@ -242,7 +242,7 @@
 
                 <c:if test="${not empty sheet && sheet.status != 'OPEN'}">
                     <div class="card-premium overflow-hidden mb-3">
-                        <%-- Stepper quản đốc --%>
+                        <%-- Stepper trưởng phòng --%>
                         <div class="p-3 border-bottom border-outline-variant d-flex align-items-center justify-content-between flex-wrap gap-2">
                             <div class="approval-stepper">
                                 <c:forEach var="ap" items="${allApprovals}">
@@ -253,7 +253,7 @@
                                 </c:forEach>
                             </div>
                             <span class="body-sm text-on-surface-variant">
-                                ${sheet.approvedSupervisors}/${sheet.totalSupervisors} quản đốc đã chốt
+                                ${sheet.approvedSupervisors}/${sheet.totalSupervisors} trưởng phòng đã chốt
                             </span>
                         </div>
 
@@ -342,9 +342,9 @@ const recMap = {};
     };
 </c:forEach>
 
-// Danh sách nhân viên cấp dưới
+// Danh sách nhân viên phòng ban
 const employees = [
-    <c:forEach var="sub" items="${subordinates}" varStatus="st">
+    <c:forEach var="sub" items="${departmentUsers}" varStatus="st">
     { id: '${sub.id}', code: '<c:out value="${sub.employeeCode}"/>', name: '<c:out value="${sub.fullName}"/>' }<c:if test="${!st.last}">,</c:if>
     </c:forEach>
 ];

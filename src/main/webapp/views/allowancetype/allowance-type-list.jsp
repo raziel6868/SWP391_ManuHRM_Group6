@@ -1,5 +1,6 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 <%@ taglib prefix="c" uri="jakarta.tags.core" %>
+<%@ taglib prefix="fmt" uri="jakarta.tags.fmt" %>
 <!DOCTYPE html>
 <html lang="vi">
 <head>
@@ -78,6 +79,7 @@
                                     <th>Tên phụ cấp</th>
                                     <th>Tính thuế</th>
                                     <th>Tính BH</th>
+                                    <th>Cấu hình áp dụng</th>
                                     <th>Mô tả</th>
                                     <th>Trạng thái</th>
                                     <th class="text-end">Thao tác</th>
@@ -99,6 +101,34 @@
                                                   style="background-color: ${allowanceType.isInsuranceBased ? '#fef3c7' : '#f3f4f6'}; color: ${allowanceType.isInsuranceBased ? '#92400e' : '#374151'};">
                                                 ${allowanceType.isInsuranceBased ? 'Có' : 'Không'}
                                             </span>
+                                        </td>
+                                        <td style="min-width: 260px;">
+                                            <c:choose>
+                                                <c:when test="${empty allowanceType.activeRules}">
+                                                    <span class="text-on-surface-variant">-</span>
+                                                </c:when>
+                                                <c:otherwise>
+                                                    <div class="d-flex flex-column gap-1">
+                                                        <c:forEach var="rule" items="${allowanceType.activeRules}">
+                                                            <div class="d-flex align-items-center justify-content-between gap-2 flex-wrap">
+                                                                <span class="badge" style="background-color: var(--surface-container-high); color: var(--on-surface);">
+                                                                    <c:choose>
+                                                                        <c:when test="${rule.applyScope == 'ALL'}">Tất cả</c:when>
+                                                                        <c:when test="${rule.applyScope == 'EMPLOYEE_TYPE'}">${rule.employeeType}</c:when>
+                                                                        <c:when test="${rule.applyScope == 'DEPARTMENT_TYPE'}">${rule.departmentType}<c:if test="${not empty rule.employeeType}"> / ${rule.employeeType}</c:if></c:when>
+                                                                        <c:when test="${rule.applyScope == 'DEPARTMENT'}">${rule.departmentName}<c:if test="${not empty rule.employeeType}"> / ${rule.employeeType}</c:if></c:when>
+                                                                        <c:when test="${rule.applyScope == 'JOB_TITLE'}">${rule.jobTitleName}</c:when>
+                                                                        <c:otherwise>${rule.applyScope}</c:otherwise>
+                                                                    </c:choose>
+                                                                </span>
+                                                                <span class="fw-medium text-on-surface">
+                                                                    <fmt:formatNumber value="${rule.amount}" pattern="#,##0" />
+                                                                </span>
+                                                            </div>
+                                                        </c:forEach>
+                                                    </div>
+                                                </c:otherwise>
+                                            </c:choose>
                                         </td>
                                         <td class="text-on-surface-variant text-truncate" style="max-width: 280px;">
                                             <c:out value="${empty allowanceType.description ? '-' : allowanceType.description}" />
@@ -140,7 +170,7 @@
                                 </c:forEach>
                                 <c:if test="${empty allowanceTypes}">
                                     <tr>
-                                        <td colspan="7" class="text-center py-4 text-on-surface-variant">
+                                        <td colspan="8" class="text-center py-4 text-on-surface-variant">
                                             Không tìm thấy loại phụ cấp phù hợp.
                                         </td>
                                     </tr>

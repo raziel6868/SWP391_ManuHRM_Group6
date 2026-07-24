@@ -35,17 +35,32 @@ public class AttendanceCorrectionDAO {
 
 	/**
 	 * Employee tạo request — supervisor_id được tự động gán từ manager_id của
-	 * employee.
+	 * employee, supervisor_status luôn bắt đầu ở PENDING (cần bước 1 duyệt).
 	 */
 	public boolean insert(AttendanceCorrection correction) {
+		return insert(correction, false);
+	}
+
+	/**
+	 * Tạo request điều chỉnh công.
+	 *
+	 * @param skipSupervisorStep
+	 *            true nếu người gửi thuộc nhóm quản lý (SYSADMIN / HR_MANAGER /
+	 *            PRODUCTION_SUPERVISOR) — không cần ai duyệt bước 1, request đi
+	 *            thẳng vào hàng chờ HR duyệt bước 2. Khi đó supervisor_id để NULL
+	 *            và supervisor_status được set APPROVED ngay lúc tạo (không có
+	 *            supervisor_approved_at vì không có ai thực sự duyệt bước 1 cả).
+	 */
+	public boolean insert(AttendanceCorrection correction, boolean skipSupervisorStep) {
 		if (correction == null || correction.getAttendanceRecordId() == null || correction.getRequestedBy() == null) {
 			return false;
 		}
+		String supervisorStatus = skipSupervisorStep ? "APPROVED" : "PENDING";
 		String sql = """
 				INSERT INTO attendance_corrections
 				    (attendance_record_id, requested_by, new_check_in, new_check_out, reason,
 				     supervisor_id, supervisor_status, status)
-				VALUES (?, ?, ?, ?, ?, ?, 'PENDING', 'PENDING')
+				VALUES (?, ?, ?, ?, ?, ?, ?, 'PENDING')
 				""";
 		try (Connection conn = DBContext.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
 			ps.setLong(1, correction.getAttendanceRecordId());
@@ -53,11 +68,12 @@ public class AttendanceCorrectionDAO {
 			ps.setTime(3, correction.getNewCheckIn());
 			ps.setTime(4, correction.getNewCheckOut());
 			ps.setString(5, correction.getReason());
-			if (correction.getSupervisorId() != null) {
+			if (!skipSupervisorStep && correction.getSupervisorId() != null) {
 				ps.setLong(6, correction.getSupervisorId());
 			} else {
 				ps.setNull(6, java.sql.Types.BIGINT);
 			}
+			ps.setString(7, supervisorStatus);
 			return ps.executeUpdate() > 0;
 		} catch (SQLException e) {
 			System.err.println("AttendanceCorrectionDAO.insert() ERROR: " + e.getMessage());

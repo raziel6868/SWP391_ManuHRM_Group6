@@ -144,7 +144,14 @@
                                     <%-- Tab HR: hiện supervisor đã duyệt + hr status --%>
                                     <c:if test="${tab == 'hr'}">
                                         <td class="body-sm">
-                                            <c:out value="${cr.supervisorName}" default="—" />
+                                            <c:choose>
+                                                <c:when test="${empty cr.supervisorName}">
+                                                    <span class="text-on-surface-variant">Không cần duyệt bước 1</span>
+                                                </c:when>
+                                                <c:otherwise>
+                                                    <c:out value="${cr.supervisorName}" />
+                                                </c:otherwise>
+                                            </c:choose>
                                         </td>
                                         <td>
                                             <c:choose>

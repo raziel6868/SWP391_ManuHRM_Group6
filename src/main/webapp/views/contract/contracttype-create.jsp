@@ -35,8 +35,8 @@
                                 <input type="text" name="code" class="form-control input-premium"
                                     value="${not empty code ? code : param.code}" required maxlength="30"
                                     pattern="^[A-Z][A-Z0-9_]*$"
-                                    placeholder="VD: PROBATION, FULL_TIME, SEASONAL" />
-                                <div class="form-text mt-1 text-on-surface-variant">Chữ in hoa, không dấu, dùng dấu gạch dưới. VD: FULL_TIME</div>
+                                    placeholder="VD: INDEFINITE hoặc FIXED_TERM" />
+                                <div class="form-text mt-1 text-on-surface-variant">Chỉ dùng INDEFINITE hoặc FIXED_TERM.</div>
                             </div>
                             <div class="col-12">
                                 <label class="form-label text-on-surface fw-medium mb-1">Tên loại hợp đồng <span class="text-danger">*</span></label>

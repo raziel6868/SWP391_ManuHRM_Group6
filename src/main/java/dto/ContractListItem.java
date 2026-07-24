@@ -10,6 +10,7 @@ import java.sql.Date;
 public class ContractListItem {
 
 	private Long id;
+	private String contractCode;
 	private Long userId;
 	private String employeeCode;
 	private String fullName;
@@ -37,6 +38,14 @@ public class ContractListItem {
 
 	public void setId(Long id) {
 		this.id = id;
+	}
+
+	public String getContractCode() {
+		return contractCode;
+	}
+
+	public void setContractCode(String contractCode) {
+		this.contractCode = contractCode;
 	}
 
 	public Long getUserId() {

@@ -77,8 +77,11 @@ public class ContractDetailServlet extends HttpServlet {
 		request.setAttribute("hasContractUpdatePerm", hasPerm(session, "CONTRACT_UPDATE"));
 		request.setAttribute("hasContractRenewPerm", hasPerm(session, "CONTRACT_RENEW"));
 		request.setAttribute("hasContractTerminatePerm", hasPerm(session, "CONTRACT_TERMINATE"));
+		boolean personalContractView = !canViewAllContracts;
 		request.setAttribute("hasContractRenewRequestPerm", hasPerm(session, "CONTRACT_RENEW_REQUEST") && isOwner);
-		request.setAttribute("personalContractView", !canViewAllContracts);
+		request.setAttribute("personalContractView", personalContractView);
+		request.setAttribute("detailBackUrl", personalContractView ? "/home" : "/contract-list");
+		request.setAttribute("detailBackLabel", personalContractView ? "Trang chủ" : "Hợp đồng");
 
 		request.setAttribute("contract", contract);
 		request.getRequestDispatcher("/views/contract/contract-detail.jsp").forward(request, response);

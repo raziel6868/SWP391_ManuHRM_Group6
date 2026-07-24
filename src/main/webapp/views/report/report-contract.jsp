@@ -65,6 +65,12 @@
                 </div>
                 <div class="col-md-3">
                     <div class="card-premium p-4 h-100">
+                        <p class="label-md text-on-surface-variant mb-1">Chờ ký mới</p>
+                        <p class="h3 fw-bold mb-0">${totals.pendingRenewal}</p>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card-premium p-4 h-100">
                         <p class="label-md text-on-surface-variant mb-1">Đã hết hạn</p>
                         <p class="h3 fw-bold mb-0">${totals.expiredContracts}</p>
                     </div>
@@ -73,12 +79,6 @@
                     <div class="card-premium p-4 h-100">
                         <p class="label-md text-on-surface-variant mb-1">Sắp hết hạn ${expiringDays} ngày</p>
                         <p class="h3 fw-bold mb-0">${totals.expiringSoonContracts}</p>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="card-premium p-4 h-100">
-                        <p class="label-md text-on-surface-variant mb-1">Chờ gia hạn</p>
-                        <p class="h3 fw-bold mb-0">${totals.pendingRenewal}</p>
                     </div>
                 </div>
             </section>
@@ -107,7 +107,7 @@
                                         <div class="progress"><div class="progress-bar bg-warning" style="width: ${totals.totalContracts == 0 ? 0 : totals.expiringSoonContracts * 100 / totals.totalContracts}%;"></div></div>
                                     </div>
                                     <div>
-                                        <div class="d-flex justify-content-between mb-1"><span>Chờ gia hạn</span><strong>${totals.pendingRenewal}</strong></div>
+                                        <div class="d-flex justify-content-between mb-1"><span>Chờ ký mới</span><strong>${totals.pendingRenewal}</strong></div>
                                         <div class="progress"><div class="progress-bar bg-info" style="width: ${totals.totalContracts == 0 ? 0 : totals.pendingRenewal * 100 / totals.totalContracts}%;"></div></div>
                                     </div>
                                     <div>
@@ -144,9 +144,9 @@
                                     <tr>
                                         <th>Phòng ban</th>
                                         <th>Đang hoạt động</th>
+                                        <th>Chờ ký mới</th>
                                         <th>Đã hết hạn</th>
                                         <th>Sắp hết hạn</th>
-                                        <th>Chờ gia hạn</th>
                                         <th>Đã chấm dứt</th>
                                         <th>Tổng số</th>
                                     </tr>
@@ -156,9 +156,9 @@
                                         <tr>
                                             <td><c:out value="${empty row.departmentName ? 'Chưa có phòng ban' : row.departmentName}" /></td>
                                             <td>${row.activeContracts}</td>
+                                            <td>${row.pendingRenewal}</td>
                                             <td>${row.expiredContracts}</td>
                                             <td>${row.expiringSoonContracts}</td>
-                                            <td>${row.pendingRenewal}</td>
                                             <td>${row.terminatedContracts}</td>
                                             <td>${row.totalContracts}</td>
                                         </tr>

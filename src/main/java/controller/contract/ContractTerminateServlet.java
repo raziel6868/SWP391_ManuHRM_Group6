@@ -24,7 +24,7 @@ import java.time.format.DateTimeParseException;
  * (current auth user), the effective termination date, and the reason.
  * Idempotent - calling twice on the same contract is a no-op.
  *
- * Allowed source states: ACTIVE, PENDING_RENEWAL. TERMINATED and EXPIRED
+ * Allowed source states: ACTIVE and EXPIRING_SOON. TERMINATED and EXPIRED
  * contracts cannot be re-terminated.
  */
 @WebServlet(name = "ContractTerminateServlet", urlPatterns = {"/contract-terminate"})

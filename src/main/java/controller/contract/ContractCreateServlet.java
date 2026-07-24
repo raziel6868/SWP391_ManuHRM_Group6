@@ -7,6 +7,7 @@ import dal.UserDAO;
 import model.Contract;
 import model.ContractType;
 import model.User;
+import util.ContractRuleUtil;
 import util.ValidationUtil;
 
 import jakarta.servlet.ServletException;
@@ -52,12 +53,10 @@ public class ContractCreateServlet extends HttpServlet {
 			throws ServletException, IOException {
 		List<User> users = userDAO.getActiveUsersForDropdown();
 		List<ContractType> contractTypes = contractTypeDAO.getActiveContractTypes();
-		String today = LocalDate.now().toString();
 
 		request.setAttribute("users", users);
 		request.setAttribute("contractTypes", contractTypes);
-		request.setAttribute("todayDate", today);
-		request.setAttribute("startDate", today);
+		request.setAttribute("startDate", LocalDate.now().toString());
 		request.getRequestDispatcher("/views/contract/contract-create.jsp").forward(request, response);
 	}
 
@@ -91,8 +90,9 @@ public class ContractCreateServlet extends HttpServlet {
 					endDateStr, salaryStr, null, null);
 			return;
 		}
-		Date today = Date.valueOf(LocalDate.now());
-		if (!today.equals(startDate)) {
+		Date today = startDate;
+		boolean invalidStartDate = false;
+		if (invalidStartDate) {
 			returnWithError(request, response, "Ngày bắt đầu hợp đồng phải là ngày hiện tại (" + today + ").", userId,
 					contractTypeId, startDateStr, endDateStr, salaryStr, null, null);
 			return;
@@ -100,6 +100,13 @@ public class ContractCreateServlet extends HttpServlet {
 		if (endDate != null && endDate.before(startDate)) {
 			returnWithError(request, response, "Ngày kết thúc phải sau ngày bắt đầu.", userId, contractTypeId,
 					startDateStr, endDateStr, salaryStr, null, null);
+			return;
+		}
+		ContractType contractType = contractTypeDAO.getById(contractTypeId);
+		String termError = ContractRuleUtil.validateTerm(contractType, startDate, endDate);
+		if (termError != null) {
+			returnWithError(request, response, termError, userId, contractTypeId, startDateStr, endDateStr, salaryStr,
+					null, null);
 			return;
 		}
 		if (salary != null && salary.signum() < 0) {
@@ -111,8 +118,8 @@ public class ContractCreateServlet extends HttpServlet {
 		Contract existing = contractDAO.getActiveByUser(userId);
 		if (existing != null) {
 			returnWithError(request, response,
-					"Nhân viên này đã có hợp đồng đang hiệu lực. Hãy chấm dứt hoặc gia hạn thay vì tạo mới.", userId,
-					contractTypeId, startDateStr, endDateStr, salaryStr, null, null);
+					"Nhân viên này đã có hợp đồng đang hiệu lực. Hãy chấm dứt hợp đồng cũ trước khi nhập hợp đồng mới.",
+					userId, contractTypeId, startDateStr, endDateStr, salaryStr, null, null);
 			return;
 		}
 
@@ -225,7 +232,6 @@ public class ContractCreateServlet extends HttpServlet {
 		request.setAttribute("startDate", startDateStr);
 		request.setAttribute("endDate", endDateStr);
 		request.setAttribute("salary", salaryStr);
-		request.setAttribute("todayDate", LocalDate.now().toString());
 		request.setAttribute("users", userDAO.getActiveUsersForDropdown());
 		request.setAttribute("contractTypes", contractTypeDAO.getActiveContractTypes());
 		request.getRequestDispatcher("/views/contract/contract-create.jsp").forward(request, response);

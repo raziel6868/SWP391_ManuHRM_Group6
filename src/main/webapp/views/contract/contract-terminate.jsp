@@ -21,7 +21,7 @@
                 <nav aria-label="breadcrumb" class="mb-3">
                     <ol class="breadcrumb label-sm mb-0">
                         <li class="breadcrumb-item"><a href="${ctx}/contract-list" class="text-primary text-decoration-none">Hợp đồng</a></li>
-                        <li class="breadcrumb-item"><a href="${ctx}/contract-detail?id=${contract.id}" class="text-primary text-decoration-none">Chi tiết #${contract.id}</a></li>
+                        <li class="breadcrumb-item"><a href="${ctx}/contract-detail?id=${contract.id}" class="text-primary text-decoration-none">Chi tiết ${contract.contractCode}</a></li>
                         <li class="breadcrumb-item active" aria-current="page">Chấm dứt</li>
                     </ol>
                 </nav>

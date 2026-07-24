@@ -20,14 +20,16 @@ import model.Contract;
 public class ContractDAO {
 
 	private static final String SELECT_DETAIL_SQL = """
-			SELECT c.id, c.user_id, u.employee_code, u.full_name,
+			SELECT c.id, COALESCE(c.contract_code, CONCAT('HĐLĐ', LPAD(c.id, 2, '0'))) AS contract_code,
+			       c.user_id, u.employee_code, u.full_name,
 			       d.name AS department_name, jt.name AS job_title_name,
 			       m.full_name AS manager_name,
 			       c.contract_type_id, ct.code AS contract_type_code, ct.name AS contract_type_name,
 			       c.start_date, c.end_date, c.salary, c.file_path, c.status,
 			       c.terminated_at, c.terminated_by, tb.full_name AS terminated_by_name,
 			       c.terminate_reason,
-			       c.renewal_of_id, rc.id AS renewal_of_code,
+			       c.renewal_of_id,
+			       COALESCE(rc.contract_code, CONCAT('HĐLĐ', LPAD(rc.id, 2, '0'))) AS renewal_of_code,
 			       rc.start_date AS renewal_of_start_date, rc.end_date AS renewal_of_end_date,
 			       c.created_at, c.updated_at
 			  FROM contracts c
@@ -48,7 +50,8 @@ public class ContractDAO {
 
 	public List<ContractListItem> searchContracts(String keyword, String status, Long userId, int offset, int limit) {
 		StringBuilder sql = new StringBuilder("""
-				SELECT c.id, c.user_id, u.employee_code, u.full_name,
+				SELECT c.id, COALESCE(c.contract_code, CONCAT('HĐLĐ', LPAD(c.id, 2, '0'))) AS contract_code,
+				       c.user_id, u.employee_code, u.full_name,
 				       d.name AS department_name,
 				       ct.code AS contract_type_code, ct.name AS contract_type_name,
 				       c.start_date, c.end_date, c.salary, c.status, c.file_path
@@ -84,7 +87,8 @@ public class ContractDAO {
 
 	public List<ContractListItem> findExpiringSoon(int daysAhead, int offset, int limit) {
 		String sql = """
-				SELECT c.id, c.user_id, u.employee_code, u.full_name,
+				SELECT c.id, COALESCE(c.contract_code, CONCAT('HĐLĐ', LPAD(c.id, 2, '0'))) AS contract_code,
+				       c.user_id, u.employee_code, u.full_name,
 				       d.name AS department_name,
 				       ct.code AS contract_type_code, ct.name AS contract_type_name,
 				       c.start_date, c.end_date, c.salary, c.status, c.file_path,
@@ -163,7 +167,7 @@ public class ContractDAO {
 			return null;
 		}
 		String sql = """
-				SELECT id, user_id, contract_type_id, start_date, end_date, salary,
+				SELECT id, contract_code, user_id, contract_type_id, start_date, end_date, salary,
 				       file_path, status, terminated_at, terminated_by, terminate_reason,
 				       renewal_of_id, created_at, updated_at
 				  FROM contracts WHERE id = ?""";
@@ -175,7 +179,7 @@ public class ContractDAO {
 			return null;
 		}
 		String sql = """
-				SELECT id, user_id, contract_type_id, start_date, end_date, salary,
+				SELECT id, contract_code, user_id, contract_type_id, start_date, end_date, salary,
 				       file_path, status, terminated_at, terminated_by, terminate_reason,
 				       renewal_of_id, created_at, updated_at
 				  FROM contracts
@@ -188,43 +192,7 @@ public class ContractDAO {
 	// ============================ MUTATION ============================
 
 	public boolean insert(Contract c) {
-		if (c == null || c.getUserId() == null || c.getContractTypeId() == null || c.getStartDate() == null) {
-			return false;
-		}
-		String sql = """
-				INSERT INTO contracts
-				  (user_id, contract_type_id, start_date, end_date, salary, file_path, status,
-				   terminated_at, terminated_by, terminate_reason, renewal_of_id)
-				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""";
-		try (Connection conn = DBContext.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
-			ps.setLong(1, c.getUserId());
-			ps.setLong(2, c.getContractTypeId());
-			ps.setDate(3, c.getStartDate());
-			ps.setDate(4, c.getEndDate());
-			if (c.getSalary() != null) {
-				ps.setBigDecimal(5, c.getSalary());
-			} else {
-				ps.setNull(5, java.sql.Types.DECIMAL);
-			}
-			ps.setString(6, c.getFilePath());
-			ps.setString(7, c.getStatus() == null ? Contract.Status.ACTIVE.name() : c.getStatus().name());
-			ps.setDate(8, c.getTerminatedAt());
-			if (c.getTerminatedBy() != null) {
-				ps.setLong(9, c.getTerminatedBy());
-			} else {
-				ps.setNull(9, java.sql.Types.BIGINT);
-			}
-			ps.setString(10, c.getTerminateReason());
-			if (c.getRenewalOfId() != null) {
-				ps.setLong(11, c.getRenewalOfId());
-			} else {
-				ps.setNull(11, java.sql.Types.BIGINT);
-			}
-			return ps.executeUpdate() > 0;
-		} catch (SQLException e) {
-			System.err.println("ContractDAO.insert() ERROR: " + e.getMessage());
-			return false;
-		}
+		return insertReturningId(c) != null;
 	}
 
 	/**
@@ -240,43 +208,68 @@ public class ContractDAO {
 				  (user_id, contract_type_id, start_date, end_date, salary, file_path, status,
 				   terminated_at, terminated_by, terminate_reason, renewal_of_id)
 				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""";
-		try (Connection conn = DBContext.getConnection();
-				PreparedStatement ps = conn.prepareStatement(sql, PreparedStatement.RETURN_GENERATED_KEYS)) {
-			ps.setLong(1, c.getUserId());
-			ps.setLong(2, c.getContractTypeId());
-			ps.setDate(3, c.getStartDate());
-			ps.setDate(4, c.getEndDate());
-			if (c.getSalary() != null) {
-				ps.setBigDecimal(5, c.getSalary());
-			} else {
-				ps.setNull(5, java.sql.Types.DECIMAL);
-			}
-			ps.setString(6, c.getFilePath());
-			ps.setString(7, c.getStatus() == null ? Contract.Status.ACTIVE.name() : c.getStatus().name());
-			ps.setDate(8, c.getTerminatedAt());
-			if (c.getTerminatedBy() != null) {
-				ps.setLong(9, c.getTerminatedBy());
-			} else {
-				ps.setNull(9, java.sql.Types.BIGINT);
-			}
-			ps.setString(10, c.getTerminateReason());
-			if (c.getRenewalOfId() != null) {
-				ps.setLong(11, c.getRenewalOfId());
-			} else {
-				ps.setNull(11, java.sql.Types.BIGINT);
-			}
-			int rows = ps.executeUpdate();
-			if (rows > 0) {
-				try (ResultSet rs = ps.getGeneratedKeys()) {
-					if (rs.next()) {
-						return rs.getLong(1);
+		Connection conn = null;
+		try {
+			conn = DBContext.getConnection();
+			conn.setAutoCommit(false);
+			try (PreparedStatement ps = conn.prepareStatement(sql, PreparedStatement.RETURN_GENERATED_KEYS)) {
+				ps.setLong(1, c.getUserId());
+				ps.setLong(2, c.getContractTypeId());
+				ps.setDate(3, c.getStartDate());
+				ps.setDate(4, c.getEndDate());
+				if (c.getSalary() != null) {
+					ps.setBigDecimal(5, c.getSalary());
+				} else {
+					ps.setNull(5, java.sql.Types.DECIMAL);
+				}
+				ps.setString(6, c.getFilePath());
+				ps.setString(7, c.getStatus() == null ? Contract.Status.ACTIVE.name() : c.getStatus().name());
+				ps.setDate(8, c.getTerminatedAt());
+				if (c.getTerminatedBy() != null) {
+					ps.setLong(9, c.getTerminatedBy());
+				} else {
+					ps.setNull(9, java.sql.Types.BIGINT);
+				}
+				ps.setString(10, c.getTerminateReason());
+				if (c.getRenewalOfId() != null) {
+					ps.setLong(11, c.getRenewalOfId());
+				} else {
+					ps.setNull(11, java.sql.Types.BIGINT);
+				}
+				int rows = ps.executeUpdate();
+				if (rows > 0) {
+					try (ResultSet rs = ps.getGeneratedKeys()) {
+						if (rs.next()) {
+							Long newId = rs.getLong(1);
+							if (updateGeneratedCode(conn, newId)) {
+								conn.commit();
+								return newId;
+							}
+						}
 					}
 				}
+				conn.rollback();
+				return null;
 			}
-			return null;
 		} catch (SQLException e) {
+			if (conn != null) {
+				try {
+					conn.rollback();
+				} catch (SQLException rollbackError) {
+					System.err.println("ContractDAO.insertReturningId() rollback ERROR: " + rollbackError.getMessage());
+				}
+			}
 			System.err.println("ContractDAO.insertReturningId() ERROR: " + e.getMessage());
 			return null;
+		} finally {
+			if (conn != null) {
+				try {
+					conn.setAutoCommit(true);
+					conn.close();
+				} catch (SQLException closeError) {
+					System.err.println("ContractDAO.insertReturningId() close ERROR: " + closeError.getMessage());
+				}
+			}
 		}
 	}
 
@@ -336,6 +329,10 @@ public class ContractDAO {
 				try (ResultSet rs = ps.getGeneratedKeys()) {
 					if (rs.next()) {
 						Long newId = rs.getLong(1);
+						if (!updateGeneratedCode(conn, newId)) {
+							conn.rollback();
+							return null;
+						}
 						conn.commit();
 						return newId;
 					}
@@ -529,8 +526,9 @@ public class ContractDAO {
 		sql.append(" WHERE ");
 		boolean needsAnd = false;
 		if (hasKeyword) {
-			sql.append("(u.employee_code LIKE ? OR u.full_name LIKE ? OR ct.name LIKE ?)");
+			sql.append("(c.contract_code LIKE ? OR u.employee_code LIKE ? OR u.full_name LIKE ? OR ct.name LIKE ?)");
 			String like = "%" + keyword.trim() + "%";
+			params.add(like);
 			params.add(like);
 			params.add(like);
 			params.add(like);
@@ -561,6 +559,7 @@ public class ContractDAO {
 				while (rs.next()) {
 					ContractListItem item = new ContractListItem();
 					item.setId(rs.getLong("id"));
+					item.setContractCode(rs.getString("contract_code"));
 					item.setUserId(rs.getLong("user_id"));
 					item.setEmployeeCode(rs.getString("employee_code"));
 					item.setFullName(rs.getString("full_name"));
@@ -596,6 +595,7 @@ public class ContractDAO {
 				if (rs.next()) {
 					ContractDetail d = new ContractDetail();
 					d.setId(rs.getLong("id"));
+					d.setContractCode(rs.getString("contract_code"));
 					d.setUserId(rs.getLong("user_id"));
 					d.setEmployeeCode(rs.getString("employee_code"));
 					d.setFullName(rs.getString("full_name"));
@@ -618,8 +618,7 @@ public class ContractDAO {
 					d.setTerminateReason(rs.getString("terminate_reason"));
 					Long renewalOfIdVal = rs.getObject("renewal_of_id", Long.class);
 					d.setRenewalOfId(renewalOfIdVal);
-					Long renewalCodeVal = rs.getObject("renewal_of_code", Long.class);
-					d.setRenewalOfCode(renewalCodeVal == null ? null : String.valueOf(renewalCodeVal));
+					d.setRenewalOfCode(rs.getString("renewal_of_code"));
 					d.setRenewalOfStartDate(rs.getDate("renewal_of_start_date"));
 					d.setRenewalOfEndDate(rs.getDate("renewal_of_end_date"));
 					d.setCreatedAt(rs.getTimestamp("created_at"));
@@ -650,6 +649,7 @@ public class ContractDAO {
 	private Contract mapRow(ResultSet rs) throws SQLException {
 		Contract c = new Contract();
 		c.setId(rs.getLong("id"));
+		c.setContractCode(rs.getString("contract_code"));
 		c.setUserId(rs.getLong("user_id"));
 		c.setContractTypeId(rs.getLong("contract_type_id"));
 		c.setStartDate(rs.getDate("start_date"));
@@ -681,6 +681,18 @@ public class ContractDAO {
 			System.err.println("ContractDAO.count() ERROR: " + e.getMessage());
 		}
 		return 0;
+	}
+
+	private boolean updateGeneratedCode(Connection conn, Long id) throws SQLException {
+		if (conn == null || id == null) {
+			return false;
+		}
+		String sql = "UPDATE contracts SET contract_code = CONCAT('HĐLĐ', LPAD(?, 2, '0')) WHERE id = ?";
+		try (PreparedStatement ps = conn.prepareStatement(sql)) {
+			ps.setLong(1, id);
+			ps.setLong(2, id);
+			return ps.executeUpdate() > 0;
+		}
 	}
 
 	private void setParams(PreparedStatement ps, List<Object> params) throws SQLException {

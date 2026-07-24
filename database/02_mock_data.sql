@@ -445,7 +445,9 @@ INSERT INTO contracts (contract_code, user_id, contract_type_id, start_date, end
 ('HĐLĐ10', 12, 2, '2024-01-01', '2027-01-01', 8000000, '/contracts/worker_b_dung_fixed_term.pdf', 'ACTIVE'),
 ('HĐLĐ11', 13, 1, '2024-01-01', NULL, 18000000, '/contracts/sup_c_phuc_indefinite.pdf', 'ACTIVE'),
 ('HĐLĐ12', 14, 2, '2024-01-01', '2027-01-01', 8050000, '/contracts/worker_c_hai_fixed_term.pdf', 'ACTIVE'),
-('HĐLĐ13', 15, 2, '2024-01-01', '2027-01-01', 8000000, '/contracts/worker_c_kiet_fixed_term.pdf', 'ACTIVE');
+('HĐLĐ13', 15, 2, '2024-01-01', '2027-01-01', 8000000, '/contracts/worker_c_kiet_fixed_term.pdf', 'ACTIVE'),
+('HĐLĐ14', 2, 1, '2024-01-01', NULL, 30000000, '/contracts/it_manager_khoa_indefinite.pdf', 'ACTIVE'),
+('HĐLĐ15', 3, 2, '2024-01-01', '2027-01-01', 18000000, '/contracts/it_staff_huy_fixed_term.pdf', 'ACTIVE');
 
 INSERT INTO leave_balances (user_id, leave_type_id, year, total_days, used_days)
 SELECT c.user_id,

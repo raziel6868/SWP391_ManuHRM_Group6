@@ -24,6 +24,7 @@ import dto.OvertimeSummaryRow;
 import dto.PayrollEmployeeReportRow;
 import dto.PayrollPreviewRow;
 import dto.PayrollSummaryRow;
+import dto.PayrollTrendRow;
 import util.LeavePolicyUtil;
 
 public class ReportDAO {
@@ -410,21 +411,18 @@ public class ReportDAO {
 	}
 
 	public List<PayrollSummaryRow> getPayrollSummary(int year, int month) {
+		return getPayrollSummary(year, month, month);
+	}
+
+	public List<PayrollSummaryRow> getPayrollSummary(int year, int startMonth, int endMonth) {
 		Map<String, PayrollSummaryRow> byDepartment = new LinkedHashMap<>();
-		for (PayrollPreviewRow preview : payrollDAO.buildPayrollPreview(year, month)) {
-			String departmentName = normalizeDepartment(preview.getDepartmentName());
-			PayrollSummaryRow row = byDepartment.computeIfAbsent(departmentName,
-					key -> newPayrollSummaryRow(year, month, key));
-			row.setEmployeeCount(row.getEmployeeCount() + 1);
-			row.setTotalSalary(money(row.getTotalSalary().add(safe(preview.getBaseSalary()))));
-			row.setTotalAllowances(money(row.getTotalAllowances().add(safe(preview.getTotalAllowances()))));
-			row.setTotalOtCost(money(row.getTotalOtCost().add(safe(preview.getOvertimePay()))));
-			row.setGrossIncome(money(row.getGrossIncome().add(safe(preview.getGrossIncome()))));
-			row.setEmployeeInsurance(money(row.getEmployeeInsurance().add(safe(preview.getEmployeeInsurance()))));
-			row.setPitTax(money(row.getPitTax().add(safe(preview.getPitTax()))));
-			row.setDeductions(money(row.getDeductions().add(safe(preview.getDeductions()))));
-			row.setNetSalary(money(row.getNetSalary().add(safe(preview.getNetSalary()))));
-			row.setTotalCost(row.getGrossIncome());
+		for (int month = startMonth; month <= endMonth; month++) {
+			for (PayrollPreviewRow preview : payrollDAO.buildPayrollPreview(year, month)) {
+				String departmentName = normalizeDepartment(preview.getDepartmentName());
+				PayrollSummaryRow row = byDepartment.computeIfAbsent(departmentName,
+						key -> newPayrollSummaryRow(year, 0, key));
+				addPreviewToPayrollSummary(row, preview);
+			}
 		}
 
 		List<PayrollSummaryRow> rows = new ArrayList<>(byDepartment.values());
@@ -437,20 +435,58 @@ public class ReportDAO {
 	}
 
 	public List<PayrollEmployeeReportRow> getPayrollEmployeeDetails(int year, int month) {
-		List<PayrollEmployeeReportRow> rows = new ArrayList<>();
-		Set<Long> usersWithActiveContracts = getUsersWithActiveContracts(year, month);
-		for (PayrollPreviewRow preview : payrollDAO.buildPayrollPreview(year, month)) {
-			PayrollEmployeeReportRow row = new PayrollEmployeeReportRow();
-			row.setEmployeeCode(preview.getEmployeeCode());
-			row.setFullName(preview.getUserFullName());
-			row.setDepartmentName(normalizeDepartment(preview.getDepartmentName()));
-			row.setActualWorkDays(safe(preview.getActualWorkDays()));
-			row.setPaidLeaveDays(safe(preview.getPaidLeaveDays()));
-			row.setApprovedOtHours(safe(preview.getApprovedOtHours()));
-			row.setGrossIncome(safe(preview.getGrossIncome()));
-			row.setDeductions(safe(preview.getDeductions()));
-			row.setNetSalary(safe(preview.getNetSalary()));
-			row.setWarningStatus(buildPayrollWarning(preview, usersWithActiveContracts.contains(preview.getUserId())));
+		return getPayrollEmployeeDetails(year, month, month);
+	}
+
+	public List<PayrollEmployeeReportRow> getPayrollEmployeeDetails(int year, int startMonth, int endMonth) {
+		Map<Long, PayrollEmployeeReportRow> byEmployee = new LinkedHashMap<>();
+		for (int month = startMonth; month <= endMonth; month++) {
+			Set<Long> usersWithActiveContracts = getUsersWithActiveContracts(year, month);
+			for (PayrollPreviewRow preview : payrollDAO.buildPayrollPreview(year, month)) {
+				PayrollEmployeeReportRow row = byEmployee.computeIfAbsent(preview.getUserId(), id -> {
+					PayrollEmployeeReportRow newRow = new PayrollEmployeeReportRow();
+					newRow.setEmployeeCode(preview.getEmployeeCode());
+					newRow.setFullName(preview.getUserFullName());
+					newRow.setDepartmentName(normalizeDepartment(preview.getDepartmentName()));
+					newRow.setActualWorkDays(BigDecimal.ZERO);
+					newRow.setPaidLeaveDays(BigDecimal.ZERO);
+					newRow.setApprovedOtHours(BigDecimal.ZERO);
+					newRow.setGrossIncome(BigDecimal.ZERO);
+					newRow.setDeductions(BigDecimal.ZERO);
+					newRow.setNetSalary(BigDecimal.ZERO);
+					newRow.setWarningStatus("Ổn");
+					return newRow;
+				});
+				row.setActualWorkDays(safe(row.getActualWorkDays()).add(safe(preview.getActualWorkDays())));
+				row.setPaidLeaveDays(safe(row.getPaidLeaveDays()).add(safe(preview.getPaidLeaveDays())));
+				row.setApprovedOtHours(safe(row.getApprovedOtHours()).add(safe(preview.getApprovedOtHours())));
+				row.setGrossIncome(money(safe(row.getGrossIncome()).add(safe(preview.getGrossIncome()))));
+				row.setDeductions(money(safe(row.getDeductions()).add(safe(preview.getDeductions()))));
+				row.setNetSalary(money(safe(row.getNetSalary()).add(safe(preview.getNetSalary()))));
+				row.setWarningStatus(mergeWarning(row.getWarningStatus(),
+						buildPayrollWarning(preview, usersWithActiveContracts.contains(preview.getUserId()))));
+			}
+		}
+		return new ArrayList<>(byEmployee.values());
+	}
+
+	public List<PayrollTrendRow> getPayrollTrend(int year, int startMonth, int endMonth) {
+		List<PayrollTrendRow> rows = new ArrayList<>();
+		for (int month = startMonth; month <= endMonth; month++) {
+			PayrollTrendRow row = new PayrollTrendRow();
+			row.setYear(year);
+			row.setMonth(month);
+			row.setLabel("Tháng " + month);
+			row.setEmployeeCount(0);
+			row.setGrossIncome(MONEY_ZERO);
+			row.setDeductions(MONEY_ZERO);
+			row.setNetSalary(MONEY_ZERO);
+			for (PayrollPreviewRow preview : payrollDAO.buildPayrollPreview(year, month)) {
+				row.setEmployeeCount(row.getEmployeeCount() + 1);
+				row.setGrossIncome(money(safe(row.getGrossIncome()).add(safe(preview.getGrossIncome()))));
+				row.setDeductions(money(safe(row.getDeductions()).add(safe(preview.getDeductions()))));
+				row.setNetSalary(money(safe(row.getNetSalary()).add(safe(preview.getNetSalary()))));
+			}
 			rows.add(row);
 		}
 		return rows;
@@ -630,6 +666,19 @@ public class ReportDAO {
 		return row;
 	}
 
+	private void addPreviewToPayrollSummary(PayrollSummaryRow row, PayrollPreviewRow preview) {
+		row.setEmployeeCount(row.getEmployeeCount() + 1);
+		row.setTotalSalary(money(safe(row.getTotalSalary()).add(safe(preview.getBaseSalary()))));
+		row.setTotalAllowances(money(safe(row.getTotalAllowances()).add(safe(preview.getTotalAllowances()))));
+		row.setTotalOtCost(money(safe(row.getTotalOtCost()).add(safe(preview.getOvertimePay()))));
+		row.setGrossIncome(money(safe(row.getGrossIncome()).add(safe(preview.getGrossIncome()))));
+		row.setEmployeeInsurance(money(safe(row.getEmployeeInsurance()).add(safe(preview.getEmployeeInsurance()))));
+		row.setPitTax(money(safe(row.getPitTax()).add(safe(preview.getPitTax()))));
+		row.setDeductions(money(safe(row.getDeductions()).add(safe(preview.getDeductions()))));
+		row.setNetSalary(money(safe(row.getNetSalary()).add(safe(preview.getNetSalary()))));
+		row.setTotalCost(row.getGrossIncome());
+	}
+
 	private Set<Long> getUsersWithActiveContracts(int year, int month) {
 		Set<Long> userIds = new HashSet<>();
 		String sql = """
@@ -659,16 +708,29 @@ public class ReportDAO {
 	private String buildPayrollWarning(PayrollPreviewRow row, boolean hasActiveContract) {
 		List<String> warnings = new ArrayList<>();
 		if (!hasActiveContract) {
-			warnings.add("Thiếu hợp đồng active");
+			warnings.add("Thiếu hợp đồng hiệu lực");
 		}
 		if (safe(row.getActualWorkDays()).compareTo(BigDecimal.ZERO) == 0
 				&& safe(row.getPaidLeaveDays()).compareTo(BigDecimal.ZERO) == 0) {
 			warnings.add("Thiếu chấm công");
 		}
 		if (safe(row.getNetSalary()).compareTo(BigDecimal.ZERO) <= 0) {
-			warnings.add("Net salary bằng 0");
+			warnings.add("Lương thực nhận bằng 0");
 		}
-		return warnings.isEmpty() ? "OK" : String.join(", ", warnings);
+		return warnings.isEmpty() ? "Ổn" : String.join(", ", warnings);
+	}
+
+	private String mergeWarning(String currentWarning, String newWarning) {
+		if (newWarning == null || newWarning.isBlank() || "Ổn".equals(newWarning)) {
+			return currentWarning == null || currentWarning.isBlank() ? "Ổn" : currentWarning;
+		}
+		if (currentWarning == null || currentWarning.isBlank() || "Ổn".equals(currentWarning)) {
+			return newWarning;
+		}
+		if (currentWarning.contains(newWarning)) {
+			return currentWarning;
+		}
+		return currentWarning + ", " + newWarning;
 	}
 
 	private String normalizeDepartment(String departmentName) {

@@ -43,7 +43,6 @@
 <c:set var="hasReportHeadcount" value="${false}" />
 <c:set var="hasReportContract" value="${false}" />
 <c:set var="hasReportPayroll" value="${false}" />
-<c:set var="hasReportOt" value="${false}" />
 
 <c:forEach var="permission" items="${sessionScope.permissions}">
     <c:choose>
@@ -178,10 +177,6 @@
             <c:set var="hasReportPayroll" value="${true}" />
             <c:set var="reportPayrollUrl" value="${permission.urlPattern}" />
         </c:when>
-        <c:when test="${permission.code == 'REPORT_OT'}">
-            <c:set var="hasReportOt" value="${true}" />
-            <c:set var="reportOtUrl" value="${permission.urlPattern}" />
-        </c:when>
     </c:choose>
 </c:forEach>
 
@@ -189,7 +184,7 @@
 <c:set var="hasContractMenu" value="${hasContractTypeView or hasContractView or hasContractMyView}" />
 <c:set var="hasLeaveMenu" value="${hasLeaveTypeView or hasLeaveBalanceView or hasLeaveMyView or hasLeaveRequestView or hasLeaveRequestApproveL1}" />
 <c:set var="hasAttendanceMenu" value="${hasAttendanceView or hasAttendanceMyView or hasAttendanceCorrectionView or hasOtView or hasOtMyView}" /><c:set var="hasPayrollMenu" value="${hasMonthlySheetView or hasMonthlySheetSupervisorView or hasPayrollView or hasPayslipView or hasAllowanceTypeView or hasInsuranceRateView or hasPersonalTaxSettingView or hasPersonalTaxBracketView or hasEmployeeDependentView or hasPayrollSettingView}" />
-<c:set var="hasReportMenu" value="${hasReportAttendance or hasReportLeave or hasReportHeadcount or hasReportContract or hasReportPayroll or hasReportOt}" />
+<c:set var="hasReportMenu" value="${hasReportAttendance or hasReportLeave or hasReportHeadcount or hasReportContract or hasReportPayroll}" />
 <c:set var="hasMenuPermission" value="${hasSystemMenu or hasContractMenu or hasLeaveMenu or hasAttendanceMenu or hasPayrollMenu or hasReportMenu}" />
 
 <c:set var="systemMenuOpen" value="${currentPath == '/user-list' or currentPath == '/user-create' or currentPath == '/user-update' or currentPath == '/user-detail' or currentPath == '/role-list' or currentPath == '/role-create' or currentPath == '/role-update' or currentPath == '/role-permission' or currentPath == '/department-list' or currentPath == '/department-create' or currentPath == '/department-update' or currentPath == '/job-title-list' or currentPath == '/job-title-create' or currentPath == '/job-title-update' or currentPath == '/holiday-list' or currentPath == '/holiday-create' or currentPath == '/holiday-update'}" />
@@ -197,7 +192,7 @@
 <c:set var="leaveMenuOpen" value="${currentPath == '/leave-type-list' or currentPath == '/leave-type-detail' or currentPath == '/leave-type-update' or currentPath == '/leave-balance-list' or currentPath == '/leave-balance-setup' or currentPath == '/leave-request-my' or currentPath == '/leave-request-create' or currentPath == '/leave-request-list'}" />
 <c:set var="attendanceMenuOpen" value="${currentPath == '/attendance-list' or currentPath == '/attendance-import' or currentPath == '/attendance-my' or currentPath == '/attendance-correction-list' or currentPath == '/overtime-list' or currentPath == '/overtime-request'}" />
 <c:set var="payrollMenuOpen" value="${currentPath == '/monthly-sheet-list' or currentPath == '/monthly-sheet-supervisor' or currentPath == '/payroll-preview' or currentPath == '/payslip-view' or currentPath == '/allowance-type-list' or currentPath == '/allowance-type-create' or currentPath == '/allowance-type-update' or currentPath == '/insurance-rate-list' or currentPath == '/insurance-rate-setup' or currentPath == '/personal-tax-setting-list' or currentPath == '/personal-tax-setting-setup' or currentPath == '/personal-tax-bracket-list' or currentPath == '/personal-tax-bracket-setup' or currentPath == '/employee-dependent-list' or currentPath == '/employee-dependent-setup' or currentPath == '/payroll-setting-list' or currentPath == '/payroll-setting-setup'}" />
-<c:set var="reportMenuOpen" value="${currentPath == '/report-attendance' or currentPath == '/report-leave' or currentPath == '/report-headcount' or currentPath == '/report-contract' or currentPath == '/report-payroll' or currentPath == '/report-overtime'}" />
+<c:set var="reportMenuOpen" value="${currentPath == '/report-attendance' or currentPath == '/report-leave' or currentPath == '/report-headcount' or currentPath == '/report-contract' or currentPath == '/report-payroll'}" />
 
 <aside class="sidebar">
     <div class="sidebar-header">
@@ -436,10 +431,6 @@
                     <c:if test="${hasReportPayroll}">
                         <c:url var="menuUrl" value="${reportPayrollUrl}" />
                         <a class="${currentPath == reportPayrollUrl ? 'sidebar-subitem active' : 'sidebar-subitem'}" href="${menuUrl}">Lương</a>
-                    </c:if>
-                    <c:if test="${hasReportOt}">
-                        <c:url var="menuUrl" value="${reportOtUrl}" />
-                        <a class="${currentPath == reportOtUrl ? 'sidebar-subitem active' : 'sidebar-subitem'}" href="${menuUrl}">Tăng ca</a>
                     </c:if>
                 </div>
             </div>

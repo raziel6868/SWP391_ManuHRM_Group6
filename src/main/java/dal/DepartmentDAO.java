@@ -182,6 +182,36 @@ public class DepartmentDAO {
 		return null;
 	}
 
+	/**
+	 * Kiểm tra xem candidateParentId có phải là con/cháu của departmentId hay
+	 * không. Nếu đúng thì không được phép gán làm parent vì sẽ tạo vòng lặp.
+	 */
+	public boolean isDescendant(Long departmentId, Long candidateParentId) {
+
+		if (departmentId == null || candidateParentId == null) {
+			return false;
+		}
+
+		Long currentId = candidateParentId;
+
+		while (currentId != null) {
+
+			if (currentId.equals(departmentId)) {
+				return true;
+			}
+
+			Department current = getById(currentId);
+
+			if (current == null) {
+				break;
+			}
+
+			currentId = current.getParentId();
+		}
+
+		return false;
+	}
+
 	public boolean updateStatus(Long id, boolean isActive) {
 		String sql = "UPDATE departments SET is_active = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?";
 		try (Connection conn = DBContext.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {

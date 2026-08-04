@@ -124,6 +124,13 @@ public class DepartmentUpdateServlet extends HttpServlet {
 				forwardBackToForm(request, response, id, existing);
 				return;
 			}
+
+			// Không được chọn phòng ban con/cháu làm phòng ban cha
+			if (departmentDAO.isDescendant(id, parentId)) {
+				request.setAttribute("errorMsg", "Không thể chọn phòng ban con làm phòng ban cha.");
+				forwardBackToForm(request, response, id, existing);
+				return;
+			}
 		}
 
 		// ── Build object và update ─────────────────────────────────────────────

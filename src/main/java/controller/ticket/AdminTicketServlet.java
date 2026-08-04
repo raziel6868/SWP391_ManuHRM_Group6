@@ -82,7 +82,7 @@ public class AdminTicketServlet extends HttpServlet {
 
 			PasswordResetResult result = ticketDAO.processTicket(ticketId, admin.getId(), newPassword.trim());
 			if (result.isSuccess()) {
-				session.setAttribute("successMsg", "Duyệt thành công! Mật khẩu mới: " + result.getNewPassword());
+				session.setAttribute("successMsg", "Duyệt thành công!  ");
 			} else {
 				session.setAttribute("errorMsg", result.getMessage());
 			}

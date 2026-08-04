@@ -96,13 +96,18 @@ public class AttendanceCorrectionRequestServlet extends HttpServlet {
 			return;
 		}
 
-		// Chỉ EMPLOYEE (công nhân xưởng, IT staff, ...) mới cần bước 1 do quản lý
-		// trực tiếp (manager_id) duyệt. Các role quản lý — PRODUCTION_SUPERVISOR,
-		// HR_MANAGER, SYSADMIN — không có ý nghĩa nghiệp vụ khi phải chờ ai đó
-		// "duyệt bước 1" hộ mình (quản đốc/HR manager tự quản lý chính mình, còn
-		// SYSADMIN không thuộc chuỗi quản lý sản xuất/nhân sự), nên bỏ hẳn bước 1,
-		// request đi thẳng vào hàng chờ HR duyệt bước 2.
-		boolean skipSupervisorStep = !"EMPLOYEE".equals(authUser.getRoleName());
+		// Cần bước 1 (quản lý trực tiếp duyệt qua manager_id) trong 2 trường hợp:
+		// - Role EMPLOYEE (công nhân xưởng): quản đốc trực tiếp duyệt.
+		// - Job title "IT Staff": tuy dùng chung role SYSADMIN với IT Manager (không
+		// thể phân biệt bằng role), nhưng vẫn là cấp dưới nên IT Manager (chính là
+		// manager_id của họ) phải duyệt bước 1, KHÔNG được bỏ qua như IT Manager.
+		// Các trường hợp còn lại — PRODUCTION_SUPERVISOR, HR_MANAGER (bao gồm cả HR
+		// Staff và Giám đốc, vốn cùng dùng role HR_MANAGER), và chính IT Manager/
+		// SYSADMIN — không có ý nghĩa nghiệp vụ khi phải chờ ai đó "duyệt bước 1" hộ
+		// mình, nên bỏ hẳn bước 1, request đi thẳng vào hàng chờ HR duyệt bước 2.
+		boolean requiresSupervisorStep = "EMPLOYEE".equals(authUser.getRoleName())
+				|| "IT Staff".equals(authUser.getJobTitleName());
+		boolean skipSupervisorStep = !requiresSupervisorStep;
 
 		Long supervisorId = null;
 		if (!skipSupervisorStep) {

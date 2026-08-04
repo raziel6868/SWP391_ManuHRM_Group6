@@ -27,14 +27,16 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.sql.Date;
 import java.time.LocalDate;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 /**
  * Form for creating a new employee contract. Validates required fields,
- * enforces business rules (user active, no overlapping ACTIVE contract,
- * start_date <= end_date when both provided), and persists with status ACTIVE
- * by default. Supports optional PDF upload in the same step.
+ * enforces business rules (user active, start_date <= end_date when both
+ * provided), and persists with status ACTIVE by default. Supports optional PDF
+ * upload in the same step.
  */
 @WebServlet(name = "ContractCreateServlet", urlPatterns = {"/contract-create"})
 @MultipartConfig(fileSizeThreshold = 1024 * 1024, maxFileSize = 5L * 1024 * 1024, maxRequestSize = 6L * 1024 * 1024)
@@ -56,6 +58,7 @@ public class ContractCreateServlet extends HttpServlet {
 
 		request.setAttribute("users", users);
 		request.setAttribute("contractTypes", contractTypes);
+		request.setAttribute("fixedTermLimitedUserIds", getFixedTermLimitedUserIds(users));
 		request.setAttribute("startDate", LocalDate.now().toString());
 		request.getRequestDispatcher("/views/contract/contract-create.jsp").forward(request, response);
 	}
@@ -102,7 +105,19 @@ public class ContractCreateServlet extends HttpServlet {
 					startDateStr, endDateStr, salaryStr, null, null);
 			return;
 		}
+		if (contractDAO.hasUnterminatedIndefiniteByUser(userId)) {
+			returnWithError(request, response,
+					"Nhân viên này đã có hợp đồng không xác định thời hạn. Vui lòng chấm dứt hợp đồng đó trước khi tạo hợp đồng mới.",
+					userId, contractTypeId, startDateStr, endDateStr, salaryStr, null, null);
+			return;
+		}
 		ContractType contractType = contractTypeDAO.getById(contractTypeId);
+		if (isFixedTermLimitReached(userId, contractType)) {
+			returnWithError(request, response,
+					"Nhân viên này đã có 3 hợp đồng xác định thời hạn. Vui lòng chọn hợp đồng không xác định thời hạn.",
+					userId, contractTypeId, startDateStr, endDateStr, salaryStr, null, null);
+			return;
+		}
 		String termError = ContractRuleUtil.validateTerm(contractType, startDate, endDate);
 		if (termError != null) {
 			returnWithError(request, response, termError, userId, contractTypeId, startDateStr, endDateStr, salaryStr,
@@ -112,14 +127,6 @@ public class ContractCreateServlet extends HttpServlet {
 		if (salary != null && salary.signum() < 0) {
 			returnWithError(request, response, "Mức lương không được âm.", userId, contractTypeId, startDateStr,
 					endDateStr, salaryStr, null, null);
-			return;
-		}
-
-		Contract existing = contractDAO.getActiveByUser(userId);
-		if (existing != null) {
-			returnWithError(request, response,
-					"Nhân viên này đã có hợp đồng đang hiệu lực. Hãy chấm dứt hợp đồng cũ trước khi nhập hợp đồng mới.",
-					userId, contractTypeId, startDateStr, endDateStr, salaryStr, null, null);
 			return;
 		}
 
@@ -232,9 +239,29 @@ public class ContractCreateServlet extends HttpServlet {
 		request.setAttribute("startDate", startDateStr);
 		request.setAttribute("endDate", endDateStr);
 		request.setAttribute("salary", salaryStr);
-		request.setAttribute("users", userDAO.getActiveUsersForDropdown());
+		List<User> users = userDAO.getActiveUsersForDropdown();
+		request.setAttribute("users", users);
 		request.setAttribute("contractTypes", contractTypeDAO.getActiveContractTypes());
+		request.setAttribute("fixedTermLimitedUserIds", getFixedTermLimitedUserIds(users));
 		request.getRequestDispatcher("/views/contract/contract-create.jsp").forward(request, response);
+	}
+
+	private boolean isFixedTermLimitReached(Long userId, ContractType contractType) {
+		return contractType != null && "FIXED_TERM".equalsIgnoreCase(contractType.getCode())
+				&& contractDAO.countFixedTermByUser(userId) >= 3;
+	}
+
+	private Set<Long> getFixedTermLimitedUserIds(List<User> users) {
+		Set<Long> ids = new HashSet<>();
+		if (users == null) {
+			return ids;
+		}
+		for (User user : users) {
+			if (user != null && contractDAO.countFixedTermByUser(user.getId()) >= 3) {
+				ids.add(user.getId());
+			}
+		}
+		return ids;
 	}
 
 	private Long parseLong(String s) {

@@ -36,12 +36,12 @@
                         <select id="userId" name="userId" class="form-select" required>
                             <option value="">-- Chọn nhân viên --</option>
                             <c:forEach var="u" items="${users}">
-                                <option value="${u.id}" ${selectedUserId == u.id ? 'selected' : ''}>
+                                <option value="${u.id}" data-fixed-term-limited="${fixedTermLimitedUserIds.contains(u.id)}" ${selectedUserId == u.id ? 'selected' : ''}>
                                     ${u.fullName} (${u.employeeCode}) - ${u.departmentName}
                                 </option>
                             </c:forEach>
                         </select>
-                        <div class="form-text">Chỉ hiển thị nhân viên đang hoạt động. Nhân viên đã có hợp đồng hiệu lực sẽ bị từ chối.</div>
+                        <div class="form-text">Chỉ hiển thị nhân viên đang hoạt động.</div>
                     </div>
 
                     <div class="mb-3">
@@ -49,12 +49,12 @@
                         <select id="contractTypeId" name="contractTypeId" class="form-select" required>
                             <option value="">-- Chọn loại hợp đồng --</option>
                             <c:forEach var="ct" items="${contractTypes}">
-                                <option value="${ct.id}" ${selectedContractTypeId == ct.id ? 'selected' : ''}>
+                                <option value="${ct.id}" data-code="${ct.code}" ${selectedContractTypeId == ct.id ? 'selected' : ''}>
                                     ${ct.name} (${ct.code})
                                 </option>
                             </c:forEach>
                         </select>
-                        <div class="form-text">Chỉ gồm hợp đồng không xác định thời hạn và hợp đồng xác định thời hạn.</div>
+                        <div class="form-text">Sau 3 hợp đồng xác định thời hạn, nhân viên chỉ được chọn hợp đồng không xác định thời hạn.</div>
                     </div>
 
                     <div class="row g-3 mb-3">
@@ -101,5 +101,29 @@
     </div>
 
     <jsp:include page="/components/foot.jsp" />
+    <script>
+        (() => {
+            const userSelect = document.getElementById('userId');
+            const contractTypeSelect = document.getElementById('contractTypeId');
+
+            function syncContractTypes() {
+                const selectedUser = userSelect.options[userSelect.selectedIndex];
+                const fixedTermLimited = selectedUser?.dataset.fixedTermLimited === 'true';
+
+                Array.from(contractTypeSelect.options).forEach((option) => {
+                    if (option.dataset.code === 'FIXED_TERM') {
+                        option.hidden = fixedTermLimited;
+                        option.disabled = fixedTermLimited;
+                        if (fixedTermLimited && option.selected) {
+                            contractTypeSelect.value = '';
+                        }
+                    }
+                });
+            }
+
+            userSelect.addEventListener('change', syncContractTypes);
+            syncContractTypes();
+        })();
+    </script>
 </body>
 </html>

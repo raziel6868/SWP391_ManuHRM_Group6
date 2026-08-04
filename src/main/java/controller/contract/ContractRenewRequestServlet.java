@@ -54,6 +54,12 @@ public class ContractRenewRequestServlet extends HttpServlet {
 			return;
 		}
 
+		if (isIndefinite(contract)) {
+			session.setAttribute("errorMsg", "Hợp đồng không xác định thời hạn không thể gia hạn.");
+			response.sendRedirect(request.getContextPath() + "/contract-detail?id=" + id);
+			return;
+		}
+
 		if (contractDAO.requestRenewal(id, authUser.getId())) {
 			session.setAttribute("successMsg", "Đã gửi yêu cầu gia hạn hợp đồng đến HR.");
 		} else {
@@ -75,5 +81,9 @@ public class ContractRenewRequestServlet extends HttpServlet {
 
 	private boolean isRequestableStatus(String status) {
 		return Contract.Status.ACTIVE.name().equals(status) || Contract.Status.EXPIRING_SOON.name().equals(status);
+	}
+
+	private boolean isIndefinite(ContractDetail contract) {
+		return contract != null && "INDEFINITE".equalsIgnoreCase(contract.getContractTypeCode());
 	}
 }

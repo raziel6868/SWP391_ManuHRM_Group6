@@ -64,6 +64,12 @@ public class ContractRenewServlet extends HttpServlet {
 			return;
 		}
 
+		if (isIndefinite(previous)) {
+			session.setAttribute("errorMsg", "Hợp đồng không xác định thời hạn không thể gia hạn.");
+			response.sendRedirect(request.getContextPath() + "/contract-detail?id=" + id);
+			return;
+		}
+
 		List<ContractType> contractTypes = contractTypeDAO.getActiveContractTypes();
 		request.setAttribute("previous", previous);
 		request.setAttribute("contractTypes", contractTypes);
@@ -94,6 +100,12 @@ public class ContractRenewServlet extends HttpServlet {
 		}
 		if (!isRenewable(previous.getStatus())) {
 			session.setAttribute("errorMsg", "Chỉ có thể ký hợp đồng mới từ hợp đồng đang hiệu lực hoặc đã hết hạn.");
+			response.sendRedirect(request.getContextPath() + "/contract-detail?id=" + previousId);
+			return;
+		}
+
+		if (isIndefinite(previous)) {
+			session.setAttribute("errorMsg", "Hợp đồng không xác định thời hạn không thể gia hạn.");
 			response.sendRedirect(request.getContextPath() + "/contract-detail?id=" + previousId);
 			return;
 		}
@@ -252,6 +264,10 @@ public class ContractRenewServlet extends HttpServlet {
 		return Contract.Status.ACTIVE.name().equals(status) || Contract.Status.EXPIRING_SOON.name().equals(status)
 				|| Contract.Status.EXPIRED.name().equals(status)
 				|| Contract.Status.PENDING_RENEWAL.name().equals(status);
+	}
+
+	private boolean isIndefinite(ContractDetail contract) {
+		return contract != null && "INDEFINITE".equalsIgnoreCase(contract.getContractTypeCode());
 	}
 
 	private Long parseIdFromQuery(HttpServletRequest request, HttpServletResponse response, HttpSession session)

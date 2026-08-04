@@ -189,6 +189,33 @@ public class ContractDAO {
 		return queryOne(sql, List.of(userId));
 	}
 
+	public int countFixedTermByUser(Long userId) {
+		if (userId == null) {
+			return 0;
+		}
+		String sql = """
+				SELECT COUNT(*)
+				  FROM contracts c
+				  JOIN contract_types ct ON ct.id = c.contract_type_id
+				 WHERE c.user_id = ?
+				   AND ct.code = 'FIXED_TERM'""";
+		return count(sql, List.of(userId));
+	}
+
+	public boolean hasUnterminatedIndefiniteByUser(Long userId) {
+		if (userId == null) {
+			return false;
+		}
+		String sql = """
+				SELECT COUNT(*)
+				  FROM contracts c
+				  JOIN contract_types ct ON ct.id = c.contract_type_id
+				 WHERE c.user_id = ?
+				   AND ct.code = 'INDEFINITE'
+				   AND c.status <> 'TERMINATED'""";
+		return count(sql, List.of(userId)) > 0;
+	}
+
 	// ============================ MUTATION ============================
 
 	public boolean insert(Contract c) {

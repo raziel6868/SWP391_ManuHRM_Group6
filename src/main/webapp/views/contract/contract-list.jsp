@@ -81,7 +81,9 @@
                                             <td>${p.contractCode}</td>
                                             <td>${p.endDate}</td>
                                             <td class="text-end">
-                                                <a href="${ctx}/contract-renew?id=${p.id}" class="btn btn-sm btn-primary">Ký hợp đồng mới</a>
+                                                <c:if test="${p.contractTypeCode != 'INDEFINITE'}">
+                                                    <a href="${ctx}/contract-renew?id=${p.id}" class="btn btn-sm btn-primary">Ký hợp đồng mới</a>
+                                                </c:if>
                                             </td>
                                         </tr>
                                     </c:forEach>

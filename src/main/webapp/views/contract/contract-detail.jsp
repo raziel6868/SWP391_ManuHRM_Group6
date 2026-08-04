@@ -49,13 +49,13 @@
                                 Tải PDF
                             </a>
                         </c:if>
-                        <c:if test="${hasContractRenewPerm and (contract.status == 'ACTIVE' or contract.status == 'EXPIRING_SOON' or contract.status == 'EXPIRED' or contract.status == 'PENDING_RENEWAL')}">
+                        <c:if test="${hasContractRenewPerm and contract.contractTypeCode != 'INDEFINITE' and (contract.status == 'ACTIVE' or contract.status == 'EXPIRING_SOON' or contract.status == 'EXPIRED' or contract.status == 'PENDING_RENEWAL')}">
                             <a href="${ctx}/contract-renew?id=${contract.id}" class="btn btn-light border d-flex align-items-center gap-2">
                                 <span class="material-symbols-outlined" style="font-size: 1.125rem;">post_add</span>
                                 Ký hợp đồng mới
                             </a>
                         </c:if>
-                        <c:if test="${hasContractRenewRequestPerm and (contract.status == 'ACTIVE' or contract.status == 'EXPIRING_SOON')}">
+                        <c:if test="${hasContractRenewRequestPerm and contract.contractTypeCode != 'INDEFINITE' and (contract.status == 'ACTIVE' or contract.status == 'EXPIRING_SOON')}">
                             <form action="${ctx}/contract-renew-request" method="POST" class="m-0">
                                 <input type="hidden" name="id" value="${contract.id}" />
                                 <button type="submit" class="btn btn-light border d-flex align-items-center gap-2">
